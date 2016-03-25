@@ -1,0 +1,406 @@
+(dp1
+S'output'
+p2
+S'<class \'gluon.contrib.pg8000.ProgrammingError\'> (\'ERROR\', \'23503\', \'insert or update on table "project_outputs" violates foreign key constraint "project_outputs_added_by_fkey"\')'
+p3
+sS'layer'
+p4
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/models/zzz_fixtures.py'
+p5
+sS'code'
+p6
+S'# -*- coding: utf-8 -*-\n\n#########################################################################\n## This file loads static data, such as RCUK tags, into the database\n## - it should only be run during the first setup\n## It can also be used to empty the database of data, which is dangerous\n#########################################################################\n\nimport os # for file path handling\nimport csv\nfrom gluon.contrib.populate import populate\n\n## CHANGING THIS TO True WILL EMPTY ALL TABLES FROM THE DB \n## - DO NOT ALTER THIS UNLESS YOU ARE REALLY SURE WHAT YOU\'RE DOING\n##   AND CHANGE IT BACK IMMEDIATELY OR EVERY SINGLE PAGE CALL WILL \n##   DESTROY AND RELOAD THE DB, WHICH HAS PERFORMANCE IMPLICATIONS\n\n# Need to remove the records in the databases folder to.\n\nRESET = False\n\nif RESET:\n    for table in db.tables:\n        # Make sure to cascade, or this will fail \n        # for tables that have FK references.\n        db[table].truncate("CASCADE")\n    db.commit()\n    \n\n\n## ------------------------------------------------------------------------\n## LOAD RCUK TAGS\n## - has to come early, so projects and users can reference them\n## ------------------------------------------------------------------------\n\n# if db(db.rcuk_tags).count() == 0:\n#\n#     # load definition files\n#     data_file = os.path.join(request.folder, \'private/db_preload_data/RCUK_classification.csv\')\n#     # note that the next command imports data only from fields with\n#     # headers matching the format table_name.field_name\n#     # e.g. rcuk_tags.level,rcuk_tags.subject,rcuk_tags.topic,rcuk_tags.tag\n#     db.rcuk_tags.import_from_csv_file(open(data_file, \'rb\'))\n#     db.commit()\n\n\n## ------------------------------------------------------------------------\n## LOAD EXISTING USERS\n## NOTE - the serial id mechanism means that the web2py import regenerates id\n##         numbers, breaking the link to projects and members, so these need\n##         to be linked up again manually in the project_members import \n## ------------------------------------------------------------------------\n\nif db(db.auth_user).count() == 0:\n    \n    # now insert all the information\n    db.auth_user.insert(first_name = \'David\', \n                        last_name = \'Orme\',\n                        email = \'d.orme@imperial.ac.uk\',\n                        password = db.auth_user.password.requires[0](\'password23\')[0],\n                        title = \'Dr\',\n                        nationality = \'British\',\n                        academic_status = \'Research Fellow\',\n                        phone = \'00000\',\n                        mobile_phone = \'00000\',\n                        institution = \'Imperial College London\',\n                        institution_address = \'Imperial College London\',\n                        institution_phone = \'00000\')\n    \n   # Add beta tester\n    db.auth_user.insert(first_name = \'Olivia\', \n                        last_name = \'Daniel\',\n                        email = \'olivia.daniel08@imperial.ac.uk\',\n                        password = db.auth_user.password.requires[0](\'password23\')[0],\n                        title = \'\',\n                        nationality = \'British\',\n                        academic_status = \'Other\',\n                        phone = \'00000\',\n                        mobile_phone = \'00000\',\n                        institution = \'Imperial College London\',\n                        institution_address = \'Imperial College London\',\n                        institution_phone = \'00000\')\n    \n    # set up some groups\n    db.auth_group.insert(role=\'admin\',\n                         description=\'People who have access to the SAFE admin forms\')\n    \n    db.auth_group.insert(role=\'species_profiler\',\n                         description=\'People who can add and edit species profiles\')\n    \n    db.auth_group.insert(role=\'bloggers\',\n                         description=\'People who can add blog posts\')\n    \n    # insert \'users\' from previous website: people associated with projects\n    # load definition files\n    data_file = os.path.join(request.folder, \'private/db_preload_data/Users_table.csv\')\n    # note that the next command imports data only from fields with\n    # headers matching the format table_name.field_name\n    db.auth_user.import_from_csv_file(open(data_file, \'rb\'))\n    db.commit()\n\n    # add the developer to the admin group\n    rows = db(db.auth_user.email == \'d.orme@imperial.ac.uk\').select()\n    r = rows.first()\n    auth.add_membership(\'admin\', r.id)\n    auth.add_membership(\'bloggers\', r.id)\n    \n    # add test users to the admin group\n    rows = db(db.auth_user.last_name == \'Ewers\').select()\n    r = rows.first()\n    r.update_record(email=\'r.ewers@imperial.ac.uk\',\n                    password=db.auth_user.password.requires[0](\'password23\')[0])\n    auth.add_membership(\'admin\', r.id)\n    auth.add_membership(\'bloggers\', r.id)\n    \n    rows = db(db.auth_user.email == \'olivia.daniel08@imperial.ac.uk\').select()\n    r = rows.first()\n    auth.add_membership(\'admin\', r.id)\n    auth.add_membership(\'bloggers\', r.id)\n\n## ------------------------------------------------------------------------\n## LOAD EXISTING PROJECTS\n## - which requires a more sophisticated loading approach, \n##   as there are images to link up\n## - assumes all existing projects signed up to data sharing\n## - assumes all existing projects are approved\n## ------------------------------------------------------------------------\n\nif db(db.project).count() == 0:\n\n    # load definition files\n    data_file = os.path.join(request.folder, \'private/db_preload_data/project_inputs.csv\')\n\n    # can\'t just use import_from_csv() here because of the image and file links\n    # so need to insert programatically to file everything correctly\n    # db.outputs.import_from_csv_file(open(data_file, \'rb\'))\n\n    img_dir = \'private/db_preload_data/images/projects\'\n\n    with open(data_file, \'rU\') as csvfile:\n       reader = csv.DictReader(csvfile)\n       for row in reader:\n\n           # get the image\n           if row[\'img_file\'] != \'NA\':\n               img_in = os.path.join(request.folder, img_dir, row[\'img_file\'])\n               img_st = db.project.picture.store(open(img_in, \'rb\'), row[\'img_file\'])\n           else:\n               img_st = None\n           \n           # now insert all the information\n           db.project.insert(picture = img_st,\n                             title = row[\'title\'],\n                             project_home_country = row[\'project_home_country\'],\n                             sampling_sites = row[\'sampling_sites\'],\n                             sampling_scales = row[\'sampling_scales\'],\n                             start_date = row[\'start_date\'],\n                             end_date = row[\'end_date\'],\n                             rationale = row[\'rationale\'],\n                             methods = row[\'methods\'],\n                             requires_ra = row[\'requires_ra\'],\n                             requires_vehicle = row[\'requires_vehicle\'],\n                             resource_notes = row[\'resource_notes\'],\n                             data_sharing = True,\n                             admin_status = \'Approved\',\n                             legacy_project_id = row[\'legacy_project_id\'])\n    \n    db.commit()\n    csvfile.close()\n\n## ------------------------------------------------------------------------\n## LOAD EXISTING PROJECT MEMBERS\n## - this needs to make links using the legacy_project_id and legacy_user_id\n##   fields to match up the imported records with their id numbers allocated\n##   automatically in the database.\n## ------------------------------------------------------------------------\n\nif db(db.project_members).count() == 0:\n\n    # load definition files\n    data_file = os.path.join(request.folder, \'private/db_preload_data/project_members_table.csv\')\n    \n    with open(data_file) as csvfile:\n        reader = csv.DictReader(csvfile)\n        for row in reader:\n                        \n            # now need to find the project.id value by matching \n            # legacy_project_id values. This is clumsy, but there\'s no\n            # easy way to preserve id values as a primary key on import\n            # to a table, and this only needs to be done once.\n            \n            # NB - this code is _assuming_ a single match, but this ought to be true\n            proj_rows = db(db.project.legacy_project_id == row[\'legacy_project_id\']).select()\n            r = proj_rows.first()\n            \n            auth_rows = db(db.auth_user.legacy_user_id == row[\'legacy_user_id\']).select()\n            a = auth_rows.first()\n            \n            \n            # now insert all the information\n            db.project_members.insert(project_id = r.id,\n                                      user_id = a.id,\n                                      project_role = row[\'project_role\'])\n            \n            db.commit()\n\n    csvfile.close()\n\n\n## ------------------------------------------------------------------------\n## LOAD EXISTING OUTPUTS\n## - which requires a more sophisticated loading approach, \n##   as there are images and files to link up \n## ------------------------------------------------------------------------\n\n\n# try and load existing outputs\nif db(db.outputs).count() == 0:\n\n    # load definition files\n    data_file = os.path.join(request.folder, \'private/db_preload_data/output_inputs.csv\')\n\n    # can\'t just use import_from_csv() here because of the image and file links\n    # so need to insert programatically to file everything correctly\n    # db.outputs.import_from_csv_file(open(data_file, \'rb\'))\n\n    img_dir = \'private/db_preload_data/images/outputs\'\n    file_dir = \'private/db_preload_data/files/outputs\'\n    \n    with open(data_file) as csvfile:\n        reader = csv.DictReader(csvfile)\n        for row in reader:\n            \n            # get the two file objects\n            if row[\'picture\'] != \'NA\':\n                img_in = os.path.join(request.folder, img_dir, row[\'picture\'])\n                img_st = db.outputs.picture.store(open(img_in, \'rb\'), row[\'picture\'])\n            else:\n                img_st = None\n            \n            if row[\'file\'] != \'NA\':\n                file_in = os.path.join(request.folder, file_dir, row[\'file\'])\n                file_st = db.outputs.file.store(open(file_in, \'rb\'), row[\'file\'])\n            else:\n                file_st = None\n            \n            # now insert all the information\n            db.outputs.insert(picture = img_st,\n                              file = file_st,\n                              title = row[\'title\'],\n                              format = row[\'format\'],\n                              citation = row[\'citation\'],\n                              description = row[\'description\'],\n                              url = row[\'url\'],\n                              doi = row[\'doi\'],\n                              admin_status = \'Approved\',\n                              legacy_output_id = row[\'legacy_output_id\'])\n\n            db.commit()\n\n    csvfile.close()\n\n## ------------------------------------------------------------------------\n## LOAD PAIRINGS BETWEEN OUTPUTS AND PROJECTS\n## ------------------------------------------------------------------------\n\n# try and load existing outputs\nif db(db.project_outputs).count() == 0:\n\n    # load definition files\n    data_file = os.path.join(request.folder, \'private/db_preload_data/project_outputs_inputs.csv\')\n    \n    with open(data_file) as csvfile:\n        reader = csv.DictReader(csvfile)\n        for row in reader:\n    \n            # now need to find the new project and output ids value by matching \n            # legacy ID values. This is clumsy, but there\'s no\n            # easy way to preserve id values as a primary key on import\n            # to a table, and this only needs to be done once.\n            proj_rows = db(db.project.legacy_project_id == row[\'legacy_project_id\']).select()\n            p = proj_rows.first()\n            output_rows = db(db.outputs.legacy_output_id == row[\'legacy_output_id\']).select()\n            o = output_rows.first()\n            \n            db.project_outputs.insert(project_id = p.id,\n                                      output_id = o.id,\n                                      added_by = row[\'added_by\'],\n                                      date_added = row[\'date_added\'])\n            db.commit()\n\n    csvfile.close()\n\n## ------------------------------------------------------------------------\n## LOAD SPECIES PROFILES\n## - images here are links, currently including some non CC images\n## ------------------------------------------------------------------------\n\n# species profiles\nif db(db.species_profile).count() == 0:\n\n    # load definition files\n    data_file = os.path.join(request.folder, \'private/db_preload_data/species_inputs.csv\')\n    # note that the next command imports data only from fields with\n    # headers matching the format table_name.field_name\n    # e.g. rcuk_tags.level,rcuk_tags.subject,rcuk_tags.topic,rcuk_tags.tag\n    db.species_profile.import_from_csv_file(open(data_file, \'rb\'))\n    db.commit()\n\n\n## ------------------------------------------------------------------------\n## LOAD CONTACTS\n## - which requires a more sophisticated loading approach, \n##   as there are images to link up \n## ------------------------------------------------------------------------\n\n\n# try and load existing outputs\nif db(db.safe_contacts).count() == 0:\n\n    # load definition files\n    data_file = os.path.join(request.folder, \'private/db_preload_data/contacts_table.csv\')\n\n    # can\'t just use import_from_csv() here because of the image and file links\n    # so need to insert programatically to file everything correctly\n    # db.outputs.import_from_csv_file(open(data_file, \'rb\'))\n\n    img_dir = \'private/db_preload_data/images/contacts\'\n    \n    with open(data_file) as csvfile:\n        reader = csv.DictReader(csvfile)\n        for row in reader:\n            \n            # get the images\n            if row[\'picture\'] != \'\':\n                img_in = os.path.join(request.folder, img_dir, row[\'picture\'])\n                img_st = db.safe_contacts.picture.store(open(img_in, \'rb\'), row[\'picture\'])\n            else:\n                img_st = None\n            \n            # now insert all the information\n            db.safe_contacts.insert(picture = img_st,\n                              display_name = row[\'display_name\'],\n                              contact_type = row[\'contact_type\'], \n                              role = row[\'role\'],\n                              institution = row[\'institution\'],\n                              address = row[\'address\'],\n                              email = row[\'email\'],\n                              website = row[\'website\'],\n                              taxonomic_speciality = row[\'taxonomic_speciality\'])\n            \n            db.commit()\n\n    csvfile.close()\n\n\n## ------------------------------------------------------------------------\n## LOAD BLOG POSTS\n## - which requires a more sophisticated loading approach, \n##   as there are images to link up - we\'re only properly linking in the \n##   thumbnails, unless I can be bothered to work out how to upload the \n##   blog images via the ckeditor methods\n## ------------------------------------------------------------------------\n\n\n# try and load existing outputs\nif db(db.blog_posts).count() == 0:\n\n    # load definition files\n    data_file = os.path.join(request.folder, \'private/db_preload_data/blog_inputs.csv\')\n\n    # can\'t just use import_from_csv() here because of the image and file links\n    # so need to insert programatically to file everything correctly\n    # db.outputs.import_from_csv_file(open(data_file, \'rb\'))\n\n    img_dir = \'private/db_preload_data/images/blog_thumbnails\'\n    \n    with open(data_file) as csvfile:\n        reader = csv.DictReader(csvfile)\n        for row in reader:\n            \n            # get the images\n            if row[\'thumb\'] != \'\':\n                img_in = os.path.join(request.folder, img_dir, row[\'thumb\'])\n                img_st = db.blog_posts.thumbnail_figure.store(open(img_in, \'rb\'), row[\'thumb\'])\n            else:\n                img_st = None\n            \n            # now insert all the information\n            db.blog_posts.insert(thumbnail_figure = img_st,\n                              authors = row[\'authors\'],\n                              title = row[\'title\'], \n                              content = row[\'content\'],\n                              date_posted = row[\'date_posted\'],\n                              admin_status = \'Approved\',\n                              poster_id = 1, # DO assuming ownership\n                              admin_id = 1\n                              )\n            db.commit()\n\n    csvfile.close()\n\n\n## ------------------------------------------------------------------------\n## LOAD NEWS POSTS\n## - which requires a more sophisticated loading approach, \n##   as there are images to link up - we\'re only properly linking in the \n##   thumbnails, unless I can be bothered to work out how to upload the \n##   blog images via the ckeditor methods\n## ------------------------------------------------------------------------\n\n\n# try and load existing outputs\nif db(db.news_posts).count() == 0:\n\n    # load definition files\n    data_file = os.path.join(request.folder, \'private/db_preload_data/news_inputs.csv\')\n\n    # can\'t just use import_from_csv() here because of the image and file links\n    # so need to insert programatically to file everything correctly\n    # db.outputs.import_from_csv_file(open(data_file, \'rb\'))\n\n    img_dir = \'private/db_preload_data/images/news_thumbnails\'\n    \n    with open(data_file) as csvfile:\n        reader = csv.DictReader(csvfile)\n        for row in reader:\n            \n            # get the images\n            if row[\'thumb\'] != \'\':\n                img_in = os.path.join(request.folder, img_dir, row[\'thumb\'])\n                img_st = db.news_posts.thumbnail_figure.store(open(img_in, \'rb\'), row[\'thumb\'])\n            else:\n                img_st = None\n            \n            # now insert all the information\n            db.news_posts.insert(thumbnail_figure = img_st,\n                              title = row[\'title\'], \n                              content = row[\'content\'],\n                              date_posted = row[\'date_posted\'],\n                              poster_id = 1, # DO assuming ownership\n                              )\n            db.commit()\n\n    csvfile.close()\n\n'
+p7
+sS'snapshot'
+p8
+(dp9
+S'exception'
+p10
+(dp11
+S'__module__'
+p12
+S"'gluon.contrib.pg8000'"
+p13
+sS'__getslice__'
+p14
+S"<method-wrapper '__getslice__' of ProgrammingError object>"
+p15
+sS'__str__'
+p16
+S"<method-wrapper '__str__' of ProgrammingError object>"
+p17
+sS'__reduce__'
+p18
+S'<built-in method __reduce__ of ProgrammingError object>'
+p19
+sS'__dict__'
+p20
+S'{}'
+p21
+sS'__sizeof__'
+p22
+S'<built-in method __sizeof__ of ProgrammingError object>'
+p23
+sS'__weakref__'
+p24
+S'None'
+p25
+sS'__init__'
+p26
+S"<method-wrapper '__init__' of ProgrammingError object>"
+p27
+sS'__setattr__'
+p28
+S"<method-wrapper '__setattr__' of ProgrammingError object>"
+p29
+sS'__reduce_ex__'
+p30
+S'<built-in method __reduce_ex__ of ProgrammingError object>'
+p31
+sS'__new__'
+p32
+S'<built-in method __new__ of type object>'
+p33
+sS'__format__'
+p34
+S'<built-in method __format__ of ProgrammingError object>'
+p35
+sS'__class__'
+p36
+S"<class 'gluon.contrib.pg8000.ProgrammingError'>"
+p37
+sS'__doc__'
+p38
+S"'Generic exception raised for programming errors....http://www.python.org/dev/peps/pep-0249/>`_.\\n    '"
+p39
+sS'__getitem__'
+p40
+S"<method-wrapper '__getitem__' of ProgrammingError object>"
+p41
+sS'__setstate__'
+p42
+S'<built-in method __setstate__ of ProgrammingError object>'
+p43
+sS'__getattribute__'
+p44
+S"<method-wrapper '__getattribute__' of ProgrammingError object>"
+p45
+sS'args'
+p46
+S'(\'ERROR\', \'23503\', \'insert or update on table "project_outputs" viol...gn key constraint "project_outputs_added_by_fkey"\')'
+p47
+sS'__subclasshook__'
+p48
+S'<built-in method __subclasshook__ of type object>'
+p49
+sS'__unicode__'
+p50
+S'<built-in method __unicode__ of ProgrammingError object>'
+p51
+sS'__delattr__'
+p52
+S"<method-wrapper '__delattr__' of ProgrammingError object>"
+p53
+sS'__repr__'
+p54
+S"<method-wrapper '__repr__' of ProgrammingError object>"
+p55
+sS'__hash__'
+p56
+S"<method-wrapper '__hash__' of ProgrammingError object>"
+p57
+ssS'evalue'
+p58
+S'(\'ERROR\', \'23503\', \'insert or update on table "project_outputs" violates foreign key constraint "project_outputs_added_by_fkey"\')'
+p59
+sS'request'
+p60
+cgluon.html
+XML_unpickle
+p61
+(S'sM\x80\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">ajax</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">application</td><td style="vertical-align:top;">:</td><td><div>SAFE_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">args</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>view</div></td></tr><tr><td><div>auth_user</div></td></tr><tr><td><div>55</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">controller</td><td style="vertical-align:top;">:</td><td><div>people</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">ckCsrfToken</td><td style="vertical-align:top;">:</td><td><div>zEFPDt3elRX5B3BSntrjWWU0YDmVqax77Llwfa40<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">csrftoken</td><td style="vertical-align:top;">:</td><td><div>ikREEuTW3OsYoKB4z6PI4WMWkQTuO1Vp<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_examples</td><td style="vertical-align:top;">:</td><td><div>5b3ef0c5e37da0cb28ee4b40d1c2c55d:sZF_QWPK-PPuyehpVT5DsqTTMgyFRBs2Ub73OcD4cFQn_viD8E7th5I0hIZ-kP3Uj1Sd-xF5LMIidQGf61V3iAH2thTaN3PCooyRVVFU2XG5JLhPtuKDl3QzO4YcC5OfDbJZjVf7g4aRe30YGKu5QR1nx11jd5ShD8Ns-JU7jOEHgcX9QlD5igMztwOUK4VKksxib6neoKi-z6BcmRA3oTemdbIeazZ7k-OoRzkusZ0OZ7D4cqKyPgJl-v_YTfOmgJs9-7dH8kuBBF5iP78PatZKTnr7PsP89yVQ6mBuphvh9UDL5g2zF06H4NS7OMoJtuG3PpySBjYEjHegxYAcc70X0OZF5uKoaeTIPVNoZBW0k8w_mpO-vOAKsJAcAzsK1OvFVp1wMxx-wjL1f2UEoWqafncz-cnHEFwMEEzrwAgVateLgChwdUV3vTQ5-H7hjzc82dADZaHQmMMbOcmK8kTsrqsbHGH__TOKVkAc6j0=<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_admin</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-9aa5ded4-fc56-45d0-9b61-77955fb8301c<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_examples</td><td style="vertical-align:top;">:</td><td><div>True<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_safe</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-72b7a28a-f922-43bd-b334-b6137a76cae6<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_safe_web</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_welcome</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-4ec3f6b5-440c-4c1f-b03f-a90ad6ae6ec3<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">env</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_ENCODING</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate, sdch</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_LANGUAGE</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CACHE_CONTROL</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONNECTION</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_COOKIE</td><td style="vertical-align:top;">:</td><td><div>csrftoken=ikREEuTW3OsYoKB4z6PI4WMWkQTuO1Vp; session_id_safe=127.0.0.1-72b7a28a-f922-43bd-b334-b6137a76cae6; session_data_examples=&quot;5b3ef0c5e37da0cb28ee4b40d1c2c55d:sZF_QWPK-PPuyehpVT5DsqTTMgyFRBs2Ub73OcD4cFQn_viD8E7th5I0hIZ-kP3Uj1Sd-xF5LMIidQGf61V3iAH2thTaN3PCooyRVVFU2XG5JLhPtuKDl3QzO4YcC5OfDbJZjVf7g4aRe30YGKu5QR1nx11jd5ShD8Ns-JU7jOEHgcX9QlD5igMztwOUK4VKksxib6neoKi-z6BcmRA3oTemdbIeazZ7k-OoRzkusZ0OZ7D4cqKyPgJl-v_YTfOmgJs9-7dH8kuBBF5iP78PatZKTnr7PsP89yVQ6mBuphvh9UDL5g2zF06H4NS7OMoJtuG3PpySBjYEjHegxYAcc70X0OZF5uKoaeTIPVNoZBW0k8w_mpO-vOAKsJAcAzsK1OvFVp1wMxx-wjL1f2UEoWqafncz-cnHEFwMEEzrwAgVateLgChwdUV3vTQ5-H7hjzc82dADZaHQmMMbOcmK8kTsrqsbHGH__TOKVkAc6j0=&quot;; session_id_examples=True; ckCsrfToken=zEFPDt3elRX5B3BSntrjWWU0YDmVqax77Llwfa40; session_id_welcome=127.0.0.1-4ec3f6b5-440c-4c1f-b03f-a90ad6ae6ec3; session_id_admin=127.0.0.1-9aa5ded4-fc56-45d0-9b61-77955fb8301c; session_id_safe_web=127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_HOST</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_REFERER</td><td style="vertical-align:top;">:</td><td><div>http://127.0.0.1:8000/SAFE_web/people/manage_users?keywords=ewers</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_UPGRADE_INSECURE_REQUESTS</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_USER_AGENT</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_INFO</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/people/manage_users/view/auth_user/55</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">QUERY_STRING</td><td style="vertical-align:top;">:</td><td><div>keywords=ewers&amp;_signature=2a29b991bf9d251a916550b97e7aea8f3fab1817</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_ADDR</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_PORT</td><td style="vertical-align:top;">:</td><td><div>51086</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_METHOD</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SCRIPT_NAME</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_NAME</td><td style="vertical-align:top;">:</td><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PROTOCOL</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_SOFTWARE</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/admin/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/welcome/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x10437d050: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;fe80::a65e:60ff:feeb:b729%en0&#x27;, &#x27;192.168.1.73&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;Davids-MacBook-Pro.local&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;print_errors&#x27;: False, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_encoding</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate, sdch</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_language</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cache_control</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_connection</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cookie</td><td style="vertical-align:top;">:</td><td><div>csrftoken=ikREEuTW3OsYoKB4z6PI4WMWkQTuO1Vp; session_id_safe=127.0.0.1-72b7a28a-f922-43bd-b334-b6137a76cae6; session_data_examples=&quot;5b3ef0c5e37da0cb28ee4b40d1c2c55d:sZF_QWPK-PPuyehpVT5DsqTTMgyFRBs2Ub73OcD4cFQn_viD8E7th5I0hIZ-kP3Uj1Sd-xF5LMIidQGf61V3iAH2thTaN3PCooyRVVFU2XG5JLhPtuKDl3QzO4YcC5OfDbJZjVf7g4aRe30YGKu5QR1nx11jd5ShD8Ns-JU7jOEHgcX9QlD5igMztwOUK4VKksxib6neoKi-z6BcmRA3oTemdbIeazZ7k-OoRzkusZ0OZ7D4cqKyPgJl-v_YTfOmgJs9-7dH8kuBBF5iP78PatZKTnr7PsP89yVQ6mBuphvh9UDL5g2zF06H4NS7OMoJtuG3PpySBjYEjHegxYAcc70X0OZF5uKoaeTIPVNoZBW0k8w_mpO-vOAKsJAcAzsK1OvFVp1wMxx-wjL1f2UEoWqafncz-cnHEFwMEEzrwAgVateLgChwdUV3vTQ5-H7hjzc82dADZaHQmMMbOcmK8kTsrqsbHGH__TOKVkAc6j0=&quot;; session_id_examples=True; ckCsrfToken=zEFPDt3elRX5B3BSntrjWWU0YDmVqax77Llwfa40; session_id_welcome=127.0.0.1-4ec3f6b5-440c-4c1f-b03f-a90ad6ae6ec3; session_id_admin=127.0.0.1-9aa5ded4-fc56-45d0-9b61-77955fb8301c; session_id_safe_web=127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_host</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_referer</td><td style="vertical-align:top;">:</td><td><div>http://127.0.0.1:8000/SAFE_web/people/manage_users?keywords=ewers</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_upgrade_insecure_requests</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_user_agent</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>fe80::a65e:60ff:feeb:b729%en0</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>192.168.1.73</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_info</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/people/manage_users/view/auth_user/55</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">query_string</td><td style="vertical-align:top;">:</td><td><div>keywords=ewers&amp;_signature=2a29b991bf9d251a916550b97e7aea8f3fab1817</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_addr</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_port</td><td style="vertical-align:top;">:</td><td><div>51086</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_method</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_uri</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/people/manage_users/view/auth_user/55?keywords=ewers&amp;_signature=2a29b991bf9d251a916550b97e7aea8f3fab1817</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_name</td><td style="vertical-align:top;">:</td><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_protocol</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_software</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_path</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.13.2-stable+timestamp.2015.12.18.11.00.46</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x1002971e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x10430a738&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x10eadd0d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x1002971e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x10430a738&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x10eadd0d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">extension</td><td style="vertical-align:top;">:</td><td><div>html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">folder</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">function</td><td style="vertical-align:top;">:</td><td><div>manage_users</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">global_settings</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/admin/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/welcome/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x10437d050: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;fe80::a65e:60ff:feeb:b729%en0&#x27;, &#x27;192.168.1.73&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;Davids-MacBook-Pro.local&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;print_errors&#x27;: False, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>fe80::a65e:60ff:feeb:b729%en0</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>192.168.1.73</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.13.2-stable+timestamp.2015.12.18.11.00.46</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_https</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_local</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_restful</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_scheduler</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_shell</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">now</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 3, 24, 21, 30, 12, 738828)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_args</td><td style="vertical-align:top;">:</td><td><div>view/auth_user/55</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_extension</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/people/manage_users/view/auth_user/55</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">utcnow</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 3, 24, 21, 30, 12, 738836)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi</td><td style="vertical-align:top;">:</td><td><div>&lt;gluon.main.LazyWSGI object at 0x1122b1a10&gt;</div></td></tr></table></div>'
+tRp62
+sS'frames'
+p63
+(lp64
+(dp65
+S'file'
+p66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/restricted.py'
+p67
+sS'dump'
+p68
+(dp69
+S'environment'
+p70
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}"
+p71
+sS'ccode'
+p72
+S'<code object <module> at 0x1123016b0, file "/Use...cations/SAFE_web/models/zzz_fixtures.py", line 9>'
+p73
+ssS'lnum'
+p74
+I227
+sS'lines'
+p75
+(dp76
+I224
+S'            ccode = code'
+p77
+sI225
+S'        else:'
+p78
+sI226
+S'            ccode = compile2(code, layer)'
+p79
+sI227
+S'        exec ccode in environment'
+p80
+sI228
+S'    except HTTP:'
+p81
+sI229
+S'        raise'
+p82
+sI230
+S'    except RestrictedError:'
+p83
+sI231
+S'        # do not encapsulate (obfuscate) the original RestrictedError'
+p84
+sI222
+S'    try:'
+p85
+sI223
+S'        if isinstance(code, types.CodeType):'
+p86
+ssS'call'
+p87
+S"(code='# -*- coding: utf-8 -*-\\n\\n#######################... )\\n            db.commit()\\n\\n    csvfile.close()\\n\\n', environment={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}, layer='/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/models/zzz_fixtures.py')"
+p88
+sS'func'
+p89
+S'restricted'
+p90
+sa(dp91
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/models/zzz_fixtures.py'
+p92
+sg68
+(dp93
+S'date_added'
+p94
+S'undefined'
+p95
+sS'row'
+p96
+S"{'': '1', 'added_by': '1', 'date_added': '2016-03-22', 'legacy_output_id': '26', 'legacy_project_id': '1'}"
+p97
+ssg74
+I289
+sg75
+(dp98
+I288
+S"                                      added_by = row['added_by'],"
+p99
+sI289
+S"                                      date_added = row['date_added'])"
+p100
+sI290
+S'            db.commit()'
+p101
+sI291
+S''
+sI292
+S'    csvfile.close()'
+p102
+sI293
+S''
+sI284
+S'            o = output_rows.first()'
+p103
+sI285
+S''
+sI286
+S'            db.project_outputs.insert(project_id = p.id,'
+p104
+sI287
+S'                                      output_id = o.id,'
+p105
+ssg87
+S'()'
+p106
+sg89
+S'<module>'
+p107
+sa(dp108
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/objects.py'
+p109
+sg68
+(dp110
+S'self._listify'
+p111
+S'<bound method Table._listify of <Table project_o...s (id,project_id,output_id,added_by,date_added)>>'
+p112
+sS'fields'
+p113
+S"{'added_by': '1', 'date_added': '2016-03-22', 'output_id': 26L, 'project_id': 1L}"
+p114
+sS'self'
+p115
+S'<Table project_outputs (id,project_id,output_id,added_by,date_added)>'
+p116
+sS'ret'
+p117
+g95
+sS'self._db._adapter'
+p118
+S'<pydal.adapters.postgres.PostgreSQLAdapter object>'
+p119
+sS'self._db._adapter.insert'
+p120
+S'<bound method PostgreSQLAdapter.insert of <pydal.adapters.postgres.PostgreSQLAdapter object>>'
+p121
+sS'self._db'
+p122
+S'<DAL uri="postgres:******@localhost/safe_web2py">'
+p123
+ssg74
+I728
+sg75
+(dp124
+I723
+S'    def insert(self, **fields):'
+p125
+sI724
+S'        fields = self._defaults(fields)'
+p126
+sI725
+S'        self._attempt_upload(fields)'
+p127
+sI726
+S'        if any(f(fields) for f in self._before_insert):'
+p128
+sI727
+S'            return 0'
+p129
+sI728
+S'        ret = self._db._adapter.insert(self, self._listify(fields))'
+p130
+sI729
+S'        if ret and self._after_insert:'
+p131
+sI730
+S'            fields = Row(fields)'
+p132
+sI731
+S'            [f(fields, ret) for f in self._after_insert]'
+p133
+sI732
+S'        return ret'
+p134
+ssg87
+S"(self=<Table project_outputs (id,project_id,output_id,added_by,date_added)>, **fields={'added_by': '1', 'date_added': '2016-03-22', 'output_id': 26L, 'project_id': 1L})"
+p135
+sg89
+S'insert'
+p136
+sa(dp137
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/base.py'
+p138
+sg68
+(dp139
+S'e'
+S'ProgrammingError(\'ERROR\', \'23503\', \'insert or up... key constraint "project_outputs_added_by_fkey"\')'
+p140
+ssg74
+I746
+sg75
+(dp141
+I741
+S'            self.execute(query)'
+p142
+sI742
+S'        except Exception:'
+p143
+sI743
+S'            e = sys.exc_info()[1]'
+p144
+sI744
+S"            if hasattr(table,'_on_insert_error'):"
+p145
+sI745
+S'                return table._on_insert_error(table,fields,e)'
+p146
+sI746
+S'            raise e'
+p147
+sI747
+S"        if hasattr(table, '_primarykey'):"
+p148
+sI748
+S'            mydict = dict([(k[0].name, k[1]) for k in fields if k[0].name in table._primarykey])'
+p149
+sI749
+S'            if mydict != {}:'
+p150
+sI750
+S'                return mydict'
+p151
+ssg87
+S"(self=<pydal.adapters.postgres.PostgreSQLAdapter object>, table=<Table project_outputs (id,project_id,output_id,added_by,date_added)>, fields=[(<pydal.objects.Field object>, 26L), (<pydal.objects.Field object>, '2016-03-22'), (<pydal.objects.Field object>, 1L), (<pydal.objects.Field object>, '1')])"
+p152
+sg89
+g136
+sasS'pyver'
+p153
+S'Python 2.7.11: /Library/Frameworks/Python.framework/Versions/2.7/Resources/Python.app/Contents/MacOS/Python (prefix: /Library/Frameworks/Python.framework/Versions/2.7)'
+p154
+sS'session'
+p155
+g61
+(S's\x0c\x0f\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">auth</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">expiration</td><td style="vertical-align:top;">:</td><td><div>3600</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">hmac_key</td><td style="vertical-align:top;">:</td><td><div>360ee028-6fb4-4d49-b31e-cc14fc6cf3bd</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_visit</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 3, 24, 21, 27, 39, 485431)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remember_me</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">academic_status</td><td style="vertical-align:top;">:</td><td><div>Research Fellow</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">alternative_email</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">email</td><td style="vertical-align:top;">:</td><td><div>d.orme@imperial.ac.uk</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">first_name</td><td style="vertical-align:top;">:</td><td><div>David</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">id</td><td style="vertical-align:top;">:</td><td><div>1L</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">institution</td><td style="vertical-align:top;">:</td><td><div>Imperial College London</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">institution_address</td><td style="vertical-align:top;">:</td><td><div>Imperial College London</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">institution_phone</td><td style="vertical-align:top;">:</td><td><div>00000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_name</td><td style="vertical-align:top;">:</td><td><div>Orme</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">legacy_user_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">mobile_phone</td><td style="vertical-align:top;">:</td><td><div>00000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">nationality</td><td style="vertical-align:top;">:</td><td><div>British</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">orcid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">phone</td><td style="vertical-align:top;">:</td><td><div>00000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_id</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_key</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">reset_password_key</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">supervisor_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Dr</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user_groups</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr></table></div>'
+tRp156
+sS'etype'
+p157
+S"<class 'gluon.contrib.pg8000.ProgrammingError'>"
+p158
+sS'date'
+p159
+S'Thu Mar 24 21:30:15 2016'
+p160
+sS'response'
+p161
+g61
+(S'sc8\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">body</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x112270298&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_safe_web</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div>/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">delimiters</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>{{</div></td></tr><tr><td><div>}}</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">files</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">form_label_separator</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">formstyle</td><td style="vertical-align:top;">:</td><td><div>bootstrap3_inline</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generic_patterns</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>*</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">google_analytics_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">headers</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">X-Powered-By</td><td style="vertical-align:top;">:</td><td><div>web2py</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">menu</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div><table><tr><td><div>About</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>Concept</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/concept</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Ecological Monitoring</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/ecological_monitoring</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Contacts</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/people/contacts</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>The Project design</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Funding and support</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/funders</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>From the field</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>Research Projects</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/projects/projects</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>News</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/news/news</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Blog</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/blog/blogs</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Species profiles</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/species/species</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Outputs</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/outputs/outputs</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Research planning information</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>FAQs and SAFE wiki</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>http://forestecology.net/dokuwiki/safe/start</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Research Requirements</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Health and Safety</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>SAFE Calendars</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/calendars</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Permits</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Costs</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Bed availability</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/visits/bed_availability</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><li class="divider"></li></div></td></tr><tr><td><div><table><tr><td><div>Volunteers available</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/volunteers</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Help sought at SAFE</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/help_requests</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Registered users</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>User directory</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/people/users</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>View research visits</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/visits/research_visits</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>My SAFE</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/my_safe</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><li class="divider"></li></div></td></tr><tr><td><div><table><tr><td><div>Propose a project</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/projects/new_project</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Submit a new output</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/outputs/new_output</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Add an output to a project</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/outputs/add_output_to_project</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Your health and safety info</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/visits/health_and_safety</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Propose a research visit</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/visits/new_research_visit</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Reserve bed space</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/visits/reserve_beds</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Volunteer at SAFE</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/new_volunteer</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Request project help</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/new_help_request</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">meta</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">author</td><td style="vertical-align:top;">:</td><td><div>David Orme &lt;d.orme@imperial.ac.uk&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">description</td><td style="vertical-align:top;">:</td><td><div>Information and administration for the SAFE project</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generator</td><td style="vertical-align:top;">:</td><td><div>Web2py Web Framework</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">keywords</td><td style="vertical-align:top;">:</td><td><div>Ecology</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">models_to_run</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>^\\w+\\.py$</div></td></tr><tr><td><div>^people/\\w+\\.py$</div></td></tr><tr><td><div>^people/manage_users/\\w+\\.py$</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">postprocessing</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_compression_level</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_expires</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_key</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_name</td><td style="vertical-align:top;">:</td><td><div>session_data_safe_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_file</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/sessions/0f7/01a/127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420&#x27;, mode &#x27;rb+&#x27; at 0x10bc7cd20&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_filename</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/sessions/127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_hash</td><td style="vertical-align:top;">:</td><td><div>5b2f3d26614973eb109793dbf9989f8f</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_name</td><td style="vertical-align:top;">:</td><td><div>session_id_safe_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_locked</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_masterapp</td><td style="vertical-align:top;">:</td><td><div>SAFE_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_new</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_storage_type</td><td style="vertical-align:top;">:</td><td><div>file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">status</td><td style="vertical-align:top;">:</td><td><div>200</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">subtitle</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Safe Web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">view</td><td style="vertical-align:top;">:</td><td><div>people/manage_users.html</div></td></tr></table></div>'
+tRp162
+sS'locals'
+p163
+(dp164
+S'query'
+p165
+S'"INSERT INTO project_outputs(output_id,date_added...ed_by) VALUES (26,\'2016-03-22\',1,1) RETURNING id;"'
+p166
+sS'self'
+p167
+S'<pydal.adapters.postgres.PostgreSQLAdapter object>'
+p168
+sS'e'
+S'ProgrammingError(\'ERROR\', \'23503\', \'insert or up... key constraint "project_outputs_added_by_fkey"\')'
+p169
+sS'fields'
+p170
+S"[(<pydal.objects.Field object>, 26L), (<pydal.objects.Field object>, '2016-03-22'), (<pydal.objects.Field object>, 1L), (<pydal.objects.Field object>, '1')]"
+p171
+sS'table'
+p172
+S'<Table project_outputs (id,project_id,output_id,added_by,date_added)>'
+p173
+sssS'traceback'
+p174
+S'Traceback (most recent call last):\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/restricted.py", line 227, in restricted\n    exec ccode in environment\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/models/zzz_fixtures.py", line 289, in <module>\n    date_added = row[\'date_added\'])\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/objects.py", line 728, in insert\n    ret = self._db._adapter.insert(self, self._listify(fields))\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/base.py", line 746, in insert\n    raise e\nProgrammingError: (\'ERROR\', \'23503\', \'insert or update on table "project_outputs" violates foreign key constraint "project_outputs_added_by_fkey"\')\n'
+p175
+s.

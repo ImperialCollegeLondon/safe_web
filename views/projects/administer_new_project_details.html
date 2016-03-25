@@ -1,0 +1,28 @@
+{{extend 'layout.html'}}
+
+<!-- Yes, yes, I've redefined css locally, I know that is bad but I'm implementing function -->
+<style>
+hr { 
+    display: block;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    margin-left: auto;
+    margin-right: auto;
+    border-style: inset;
+    border-width: 1px;
+} 
+</style>
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+{{=H3(title)}}
+<hr>
+{{=H4("Current project members")}}
+<hr>
+{{membership_panel.element('.web2py_counter', replace=None)}}
+{{=membership_panel}}
+<hr>
+{{=H4("Project details")}}
+<hr>
+{{=this_project}}
+<br>

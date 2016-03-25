@@ -1,0 +1,49 @@
+{{extend 'layout.html'}}
+
+<!-- Yes, yes, I've redefined css locally, I know that is bad but I'm implementing function -->
+<style>
+hr { 
+    display: block;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    margin-left: auto;
+    margin-right: auto;
+    border-style: inset;
+    border-width: 1px;
+} 
+</style>
+
+<!-- Add an edit button if the logged in user posted this blog -->
+{{if(auth.is_logged_in()):}}
+{{if(blog_post.poster_id == auth.user.id):}}
+{{= A(SPAN(_class="icon glyphicon glyphicon-edit"),
+      SPAN(' Edit your post', _class="buttontext button"),
+      _class="button btn btn-default", 
+      _href=URL("blog","edit_blog_post", args=[blog_post.id]),
+      _style='padding: 3px 5px 3px 5px;')}}
+{{pass}}
+{{pass}}
+
+<!--Insert a consistently styled back button to return to the grid view-->
+{{= A(SPAN(_class="glyphicon glyphicon-arrow-left"),
+      SPAN(' Back', _class="buttontext button"),
+      _class="button btn btn-default", 
+      _href=URL("blog","blogs", user_signature=True),
+      _style='padding: 3px 5px 3px 5px;')}}
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+<hr>
+{{=TABLE(TR(TD(H3(blog_post.title)), 
+	    TD(IMG(_src = URL('default','download', args = blog_post.thumbnail_figure), _height = 100),  _style='text-align:right')), 	_width='100%')}}
+<hr>
+{{=TABLE(TR(TD(CAT('', I(blog_post.authors))), TD(blog_post.date_posted, _style='text-align:right')), _width='100%')}}
+<hr>
+<br>
+{{=XML(blog_post.content)}}
+<br>
+<hr>
+{{=P('Posted by: ', blog_post.poster_id.first_name, ' ', blog_post.poster_id.last_name, 
+     _style='text-align:right; color=grey; font-size:smaller')}}
+
+
+<br>	

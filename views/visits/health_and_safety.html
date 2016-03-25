@@ -1,0 +1,13 @@
+{{extend 'layout.html'}}
+
+{{=H2('Your health and safety information')}}
+The form below shows your current health and safety details.
+<ul>
+<li>We <strong>will not</strong> approve bed bookings at the SAFE camp or research work under the SAFE project unless you complete this information.</li>
+<li>You <strong>must</strong> keep this information up to date and accurate. In an emergency, we will rely on this database to provide you with proper care.</li>
+</ul>
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+
+{{=form}}

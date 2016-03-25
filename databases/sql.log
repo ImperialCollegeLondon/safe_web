@@ -1,0 +1,3143 @@
+timestamp: 2016-03-04T16:42:28.370648
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    nationality VARCHAR(512) NOT NULL,
+    academic_status VARCHAR(512) NOT NULL,
+    orcid VARCHAR(512),
+    phone VARCHAR(512) NOT NULL,
+    mobile_phone VARCHAR(512) NOT NULL,
+    institution_name VARCHAR(512) NOT NULL,
+    institution_address VARCHAR(512) NOT NULL,
+    institution_phone VARCHAR(512) NOT NULL,
+    supervisor_id VARCHAR(512)
+);
+success!
+timestamp: 2016-03-04T16:42:28.383487
+CREATE TABLE auth_group(
+    id SERIAL PRIMARY KEY,
+    role VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-04T16:42:28.390273
+CREATE TABLE auth_membership(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-04T16:42:28.398043
+CREATE TABLE auth_permission(
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  ,
+    name VARCHAR(512),
+    table_name VARCHAR(512),
+    record_id INTEGER
+);
+success!
+timestamp: 2016-03-04T16:42:28.408175
+CREATE TABLE auth_event(
+    id SERIAL PRIMARY KEY,
+    time_stamp TIMESTAMP,
+    client_ip VARCHAR(512),
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    origin VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-04T16:42:28.420280
+CREATE TABLE auth_cas(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    created_on TIMESTAMP,
+    service VARCHAR(512),
+    ticket VARCHAR(512),
+    renew CHAR(1)
+);
+success!
+timestamp: 2016-03-04T16:42:28.431067
+CREATE TABLE rcuk_tags(
+    tag_id SERIAL PRIMARY KEY,
+    level INTEGER NOT NULL,
+    subject VARCHAR(512),
+    topic VARCHAR(512),
+    tag VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-04T16:42:28.442333
+CREATE TABLE project(
+    project_id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    name VARCHAR(512) NOT NULL,
+    main_contact INTEGER NOT NULL,
+    project_home_country VARCHAR(512) NOT NULL,
+    sampling_sites TEXT,
+    sampling_scales TEXT,
+    research_areas TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    rationale TEXT NOT NULL,
+    description TEXT NOT NULL,
+    data_sharing CHAR(1) NOT NULL,
+    local_collaborator INTEGER,
+    access_licence_ref VARCHAR(512),
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-04T16:42:28.453962
+CREATE TABLE project_members(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (project_id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_role VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-04T16:42:28.466346
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title TEXT NOT NULL,
+    description TEXT,
+    format VARCHAR(512) NOT NULL,
+    citation TEXT,
+    url VARCHAR(512),
+    doi VARCHAR(512),
+    contact_email VARCHAR(512),
+    date_uploaded DATE,
+    output_creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-04T16:42:28.477634
+CREATE TABLE help_offered(
+    id SERIAL PRIMARY KEY,
+    volunteer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    volunteer_type VARCHAR(512) NOT NULL,
+    available_from DATE NOT NULL,
+    available_to DATE NOT NULL,
+    research_statement TEXT NOT NULL,
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-04T16:42:28.490270
+CREATE TABLE help_request(
+    id SERIAL PRIMARY KEY,
+    contact_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_id INTEGER REFERENCES project (project_id) ON DELETE CASCADE  NOT NULL ,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    work_description TEXT NOT NULL,
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-04T16:42:28.501838
+CREATE TABLE visit(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    number_of_visitors INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    proposal_date DATE,
+    visit_status VARCHAR(512),
+    visit_decision_notes TEXT,
+    visit_decision_date DATE,
+    visit_approver_id INTEGER
+);
+success!
+timestamp: 2016-03-04T16:42:28.513392
+CREATE TABLE bed_bookings(
+    id SERIAL PRIMARY KEY,
+    day DATE,
+    approved INTEGER,
+    pending INTEGER
+);
+success!
+timestamp: 2016-03-04T16:58:24.745561
+ALTER TABLE visit ADD proposer_id__tmp VARCHAR(512);
+UPDATE visit SET proposer_id__tmp=proposer_id;
+ALTER TABLE visit DROP COLUMN proposer_id;
+ALTER TABLE visit ADD proposer_id VARCHAR(512);
+UPDATE visit SET proposer_id=proposer_id__tmp;
+ALTER TABLE visit DROP COLUMN proposer_id__tmp;
+success!
+timestamp: 2016-03-06T11:55:19.148569
+ALTER TABLE visit ADD proposer_id__tmp INTEGER;
+UPDATE visit SET proposer_id__tmp=proposer_id;
+timestamp: 2016-03-06T11:56:05.402701
+ALTER TABLE visit ADD proposer_id__tmp INTEGER;
+UPDATE visit SET proposer_id__tmp=proposer_id;
+timestamp: 2016-03-06T11:56:10.770044
+ALTER TABLE visit ADD proposer_id__tmp INTEGER;
+UPDATE visit SET proposer_id__tmp=proposer_id;
+timestamp: 2016-03-06T11:57:00.418052
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    nationality VARCHAR(512) NOT NULL,
+    academic_status VARCHAR(512) NOT NULL,
+    orcid VARCHAR(512),
+    phone VARCHAR(512) NOT NULL,
+    mobile_phone VARCHAR(512) NOT NULL,
+    institution_name VARCHAR(512) NOT NULL,
+    institution_address VARCHAR(512) NOT NULL,
+    institution_phone VARCHAR(512) NOT NULL,
+    supervisor_id VARCHAR(512)
+);
+success!
+timestamp: 2016-03-06T11:57:00.433340
+CREATE TABLE auth_group(
+    id SERIAL PRIMARY KEY,
+    role VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-06T11:57:00.441692
+CREATE TABLE auth_membership(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-06T11:57:00.452245
+CREATE TABLE auth_permission(
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  ,
+    name VARCHAR(512),
+    table_name VARCHAR(512),
+    record_id INTEGER
+);
+success!
+timestamp: 2016-03-06T11:57:00.463639
+CREATE TABLE auth_event(
+    id SERIAL PRIMARY KEY,
+    time_stamp TIMESTAMP,
+    client_ip VARCHAR(512),
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    origin VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-06T11:57:00.476049
+CREATE TABLE auth_cas(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    created_on TIMESTAMP,
+    service VARCHAR(512),
+    ticket VARCHAR(512),
+    renew CHAR(1)
+);
+success!
+timestamp: 2016-03-06T11:57:00.486249
+CREATE TABLE rcuk_tags(
+    tag_id SERIAL PRIMARY KEY,
+    level INTEGER NOT NULL,
+    subject VARCHAR(512),
+    topic VARCHAR(512),
+    tag VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-06T11:57:00.496034
+CREATE TABLE project(
+    project_id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    name VARCHAR(512) NOT NULL,
+    main_contact INTEGER NOT NULL,
+    project_home_country VARCHAR(512) NOT NULL,
+    sampling_sites TEXT,
+    sampling_scales TEXT,
+    research_areas TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    rationale TEXT NOT NULL,
+    description TEXT NOT NULL,
+    data_sharing CHAR(1) NOT NULL,
+    local_collaborator INTEGER,
+    access_licence_ref VARCHAR(512),
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-06T11:57:00.509101
+CREATE TABLE project_members(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (project_id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_role VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-06T11:57:00.522249
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title TEXT NOT NULL,
+    description TEXT,
+    format VARCHAR(512) NOT NULL,
+    citation TEXT,
+    url VARCHAR(512),
+    doi VARCHAR(512),
+    contact_email VARCHAR(512),
+    date_uploaded DATE,
+    output_creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-06T11:57:00.535151
+CREATE TABLE help_offered(
+    id SERIAL PRIMARY KEY,
+    volunteer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    volunteer_type VARCHAR(512) NOT NULL,
+    available_from DATE NOT NULL,
+    available_to DATE NOT NULL,
+    research_statement TEXT NOT NULL,
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-06T11:57:00.545651
+CREATE TABLE help_request(
+    id SERIAL PRIMARY KEY,
+    contact_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_id INTEGER REFERENCES project (project_id) ON DELETE CASCADE  NOT NULL ,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    work_description TEXT NOT NULL,
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-06T11:57:00.559641
+CREATE TABLE visit(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    number_of_visitors INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    proposer_id INTEGER,
+    proposal_date DATE,
+    visit_status VARCHAR(512),
+    visit_decision_notes TEXT,
+    visit_decision_date DATE,
+    visit_approver_id INTEGER
+);
+success!
+timestamp: 2016-03-06T11:57:00.568219
+CREATE TABLE bed_bookings(
+    id SERIAL PRIMARY KEY,
+    day DATE,
+    approved INTEGER,
+    pending INTEGER
+);
+success!
+timestamp: 2016-03-08T15:29:35.325230
+CREATE TABLE species_profile(
+    id SERIAL PRIMARY KEY,
+    binomial VARCHAR(512),
+    common_name VARCHAR(512),
+    iucn_status VARCHAR(512),
+    global_population VARCHAR(512),
+    local_abundance VARCHAR(512),
+    in_primary CHAR(1),
+    in_logged CHAR(1),
+    in_plantation CHAR(1),
+    animal_facts TEXT,
+    where_do_they_live TEXT,
+    habitat TEXT,
+    what_do_they_eat TEXT,
+    who_eats_them TEXT,
+    threatened_by TEXT,
+    image_link VARCHAR(512),
+    google_scholar_link VARCHAR(512),
+    wikipedia_link VARCHAR(512),
+    eol_link VARCHAR(512),
+    iucn_link VARCHAR(512),
+    arkive_link VARCHAR(512),
+    gbif_link VARCHAR(512)
+);
+success!
+timestamp: 2016-03-09T14:47:55.916464
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id VARCHAR(512)
+);
+success!
+timestamp: 2016-03-09T14:47:55.949201
+CREATE TABLE auth_group(
+    id SERIAL PRIMARY KEY,
+    role VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-09T14:47:55.955837
+CREATE TABLE auth_membership(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-09T14:47:55.967501
+CREATE TABLE auth_permission(
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  ,
+    name VARCHAR(512),
+    table_name VARCHAR(512),
+    record_id INTEGER
+);
+success!
+timestamp: 2016-03-09T14:47:55.974692
+CREATE TABLE auth_event(
+    id SERIAL PRIMARY KEY,
+    time_stamp TIMESTAMP,
+    client_ip VARCHAR(512),
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    origin VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-09T14:47:55.984706
+CREATE TABLE auth_cas(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    created_on TIMESTAMP,
+    service VARCHAR(512),
+    ticket VARCHAR(512),
+    renew CHAR(1)
+);
+success!
+timestamp: 2016-03-09T14:47:55.992329
+CREATE TABLE rcuk_tags(
+    tag_id SERIAL PRIMARY KEY,
+    level INTEGER NOT NULL,
+    subject VARCHAR(512),
+    topic VARCHAR(512),
+    tag VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-09T14:47:55.999828
+CREATE TABLE project(
+    project_id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    name VARCHAR(512) NOT NULL,
+    main_contact INTEGER NOT NULL,
+    project_home_country VARCHAR(512) NOT NULL,
+    sampling_sites TEXT,
+    sampling_scales TEXT,
+    research_areas TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    rationale TEXT NOT NULL,
+    description TEXT NOT NULL,
+    data_sharing CHAR(1) NOT NULL,
+    local_collaborator INTEGER,
+    access_licence_ref VARCHAR(512),
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-09T14:47:56.007333
+CREATE TABLE project_members(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (project_id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_role VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-09T14:47:56.015394
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title TEXT NOT NULL,
+    description TEXT,
+    format VARCHAR(512) NOT NULL,
+    citation TEXT,
+    url VARCHAR(512),
+    doi VARCHAR(512),
+    contact_email VARCHAR(512),
+    date_uploaded DATE,
+    output_creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-09T14:47:56.023280
+CREATE TABLE help_offered(
+    id SERIAL PRIMARY KEY,
+    volunteer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    volunteer_type VARCHAR(512) NOT NULL,
+    available_from DATE NOT NULL,
+    available_to DATE NOT NULL,
+    research_statement TEXT NOT NULL,
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-09T14:47:56.030707
+CREATE TABLE help_request(
+    id SERIAL PRIMARY KEY,
+    contact_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_id INTEGER REFERENCES project (project_id) ON DELETE CASCADE  NOT NULL ,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    work_description TEXT NOT NULL,
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-09T14:47:56.040057
+CREATE TABLE visit(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    number_of_visitors INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    proposer_id INTEGER,
+    proposal_date DATE,
+    visit_status VARCHAR(512),
+    visit_decision_notes TEXT,
+    visit_decision_date DATE,
+    visit_approver_id INTEGER
+);
+success!
+timestamp: 2016-03-09T14:47:56.047949
+CREATE TABLE bed_bookings(
+    id SERIAL PRIMARY KEY,
+    day DATE,
+    approved INTEGER,
+    pending INTEGER
+);
+success!
+timestamp: 2016-03-09T14:47:56.054678
+CREATE TABLE species_profile(
+    id SERIAL PRIMARY KEY,
+    binomial VARCHAR(512),
+    common_name VARCHAR(512),
+    iucn_status VARCHAR(512),
+    global_population VARCHAR(512),
+    local_abundance VARCHAR(512),
+    in_primary CHAR(1),
+    in_logged CHAR(1),
+    in_plantation CHAR(1),
+    animal_facts TEXT,
+    where_do_they_live TEXT,
+    habitat TEXT,
+    what_do_they_eat TEXT,
+    who_eats_them TEXT,
+    threatened_by TEXT,
+    image_link VARCHAR(512),
+    google_scholar_link VARCHAR(512),
+    wikipedia_link VARCHAR(512),
+    eol_link VARCHAR(512),
+    iucn_link VARCHAR(512),
+    arkive_link VARCHAR(512),
+    gbif_link VARCHAR(512)
+);
+success!
+timestamp: 2016-03-09T15:10:09.025011
+ALTER TABLE auth_user ADD user_id SERIAL PRIMARY KEY;
+timestamp: 2016-03-09T15:10:59.414034
+ALTER TABLE auth_user ADD user_id SERIAL PRIMARY KEY;
+timestamp: 2016-03-09T17:05:04.942047
+ALTER TABLE project ADD title VARCHAR(512) NOT NULL;
+timestamp: 2016-03-09T17:05:04.945048
+ALTER TABLE project ADD other_resources VARCHAR(512);
+timestamp: 2016-03-09T17:05:04.947907
+ALTER TABLE project ADD requires_vehicle CHAR(1) NOT NULL DEFAULT 'F';
+timestamp: 2016-03-09T17:05:04.958218
+ALTER TABLE project ADD requires_ra CHAR(1) NOT NULL DEFAULT 'F';
+timestamp: 2016-03-09T17:05:04.963746
+ALTER TABLE project DROP COLUMN name;
+timestamp: 2016-03-09T17:05:04.965730
+ALTER TABLE project DROP COLUMN main_contact;
+timestamp: 2016-03-09T17:05:04.966676
+ALTER TABLE project DROP COLUMN local_collaborator;
+timestamp: 2016-03-09T17:05:04.967580
+ALTER TABLE project DROP COLUMN access_licence_ref;
+success!
+timestamp: 2016-03-09T17:09:27.309400
+ALTER TABLE project ADD methods TEXT NOT NULL;
+timestamp: 2016-03-09T17:09:27.311821
+ALTER TABLE project DROP COLUMN description;
+success!
+timestamp: 2016-03-09T17:37:56.931856
+ALTER TABLE project ADD resource_notes VARCHAR(512);
+timestamp: 2016-03-09T17:37:56.935913
+ALTER TABLE project DROP COLUMN other_resources;
+success!
+timestamp: 2016-03-09T18:09:31.913615
+ALTER TABLE species_profile ADD image_title VARCHAR(512);
+timestamp: 2016-03-09T18:09:31.919341
+ALTER TABLE species_profile ADD image_href VARCHAR(512);
+success!
+timestamp: 2016-03-10T11:02:03.331277
+ALTER TABLE project ADD legacy_project_id INTEGER;
+timestamp: 2016-03-10T11:02:03.339569
+ALTER TABLE project ADD id SERIAL PRIMARY KEY;
+timestamp: 2016-03-10T11:03:06.584695
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id VARCHAR(512)
+);
+success!
+timestamp: 2016-03-10T11:03:06.598081
+CREATE TABLE auth_group(
+    id SERIAL PRIMARY KEY,
+    role VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-10T11:03:06.605417
+CREATE TABLE auth_membership(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-10T11:03:06.613906
+CREATE TABLE auth_permission(
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  ,
+    name VARCHAR(512),
+    table_name VARCHAR(512),
+    record_id INTEGER
+);
+success!
+timestamp: 2016-03-10T11:03:06.621695
+CREATE TABLE auth_event(
+    id SERIAL PRIMARY KEY,
+    time_stamp TIMESTAMP,
+    client_ip VARCHAR(512),
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    origin VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-10T11:03:06.631843
+CREATE TABLE auth_cas(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    created_on TIMESTAMP,
+    service VARCHAR(512),
+    ticket VARCHAR(512),
+    renew CHAR(1)
+);
+success!
+timestamp: 2016-03-10T11:03:06.643488
+CREATE TABLE rcuk_tags(
+    tag_id SERIAL PRIMARY KEY,
+    level INTEGER NOT NULL,
+    subject VARCHAR(512),
+    topic VARCHAR(512),
+    tag VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-10T11:03:06.653174
+CREATE TABLE project(
+    id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    project_home_country VARCHAR(512) NOT NULL,
+    sampling_sites TEXT,
+    sampling_scales TEXT,
+    research_areas TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    rationale TEXT NOT NULL,
+    methods TEXT NOT NULL,
+    requires_ra CHAR(1) NOT NULL DEFAULT 'F',
+    requires_vehicle CHAR(1) NOT NULL DEFAULT 'F',
+    resource_notes VARCHAR(512),
+    data_sharing CHAR(1) NOT NULL DEFAULT 'T',
+    legacy_project_id INTEGER,
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-10T11:03:06.666156
+CREATE TABLE project_members(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_role VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-10T11:03:06.677003
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title TEXT NOT NULL,
+    description TEXT,
+    format VARCHAR(512) NOT NULL,
+    citation TEXT,
+    url VARCHAR(512),
+    doi VARCHAR(512),
+    contact_email VARCHAR(512),
+    date_uploaded DATE,
+    output_creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    legacy_project_id INTEGER
+);
+success!
+timestamp: 2016-03-10T11:03:06.688209
+CREATE TABLE help_offered(
+    id SERIAL PRIMARY KEY,
+    volunteer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    volunteer_type VARCHAR(512) NOT NULL,
+    available_from DATE NOT NULL,
+    available_to DATE NOT NULL,
+    research_statement TEXT NOT NULL,
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-10T11:03:06.698192
+CREATE TABLE help_request(
+    id SERIAL PRIMARY KEY,
+    contact_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    work_description TEXT NOT NULL,
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-10T11:03:06.710897
+CREATE TABLE visit(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    number_of_visitors INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    proposer_id INTEGER,
+    proposal_date DATE,
+    visit_status VARCHAR(512),
+    visit_decision_notes TEXT,
+    visit_decision_date DATE,
+    visit_approver_id INTEGER
+);
+success!
+timestamp: 2016-03-10T11:03:06.721261
+CREATE TABLE bed_bookings(
+    id SERIAL PRIMARY KEY,
+    day DATE,
+    approved INTEGER,
+    pending INTEGER
+);
+success!
+timestamp: 2016-03-10T11:03:06.729885
+CREATE TABLE species_profile(
+    id SERIAL PRIMARY KEY,
+    binomial VARCHAR(512),
+    common_name VARCHAR(512),
+    iucn_status VARCHAR(512),
+    global_population VARCHAR(512),
+    local_abundance VARCHAR(512),
+    in_primary CHAR(1),
+    in_logged CHAR(1),
+    in_plantation CHAR(1),
+    animal_facts TEXT,
+    where_do_they_live TEXT,
+    habitat TEXT,
+    what_do_they_eat TEXT,
+    who_eats_them TEXT,
+    threatened_by TEXT,
+    image_link VARCHAR(512),
+    image_href VARCHAR(512),
+    image_title VARCHAR(512),
+    google_scholar_link VARCHAR(512),
+    wikipedia_link VARCHAR(512),
+    eol_link VARCHAR(512),
+    iucn_link VARCHAR(512),
+    arkive_link VARCHAR(512),
+    gbif_link VARCHAR(512)
+);
+success!
+timestamp: 2016-03-10T11:16:42.891312
+ALTER TABLE outputs ADD approval_notes VARCHAR(512);
+timestamp: 2016-03-10T11:16:42.893413
+ALTER TABLE outputs ADD approval_decision_date DATE;
+timestamp: 2016-03-10T11:16:42.895348
+ALTER TABLE outputs ADD project_id INTEGER;
+timestamp: 2016-03-10T11:16:42.896396
+ALTER TABLE outputs ADD approved VARCHAR(512);
+timestamp: 2016-03-10T11:16:42.898051
+ALTER TABLE outputs DROP COLUMN legacy_project_id;
+timestamp: 2016-03-10T11:16:42.899836
+ALTER TABLE outputs DROP COLUMN contact_email;
+success!
+timestamp: 2016-03-10T11:23:29.945368
+ALTER TABLE outputs ADD url__tmp TEXT;
+UPDATE outputs SET url__tmp=url;
+ALTER TABLE outputs DROP COLUMN url;
+ALTER TABLE outputs ADD url TEXT;
+UPDATE outputs SET url=url__tmp;
+ALTER TABLE outputs DROP COLUMN url__tmp;
+success!
+timestamp: 2016-03-10T13:33:41.813722
+ALTER TABLE project ADD admin_status VARCHAR(512);
+timestamp: 2016-03-10T13:33:41.818564
+ALTER TABLE project DROP COLUMN approved;
+success!
+timestamp: 2016-03-10T13:56:31.015796
+ALTER TABLE help_offered ADD admin_status VARCHAR(512);
+timestamp: 2016-03-10T13:56:31.018907
+ALTER TABLE help_offered DROP COLUMN approved;
+success!
+timestamp: 2016-03-10T13:56:31.022414
+ALTER TABLE help_request ADD admin_status VARCHAR(512);
+timestamp: 2016-03-10T13:56:31.024927
+ALTER TABLE help_request DROP COLUMN approved;
+success!
+timestamp: 2016-03-10T14:12:27.094392
+ALTER TABLE help_offered ADD submission_date DATE;
+success!
+timestamp: 2016-03-10T14:12:27.101411
+ALTER TABLE help_request ADD submission_date DATE;
+success!
+timestamp: 2016-03-10T15:52:49.711492
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id VARCHAR(512),
+    legacy_user_id INTEGER
+);
+success!
+timestamp: 2016-03-10T15:52:49.724392
+CREATE TABLE auth_group(
+    id SERIAL PRIMARY KEY,
+    role VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-10T15:52:49.732830
+CREATE TABLE auth_membership(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-10T15:52:49.741157
+CREATE TABLE auth_permission(
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  ,
+    name VARCHAR(512),
+    table_name VARCHAR(512),
+    record_id INTEGER
+);
+success!
+timestamp: 2016-03-10T15:52:49.748749
+CREATE TABLE auth_event(
+    id SERIAL PRIMARY KEY,
+    time_stamp TIMESTAMP,
+    client_ip VARCHAR(512),
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    origin VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-10T15:52:49.760592
+CREATE TABLE auth_cas(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    created_on TIMESTAMP,
+    service VARCHAR(512),
+    ticket VARCHAR(512),
+    renew CHAR(1)
+);
+success!
+timestamp: 2016-03-10T15:52:49.770817
+CREATE TABLE rcuk_tags(
+    tag_id SERIAL PRIMARY KEY,
+    level INTEGER NOT NULL,
+    subject VARCHAR(512),
+    topic VARCHAR(512),
+    tag VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-10T15:52:49.780669
+CREATE TABLE project(
+    id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    project_home_country VARCHAR(512) NOT NULL,
+    sampling_sites TEXT,
+    sampling_scales TEXT,
+    research_areas TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    rationale TEXT NOT NULL,
+    methods TEXT NOT NULL,
+    requires_ra CHAR(1) NOT NULL DEFAULT 'F',
+    requires_vehicle CHAR(1) NOT NULL DEFAULT 'F',
+    resource_notes VARCHAR(512),
+    data_sharing CHAR(1) NOT NULL,
+    legacy_project_id INTEGER,
+    admin_status VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-10T15:52:49.792358
+CREATE TABLE project_members(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_role VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-10T15:52:49.803170
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    url TEXT,
+    title TEXT NOT NULL,
+    description TEXT,
+    format VARCHAR(512) NOT NULL,
+    citation TEXT,
+    doi VARCHAR(512),
+    date_uploaded DATE,
+    output_creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-10T15:52:49.814786
+CREATE TABLE help_offered(
+    id SERIAL PRIMARY KEY,
+    volunteer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    volunteer_type VARCHAR(512) NOT NULL,
+    available_from DATE NOT NULL,
+    available_to DATE NOT NULL,
+    research_statement TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-10T15:52:49.824823
+CREATE TABLE help_request(
+    id SERIAL PRIMARY KEY,
+    contact_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    submission_date DATE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    work_description TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-10T15:52:49.837878
+CREATE TABLE visit(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    number_of_visitors INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    proposer_id INTEGER,
+    proposal_date DATE,
+    visit_status VARCHAR(512),
+    visit_decision_notes TEXT,
+    visit_decision_date DATE,
+    visit_approver_id INTEGER
+);
+success!
+timestamp: 2016-03-10T15:52:49.848097
+CREATE TABLE bed_bookings(
+    id SERIAL PRIMARY KEY,
+    day DATE,
+    approved INTEGER,
+    pending INTEGER
+);
+success!
+timestamp: 2016-03-10T15:52:49.855638
+CREATE TABLE species_profile(
+    id SERIAL PRIMARY KEY,
+    binomial VARCHAR(512),
+    common_name VARCHAR(512),
+    iucn_status VARCHAR(512),
+    global_population VARCHAR(512),
+    local_abundance VARCHAR(512),
+    in_primary CHAR(1),
+    in_logged CHAR(1),
+    in_plantation CHAR(1),
+    animal_facts TEXT,
+    where_do_they_live TEXT,
+    habitat TEXT,
+    what_do_they_eat TEXT,
+    who_eats_them TEXT,
+    threatened_by TEXT,
+    image_link VARCHAR(512),
+    image_href VARCHAR(512),
+    image_title VARCHAR(512),
+    google_scholar_link VARCHAR(512),
+    wikipedia_link VARCHAR(512),
+    eol_link VARCHAR(512),
+    iucn_link VARCHAR(512),
+    arkive_link VARCHAR(512),
+    gbif_link VARCHAR(512)
+);
+success!
+timestamp: 2016-03-10T16:23:17.722311
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id VARCHAR(512),
+    legacy_user_id INTEGER
+);
+success!
+timestamp: 2016-03-10T16:23:17.734859
+CREATE TABLE auth_group(
+    id SERIAL PRIMARY KEY,
+    role VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-10T16:23:17.743839
+CREATE TABLE auth_membership(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-10T16:23:17.753965
+CREATE TABLE auth_permission(
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  ,
+    name VARCHAR(512),
+    table_name VARCHAR(512),
+    record_id INTEGER
+);
+success!
+timestamp: 2016-03-10T16:23:17.765171
+CREATE TABLE auth_event(
+    id SERIAL PRIMARY KEY,
+    time_stamp TIMESTAMP,
+    client_ip VARCHAR(512),
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    origin VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-10T16:23:17.778379
+CREATE TABLE auth_cas(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    created_on TIMESTAMP,
+    service VARCHAR(512),
+    ticket VARCHAR(512),
+    renew CHAR(1)
+);
+success!
+timestamp: 2016-03-10T16:23:17.787606
+CREATE TABLE rcuk_tags(
+    tag_id SERIAL PRIMARY KEY,
+    level INTEGER NOT NULL,
+    subject VARCHAR(512),
+    topic VARCHAR(512),
+    tag VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-10T16:23:17.798102
+CREATE TABLE project(
+    id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    project_home_country VARCHAR(512) NOT NULL,
+    sampling_sites TEXT,
+    sampling_scales TEXT,
+    research_areas TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    rationale TEXT NOT NULL,
+    methods TEXT NOT NULL,
+    requires_ra CHAR(1) NOT NULL DEFAULT 'F',
+    requires_vehicle CHAR(1) NOT NULL DEFAULT 'F',
+    resource_notes VARCHAR(512),
+    data_sharing CHAR(1) NOT NULL,
+    legacy_project_id INTEGER,
+    admin_status VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-10T16:23:17.809584
+CREATE TABLE project_members(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_role VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-10T16:23:17.821359
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    url TEXT,
+    title TEXT NOT NULL,
+    description TEXT,
+    format VARCHAR(512) NOT NULL,
+    citation TEXT,
+    doi VARCHAR(512),
+    date_uploaded DATE,
+    output_creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    approved VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-10T16:23:17.831533
+CREATE TABLE help_offered(
+    id SERIAL PRIMARY KEY,
+    volunteer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    volunteer_type VARCHAR(512) NOT NULL,
+    available_from DATE NOT NULL,
+    available_to DATE NOT NULL,
+    research_statement TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-10T16:23:17.843303
+CREATE TABLE help_request(
+    id SERIAL PRIMARY KEY,
+    contact_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    submission_date DATE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    work_description TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    approval_notes VARCHAR(512),
+    approval_decision_date DATE
+);
+success!
+timestamp: 2016-03-10T16:23:17.854684
+CREATE TABLE visit(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    number_of_visitors INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    proposer_id INTEGER,
+    proposal_date DATE,
+    visit_status VARCHAR(512),
+    visit_decision_notes TEXT,
+    visit_decision_date DATE,
+    visit_approver_id INTEGER
+);
+success!
+timestamp: 2016-03-10T16:23:17.864203
+CREATE TABLE bed_bookings(
+    id SERIAL PRIMARY KEY,
+    day DATE,
+    approved INTEGER,
+    pending INTEGER
+);
+success!
+timestamp: 2016-03-10T16:23:17.873731
+CREATE TABLE species_profile(
+    id SERIAL PRIMARY KEY,
+    binomial VARCHAR(512),
+    common_name VARCHAR(512),
+    iucn_status VARCHAR(512),
+    global_population VARCHAR(512),
+    local_abundance VARCHAR(512),
+    in_primary CHAR(1),
+    in_logged CHAR(1),
+    in_plantation CHAR(1),
+    animal_facts TEXT,
+    where_do_they_live TEXT,
+    habitat TEXT,
+    what_do_they_eat TEXT,
+    who_eats_them TEXT,
+    threatened_by TEXT,
+    image_link VARCHAR(512),
+    image_href VARCHAR(512),
+    image_title VARCHAR(512),
+    google_scholar_link VARCHAR(512),
+    wikipedia_link VARCHAR(512),
+    eol_link VARCHAR(512),
+    iucn_link VARCHAR(512),
+    arkive_link VARCHAR(512),
+    gbif_link VARCHAR(512)
+);
+success!
+timestamp: 2016-03-10T16:27:55.677595
+ALTER TABLE help_offered ADD approval_notes__tmp TEXT;
+UPDATE help_offered SET approval_notes__tmp=approval_notes;
+ALTER TABLE help_offered DROP COLUMN approval_notes;
+ALTER TABLE help_offered ADD approval_notes TEXT;
+UPDATE help_offered SET approval_notes=approval_notes__tmp;
+ALTER TABLE help_offered DROP COLUMN approval_notes__tmp;
+success!
+timestamp: 2016-03-10T16:51:00.689763
+ALTER TABLE help_offered ADD approver_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+success!
+timestamp: 2016-03-11T10:05:33.276247
+ALTER TABLE help_request ADD approver_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+success!
+timestamp: 2016-03-11T15:02:47.741207
+ALTER TABLE project ADD admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+timestamp: 2016-03-11T15:02:47.748127
+ALTER TABLE project ADD admin_notes TEXT;
+timestamp: 2016-03-11T15:02:47.750312
+ALTER TABLE project ADD admin_decision_date DATE;
+timestamp: 2016-03-11T15:02:47.751833
+ALTER TABLE project DROP COLUMN approval_decision_date;
+timestamp: 2016-03-11T15:02:47.753540
+ALTER TABLE project DROP COLUMN approval_notes;
+success!
+timestamp: 2016-03-11T15:02:47.756919
+ALTER TABLE visit ADD admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+timestamp: 2016-03-11T15:02:47.759036
+ALTER TABLE visit ADD admin_status VARCHAR(512);
+timestamp: 2016-03-11T15:02:47.760413
+ALTER TABLE visit ADD admin_notes TEXT;
+timestamp: 2016-03-11T15:02:47.761634
+ALTER TABLE visit ADD admin_decision_date DATE;
+timestamp: 2016-03-11T15:02:47.762750
+ALTER TABLE visit DROP COLUMN visit_decision_notes;
+timestamp: 2016-03-11T15:02:47.763713
+ALTER TABLE visit DROP COLUMN visit_decision_date;
+timestamp: 2016-03-11T15:02:47.764594
+ALTER TABLE visit DROP COLUMN visit_status;
+timestamp: 2016-03-11T15:02:47.765768
+ALTER TABLE visit DROP COLUMN visit_approver_id;
+success!
+timestamp: 2016-03-11T15:02:47.768673
+ALTER TABLE help_offered ADD admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+timestamp: 2016-03-11T15:02:47.771002
+ALTER TABLE help_offered ADD admin_notes TEXT;
+timestamp: 2016-03-11T15:02:47.772381
+ALTER TABLE help_offered ADD admin_decision_date DATE;
+timestamp: 2016-03-11T15:02:47.773549
+ALTER TABLE help_offered DROP COLUMN approval_notes;
+timestamp: 2016-03-11T15:02:47.774446
+ALTER TABLE help_offered DROP COLUMN approver_id;
+timestamp: 2016-03-11T15:02:47.776110
+ALTER TABLE help_offered DROP COLUMN approval_decision_date;
+success!
+timestamp: 2016-03-11T15:02:47.779072
+ALTER TABLE help_request ADD admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+timestamp: 2016-03-11T15:02:47.781782
+ALTER TABLE help_request ADD admin_notes TEXT;
+timestamp: 2016-03-11T15:02:47.783170
+ALTER TABLE help_request ADD admin_decision_date DATE;
+timestamp: 2016-03-11T15:02:47.784092
+ALTER TABLE help_request DROP COLUMN approval_notes;
+timestamp: 2016-03-11T15:02:47.785118
+ALTER TABLE help_request DROP COLUMN approval_decision_date;
+timestamp: 2016-03-11T15:02:47.786000
+ALTER TABLE help_request DROP COLUMN approver_id;
+success!
+timestamp: 2016-03-11T15:03:21.342867
+ALTER TABLE outputs ADD admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+timestamp: 2016-03-11T15:03:21.345337
+ALTER TABLE outputs ADD admin_status VARCHAR(512);
+timestamp: 2016-03-11T15:03:21.347333
+ALTER TABLE outputs ADD admin_notes TEXT;
+timestamp: 2016-03-11T15:03:21.348615
+ALTER TABLE outputs ADD admin_decision_date DATE;
+timestamp: 2016-03-11T15:03:21.349779
+ALTER TABLE outputs DROP COLUMN approved;
+timestamp: 2016-03-11T15:03:21.350976
+ALTER TABLE outputs DROP COLUMN approval_notes;
+timestamp: 2016-03-11T15:03:21.351856
+ALTER TABLE outputs DROP COLUMN approval_decision_date;
+success!
+timestamp: 2016-03-11T15:15:21.155047
+CREATE TABLE wiki_page(
+    id SERIAL PRIMARY KEY,
+    slug VARCHAR(512),
+    title VARCHAR(255) UNIQUE,
+    body TEXT NOT NULL,
+    tags TEXT,
+    can_read TEXT,
+    can_edit TEXT,
+    changelog VARCHAR(512),
+    html TEXT,
+    render VARCHAR(512),
+    is_active CHAR(1),
+    created_on TIMESTAMP,
+    created_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    modified_on TIMESTAMP,
+    modified_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-11T15:16:58.742071
+CREATE TABLE wiki_tag(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(512),
+    wiki_page INTEGER REFERENCES wiki_page (id) ON DELETE CASCADE  ,
+    is_active CHAR(1),
+    created_on TIMESTAMP,
+    created_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    modified_on TIMESTAMP,
+    modified_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-11T15:17:15.225167
+CREATE TABLE wiki_media(
+    id SERIAL PRIMARY KEY,
+    wiki_page INTEGER REFERENCES wiki_page (id) ON DELETE CASCADE  ,
+    title VARCHAR(512),
+    filename VARCHAR(512),
+    is_active CHAR(1),
+    created_on TIMESTAMP,
+    created_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    modified_on TIMESTAMP,
+    modified_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+success!
+timestamp: 2016-03-11T15:43:10.306932
+ALTER TABLE rcuk_tags ADD id SERIAL PRIMARY KEY;
+timestamp: 2016-03-11T15:44:13.094102
+CREATE TABLE rcuk_tags(
+    id SERIAL PRIMARY KEY,
+    level INTEGER NOT NULL,
+    subject VARCHAR(512),
+    topic VARCHAR(512),
+    tag VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-11T16:00:53.377014
+ALTER TABLE project ADD proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+timestamp: 2016-03-11T16:00:53.382609
+ALTER TABLE project ADD proposal_date DATE;
+success!
+timestamp: 2016-03-11T16:00:53.412981
+ALTER TABLE outputs ADD creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+timestamp: 2016-03-11T16:00:53.416412
+ALTER TABLE outputs ADD creation_date DATE;
+timestamp: 2016-03-11T16:00:53.420547
+ALTER TABLE outputs DROP COLUMN date_uploaded;
+timestamp: 2016-03-11T16:00:53.422211
+ALTER TABLE outputs DROP COLUMN output_creator_id;
+success!
+timestamp: 2016-03-11T16:26:15.934718
+ALTER TABLE outputs ADD submission_date DATE;
+timestamp: 2016-03-11T16:26:15.942613
+ALTER TABLE outputs DROP COLUMN creation_date;
+success!
+timestamp: 2016-03-11T16:28:04.903051
+ALTER TABLE outputs ADD title__tmp VARCHAR(512) NOT NULL;
+timestamp: 2016-03-11T16:29:33.009216
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  ,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    description TEXT NOT NULL,
+    format VARCHAR(512) NOT NULL,
+    citation VARCHAR(512),
+    doi VARCHAR(512),
+    url VARCHAR(512),
+    creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+timestamp: 2016-03-11T16:29:57.196627
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  ,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    description TEXT NOT NULL,
+    format VARCHAR(512) NOT NULL,
+    citation VARCHAR(512),
+    doi VARCHAR(512),
+    url VARCHAR(512),
+    creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-11T16:31:02.690241
+ALTER TABLE outputs ADD citation__tmp VARCHAR(1024);
+UPDATE outputs SET citation__tmp=citation;
+ALTER TABLE outputs DROP COLUMN citation;
+ALTER TABLE outputs ADD citation VARCHAR(1024);
+UPDATE outputs SET citation=citation__tmp;
+ALTER TABLE outputs DROP COLUMN citation__tmp;
+success!
+timestamp: 2016-03-12T07:06:25.099909
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    legacy_user_id INTEGER
+);
+success!
+timestamp: 2016-03-12T07:06:25.124306
+CREATE TABLE rcuk_tags(
+    id SERIAL PRIMARY KEY,
+    level INTEGER NOT NULL,
+    subject VARCHAR(512),
+    topic VARCHAR(512),
+    tag VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-12T07:06:25.134152
+CREATE TABLE project(
+    id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    project_home_country VARCHAR(512) NOT NULL,
+    sampling_sites TEXT,
+    sampling_scales TEXT,
+    research_areas TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    rationale TEXT NOT NULL,
+    methods TEXT NOT NULL,
+    requires_ra CHAR(1) NOT NULL DEFAULT 'F',
+    requires_vehicle CHAR(1) NOT NULL DEFAULT 'F',
+    resource_notes VARCHAR(512),
+    legacy_project_id INTEGER,
+    data_sharing CHAR(1) NOT NULL,
+    proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    proposal_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-12T07:06:25.151001
+CREATE TABLE visit(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  ,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    number_of_visitors INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    proposal_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-12T07:06:25.162836
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  ,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    description TEXT NOT NULL,
+    format VARCHAR(512) NOT NULL,
+    citation VARCHAR(1024),
+    doi VARCHAR(512),
+    url VARCHAR(512),
+    creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-12T07:06:25.176938
+CREATE TABLE help_offered(
+    id SERIAL PRIMARY KEY,
+    volunteer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    volunteer_type VARCHAR(512) NOT NULL,
+    available_from DATE NOT NULL,
+    available_to DATE NOT NULL,
+    research_statement TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-12T07:06:25.187790
+CREATE TABLE help_request(
+    id SERIAL PRIMARY KEY,
+    contact_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    submission_date DATE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    work_description TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-12T07:06:25.222965
+CREATE TABLE auth_group(
+    id SERIAL PRIMARY KEY,
+    role VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-12T07:06:25.240868
+CREATE TABLE auth_membership(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-12T07:06:26.207759
+CREATE TABLE project_members(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_role VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-12T07:06:29.231292
+CREATE TABLE species_profile(
+    id SERIAL PRIMARY KEY,
+    binomial VARCHAR(512),
+    common_name VARCHAR(512),
+    iucn_status VARCHAR(512),
+    global_population VARCHAR(512),
+    local_abundance VARCHAR(512),
+    in_primary CHAR(1),
+    in_logged CHAR(1),
+    in_plantation CHAR(1),
+    animal_facts TEXT,
+    where_do_they_live TEXT,
+    habitat TEXT,
+    what_do_they_eat TEXT,
+    who_eats_them TEXT,
+    threatened_by TEXT,
+    image_link VARCHAR(512),
+    image_href VARCHAR(512),
+    image_title VARCHAR(512),
+    google_scholar_link VARCHAR(512),
+    wikipedia_link VARCHAR(512),
+    eol_link VARCHAR(512),
+    iucn_link VARCHAR(512),
+    arkive_link VARCHAR(512),
+    gbif_link VARCHAR(512)
+);
+success!
+timestamp: 2016-03-13T21:06:51.586775
+CREATE TABLE auth_event(
+    id SERIAL PRIMARY KEY,
+    time_stamp TIMESTAMP,
+    client_ip VARCHAR(512),
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    origin VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-15T13:59:51.143577
+CREATE TABLE safe_contacts(
+    id SERIAL PRIMARY KEY,
+    display_name VARCHAR(512),
+    contact_type VARCHAR(512),
+    role VARCHAR(512),
+    picture VARCHAR(512),
+    institution VARCHAR(512),
+    address VARCHAR(512),
+    email VARCHAR(512),
+    website VARCHAR(512),
+    taxonomic_speciality VARCHAR(512)
+);
+success!
+timestamp: 2016-03-15T14:17:41.881287
+CREATE TABLE safe_contacts(
+    id SERIAL PRIMARY KEY,
+    display_name VARCHAR(512),
+    contact_type VARCHAR(512),
+    role VARCHAR(512),
+    picture VARCHAR(512),
+    institution VARCHAR(512),
+    address VARCHAR(512),
+    email VARCHAR(512),
+    website VARCHAR(512),
+    taxonomic_speciality VARCHAR(512)
+);
+success!
+timestamp: 2016-03-16T11:15:22.140941
+CREATE TABLE auth_permission(
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  ,
+    name VARCHAR(512),
+    table_name VARCHAR(512),
+    record_id INTEGER
+);
+success!
+timestamp: 2016-03-16T11:15:22.159863
+CREATE TABLE auth_cas(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    created_on TIMESTAMP,
+    service VARCHAR(512),
+    ticket VARCHAR(512),
+    renew CHAR(1)
+);
+success!
+timestamp: 2016-03-16T11:15:22.169300
+CREATE TABLE bed_bookings(
+    id SERIAL PRIMARY KEY,
+    day DATE,
+    approved INTEGER,
+    pending INTEGER
+);
+success!
+timestamp: 2016-03-18T10:04:50.207230
+CREATE TABLE blog_posts(
+    id SERIAL PRIMARY KEY,
+    authors VARCHAR(512),
+    date_posted DATE,
+    content TEXT
+);
+success!
+timestamp: 2016-03-18T10:05:47.234687
+CREATE TABLE plugin_ckeditor_upload(
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255),
+    filename VARCHAR(255),
+    flength INTEGER,
+    mime_type VARCHAR(128),
+    upload VARCHAR(512)
+);
+success!
+timestamp: 2016-03-18T10:22:15.683379
+ALTER TABLE blog_posts ADD admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+timestamp: 2016-03-18T10:22:15.688874
+ALTER TABLE blog_posts ADD poster_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+timestamp: 2016-03-18T10:22:15.690623
+ALTER TABLE blog_posts ADD admin_status VARCHAR(512);
+timestamp: 2016-03-18T10:22:15.691983
+ALTER TABLE blog_posts ADD admin_notes TEXT;
+timestamp: 2016-03-18T10:22:15.693136
+ALTER TABLE blog_posts ADD admin_decision_date DATE;
+success!
+timestamp: 2016-03-18T10:31:44.034810
+ALTER TABLE blog_posts ADD title VARCHAR(512);
+success!
+timestamp: 2016-03-18T13:27:25.212108
+ALTER TABLE blog_posts ADD thumbnail_figure VARCHAR(512);
+success!
+timestamp: 2016-03-21T09:51:30.990271
+CREATE TABLE help_request(
+    id SERIAL PRIMARY KEY,
+    contact_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    submission_date DATE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    work_description TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-21T10:08:59.051667
+CREATE TABLE news_posts(
+    id SERIAL PRIMARY KEY,
+    thumbnail_figure VARCHAR(512),
+    authors VARCHAR(512),
+    title VARCHAR(512),
+    content TEXT,
+    poster_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    date_posted DATE
+);
+success!
+timestamp: 2016-03-21T10:18:30.299035
+ALTER TABLE news_posts DROP COLUMN authors;
+success!
+timestamp: 2016-03-21T18:17:50.881823
+ALTER TABLE outputs ADD project_id__tmp INTEGER;
+UPDATE outputs SET project_id__tmp=project_id;
+ALTER TABLE outputs DROP COLUMN project_id;
+ALTER TABLE outputs ADD project_id INTEGER;
+UPDATE outputs SET project_id=project_id__tmp;
+ALTER TABLE outputs DROP COLUMN project_id__tmp;
+success!
+timestamp: 2016-03-21T18:18:20.615665
+CREATE TABLE visitor_health_and_safety(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    project_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    visit_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    passport_number VARCHAR(512),
+    emergency_contact_name VARCHAR(512),
+    emergency_contact_address TEXT,
+    emergency_contact_phone VARCHAR(512),
+    emergency_contact_email VARCHAR(512),
+    insurance_company VARCHAR(512),
+    insurance_emergency_phone VARCHAR(512),
+    insurance_policy_number VARCHAR(512),
+    medical_conditions TEXT,
+    sbc_access_licence VARCHAR(512),
+    local_collaborator INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-21T18:20:34.326118
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    description TEXT NOT NULL,
+    format VARCHAR(512) NOT NULL,
+    citation VARCHAR(1024),
+    doi VARCHAR(512),
+    url VARCHAR(512),
+    creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+timestamp: 2016-03-21T18:20:59.730442
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    description TEXT NOT NULL,
+    format VARCHAR(512) NOT NULL,
+    citation VARCHAR(1024),
+    doi VARCHAR(512),
+    url VARCHAR(512),
+    creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-22T08:32:57.352331
+CREATE TABLE project_outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    output_id INTEGER REFERENCES outputs (id) ON DELETE CASCADE  NOT NULL ,
+    added_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    date_added DATE NOT NULL
+);
+success!
+timestamp: 2016-03-22T09:39:05.273513
+ALTER TABLE outputs DROP COLUMN project_id;
+success!
+timestamp: 2016-03-22T11:57:11.727795
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    legacy_user_id INTEGER
+);
+success!
+timestamp: 2016-03-22T11:57:11.750182
+CREATE TABLE auth_group(
+    id SERIAL PRIMARY KEY,
+    role VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-22T11:57:11.759515
+CREATE TABLE auth_membership(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-22T11:57:11.772069
+CREATE TABLE auth_permission(
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  ,
+    name VARCHAR(512),
+    table_name VARCHAR(512),
+    record_id INTEGER
+);
+success!
+timestamp: 2016-03-22T11:57:11.784364
+CREATE TABLE auth_event(
+    id SERIAL PRIMARY KEY,
+    time_stamp TIMESTAMP,
+    client_ip VARCHAR(512),
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    origin VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-22T11:57:11.794368
+CREATE TABLE auth_cas(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    created_on TIMESTAMP,
+    service VARCHAR(512),
+    ticket VARCHAR(512),
+    renew CHAR(1)
+);
+success!
+timestamp: 2016-03-22T11:57:11.807054
+CREATE TABLE rcuk_tags(
+    id SERIAL PRIMARY KEY,
+    level INTEGER NOT NULL,
+    subject VARCHAR(512),
+    topic VARCHAR(512),
+    tag VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-22T11:57:11.817081
+CREATE TABLE project(
+    id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    project_home_country VARCHAR(512) NOT NULL,
+    sampling_sites TEXT,
+    sampling_scales TEXT,
+    research_areas TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    rationale TEXT NOT NULL,
+    methods TEXT NOT NULL,
+    requires_ra CHAR(1) NOT NULL DEFAULT 'F',
+    requires_vehicle CHAR(1) NOT NULL DEFAULT 'F',
+    resource_notes VARCHAR(512),
+    legacy_project_id INTEGER,
+    data_sharing CHAR(1) NOT NULL,
+    proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    proposal_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-22T11:57:11.830032
+CREATE TABLE project_members(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_role VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-22T11:57:11.842366
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    description TEXT NOT NULL,
+    format VARCHAR(512) NOT NULL,
+    citation VARCHAR(1024),
+    doi VARCHAR(512),
+    url VARCHAR(512),
+    legacy_output_id INTEGER,
+    creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-22T11:57:11.853682
+CREATE TABLE project_outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    output_id INTEGER REFERENCES outputs (id) ON DELETE CASCADE  NOT NULL ,
+    added_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    date_added DATE NOT NULL
+);
+success!
+timestamp: 2016-03-22T11:57:11.865194
+CREATE TABLE help_offered(
+    id SERIAL PRIMARY KEY,
+    volunteer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    volunteer_type VARCHAR(512) NOT NULL,
+    available_from DATE NOT NULL,
+    available_to DATE NOT NULL,
+    research_statement TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-22T11:57:11.876842
+CREATE TABLE help_request(
+    id SERIAL PRIMARY KEY,
+    contact_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    submission_date DATE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    work_description TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-22T11:57:11.892341
+CREATE TABLE visit(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  ,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    number_of_visitors INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    proposal_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-22T11:57:11.904898
+CREATE TABLE bed_bookings(
+    id SERIAL PRIMARY KEY,
+    day DATE,
+    approved INTEGER,
+    pending INTEGER
+);
+success!
+timestamp: 2016-03-22T11:57:11.912922
+CREATE TABLE visitor_health_and_safety(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    project_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    visit_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    passport_number VARCHAR(512),
+    emergency_contact_name VARCHAR(512),
+    emergency_contact_address TEXT,
+    emergency_contact_phone VARCHAR(512),
+    emergency_contact_email VARCHAR(512),
+    insurance_company VARCHAR(512),
+    insurance_emergency_phone VARCHAR(512),
+    insurance_policy_number VARCHAR(512),
+    medical_conditions TEXT,
+    sbc_access_licence VARCHAR(512),
+    local_collaborator INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-22T11:57:11.926556
+CREATE TABLE species_profile(
+    id SERIAL PRIMARY KEY,
+    binomial VARCHAR(512),
+    common_name VARCHAR(512),
+    iucn_status VARCHAR(512),
+    global_population VARCHAR(512),
+    local_abundance VARCHAR(512),
+    in_primary CHAR(1),
+    in_logged CHAR(1),
+    in_plantation CHAR(1),
+    animal_facts TEXT,
+    where_do_they_live TEXT,
+    habitat TEXT,
+    what_do_they_eat TEXT,
+    who_eats_them TEXT,
+    threatened_by TEXT,
+    image_link VARCHAR(512),
+    image_href VARCHAR(512),
+    image_title VARCHAR(512),
+    google_scholar_link VARCHAR(512),
+    wikipedia_link VARCHAR(512),
+    eol_link VARCHAR(512),
+    iucn_link VARCHAR(512),
+    arkive_link VARCHAR(512),
+    gbif_link VARCHAR(512)
+);
+success!
+timestamp: 2016-03-22T11:57:11.940308
+CREATE TABLE safe_contacts(
+    id SERIAL PRIMARY KEY,
+    display_name VARCHAR(512),
+    contact_type VARCHAR(512),
+    role VARCHAR(512),
+    picture VARCHAR(512),
+    institution VARCHAR(512),
+    address VARCHAR(512),
+    email VARCHAR(512),
+    website VARCHAR(512),
+    taxonomic_speciality VARCHAR(512)
+);
+success!
+timestamp: 2016-03-22T11:57:11.953169
+CREATE TABLE plugin_ckeditor_upload(
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255),
+    filename VARCHAR(255),
+    flength INTEGER,
+    mime_type VARCHAR(128),
+    upload VARCHAR(512)
+);
+success!
+timestamp: 2016-03-22T11:57:11.965363
+CREATE TABLE blog_posts(
+    id SERIAL PRIMARY KEY,
+    thumbnail_figure VARCHAR(512),
+    authors VARCHAR(512),
+    title VARCHAR(512),
+    content TEXT,
+    poster_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    date_posted DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-22T11:57:11.978312
+CREATE TABLE news_posts(
+    id SERIAL PRIMARY KEY,
+    thumbnail_figure VARCHAR(512),
+    title VARCHAR(512),
+    content TEXT,
+    poster_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    date_posted DATE
+);
+success!
+timestamp: 2016-03-22T15:28:30.981689
+CREATE TABLE health_and_safety(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    project_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    visit_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    passport_number VARCHAR(512),
+    emergency_contact_name VARCHAR(512),
+    emergency_contact_address TEXT,
+    emergency_contact_phone VARCHAR(512),
+    emergency_contact_email VARCHAR(512),
+    insurance_company VARCHAR(512),
+    insurance_emergency_phone VARCHAR(512),
+    insurance_policy_number VARCHAR(512),
+    medical_conditions TEXT,
+    sbc_access_licence VARCHAR(512),
+    local_collaborator INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-22T15:41:56.510462
+ALTER TABLE health_and_safety DROP COLUMN visit_id;
+timestamp: 2016-03-22T15:41:56.515225
+ALTER TABLE health_and_safety DROP COLUMN project_id;
+success!
+timestamp: 2016-03-22T16:30:08.353101
+ALTER TABLE health_and_safety DROP COLUMN sbc_access_licence;
+timestamp: 2016-03-22T16:30:08.355516
+ALTER TABLE health_and_safety DROP COLUMN local_collaborator;
+success!
+timestamp: 2016-03-22T16:42:02.465572
+ALTER TABLE health_and_safety ADD date_last_edited DATE;
+success!
+timestamp: 2016-03-22T17:22:32.441897
+ALTER TABLE auth_user ADD alternative_email VARCHAR(512);
+success!
+timestamp: 2016-03-22T17:22:32.471649
+CREATE TABLE bed_reservations(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  ,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    number_of_visitors INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    proposal_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-22T17:22:32.489036
+ALTER TABLE health_and_safety ADD insurance_policy_number__tmp VARCHAR(512) NOT NULL;
+timestamp: 2016-03-22T17:22:35.746646
+ALTER TABLE health_and_safety ADD insurance_policy_number__tmp VARCHAR(512) NOT NULL;
+timestamp: 2016-03-22T17:23:18.424744
+ALTER TABLE health_and_safety ADD insurance_policy_number__tmp VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET insurance_policy_number__tmp=insurance_policy_number;
+ALTER TABLE health_and_safety DROP COLUMN insurance_policy_number;
+ALTER TABLE health_and_safety ADD insurance_policy_number VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET insurance_policy_number=insurance_policy_number__tmp;
+ALTER TABLE health_and_safety DROP COLUMN insurance_policy_number__tmp;
+timestamp: 2016-03-22T17:23:18.432628
+ALTER TABLE health_and_safety ADD emergency_contact_phone__tmp VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET emergency_contact_phone__tmp=emergency_contact_phone;
+ALTER TABLE health_and_safety DROP COLUMN emergency_contact_phone;
+ALTER TABLE health_and_safety ADD emergency_contact_phone VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET emergency_contact_phone=emergency_contact_phone__tmp;
+ALTER TABLE health_and_safety DROP COLUMN emergency_contact_phone__tmp;
+timestamp: 2016-03-22T17:23:18.438920
+ALTER TABLE health_and_safety ADD passport_number__tmp VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET passport_number__tmp=passport_number;
+ALTER TABLE health_and_safety DROP COLUMN passport_number;
+ALTER TABLE health_and_safety ADD passport_number VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET passport_number=passport_number__tmp;
+ALTER TABLE health_and_safety DROP COLUMN passport_number__tmp;
+timestamp: 2016-03-22T17:23:18.443936
+ALTER TABLE health_and_safety ADD insurance_company__tmp VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET insurance_company__tmp=insurance_company;
+ALTER TABLE health_and_safety DROP COLUMN insurance_company;
+ALTER TABLE health_and_safety ADD insurance_company VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET insurance_company=insurance_company__tmp;
+ALTER TABLE health_and_safety DROP COLUMN insurance_company__tmp;
+timestamp: 2016-03-22T17:23:18.452264
+ALTER TABLE health_and_safety ADD emergency_contact_address__tmp TEXT NOT NULL;
+UPDATE health_and_safety SET emergency_contact_address__tmp=emergency_contact_address;
+ALTER TABLE health_and_safety DROP COLUMN emergency_contact_address;
+ALTER TABLE health_and_safety ADD emergency_contact_address TEXT NOT NULL;
+UPDATE health_and_safety SET emergency_contact_address=emergency_contact_address__tmp;
+ALTER TABLE health_and_safety DROP COLUMN emergency_contact_address__tmp;
+timestamp: 2016-03-22T17:23:18.461951
+ALTER TABLE health_and_safety ADD insurance_emergency_phone__tmp VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET insurance_emergency_phone__tmp=insurance_emergency_phone;
+ALTER TABLE health_and_safety DROP COLUMN insurance_emergency_phone;
+ALTER TABLE health_and_safety ADD insurance_emergency_phone VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET insurance_emergency_phone=insurance_emergency_phone__tmp;
+ALTER TABLE health_and_safety DROP COLUMN insurance_emergency_phone__tmp;
+timestamp: 2016-03-22T17:23:18.468923
+ALTER TABLE health_and_safety ADD emergency_contact_name__tmp VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET emergency_contact_name__tmp=emergency_contact_name;
+ALTER TABLE health_and_safety DROP COLUMN emergency_contact_name;
+ALTER TABLE health_and_safety ADD emergency_contact_name VARCHAR(512) NOT NULL;
+UPDATE health_and_safety SET emergency_contact_name=emergency_contact_name__tmp;
+ALTER TABLE health_and_safety DROP COLUMN emergency_contact_name__tmp;
+success!
+timestamp: 2016-03-23T10:42:53.004183
+CREATE TABLE research_visit(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-23T10:43:28.733368
+ALTER TABLE bed_reservations ADD visit_id INTEGER REFERENCES research_visit (id) ON DELETE CASCADE  ;
+success!
+timestamp: 2016-03-23T10:46:49.543414
+ALTER TABLE research_visit ADD admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+timestamp: 2016-03-23T10:46:49.546858
+ALTER TABLE research_visit ADD admin_status VARCHAR(512);
+timestamp: 2016-03-23T10:46:49.549624
+ALTER TABLE research_visit ADD admin_notes TEXT;
+timestamp: 2016-03-23T10:46:49.550952
+ALTER TABLE research_visit ADD admin_decision_date DATE;
+success!
+timestamp: 2016-03-23T11:23:55.582369
+ALTER TABLE bed_reservations ADD reserver_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+timestamp: 2016-03-23T11:23:55.589415
+ALTER TABLE bed_reservations ADD reservation_date DATE;
+timestamp: 2016-03-23T11:23:55.590503
+ALTER TABLE bed_reservations DROP COLUMN proposal_date;
+timestamp: 2016-03-23T11:23:55.592186
+ALTER TABLE bed_reservations DROP COLUMN proposer_id;
+success!
+timestamp: 2016-03-23T11:23:55.595452
+CREATE TABLE bed_data(
+    id SERIAL PRIMARY KEY,
+    day DATE,
+    approved INTEGER,
+    pending INTEGER
+);
+success!
+timestamp: 2016-03-23T11:33:21.354396
+ALTER TABLE bed_reservations ADD visit_id__tmp INTEGER;
+UPDATE bed_reservations SET visit_id__tmp=visit_id;
+ALTER TABLE bed_reservations DROP COLUMN visit_id;
+ALTER TABLE bed_reservations ADD visit_id INTEGER;
+UPDATE bed_reservations SET visit_id=visit_id__tmp;
+ALTER TABLE bed_reservations DROP COLUMN visit_id__tmp;
+timestamp: 2016-03-23T11:33:21.365391
+ALTER TABLE bed_reservations ADD project_id__tmp INTEGER;
+UPDATE bed_reservations SET project_id__tmp=project_id;
+ALTER TABLE bed_reservations DROP COLUMN project_id;
+ALTER TABLE bed_reservations ADD project_id INTEGER;
+UPDATE bed_reservations SET project_id=project_id__tmp;
+ALTER TABLE bed_reservations DROP COLUMN project_id__tmp;
+success!
+timestamp: 2016-03-23T11:51:27.602352
+ALTER TABLE bed_reservations ADD research_visit_id INTEGER;
+timestamp: 2016-03-23T11:51:27.607630
+ALTER TABLE bed_reservations DROP COLUMN visit_id;
+timestamp: 2016-03-23T11:51:27.609221
+ALTER TABLE bed_reservations DROP COLUMN project_id;
+success!
+timestamp: 2016-03-23T11:52:39.476719
+ALTER TABLE research_visit ADD title VARCHAR(512);
+timestamp: 2016-03-23T11:52:39.478862
+ALTER TABLE research_visit ADD proposal_date DATE;
+timestamp: 2016-03-23T11:52:39.479996
+ALTER TABLE research_visit ADD proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ;
+success!
+timestamp: 2016-03-23T12:00:17.106113
+ALTER TABLE bed_reservations ADD look_see_visit CHAR(1) NOT NULL DEFAULT 'F';
+success!
+timestamp: 2016-03-24T10:16:34.259053
+CREATE TABLE wiki_page(
+    id SERIAL PRIMARY KEY,
+    slug VARCHAR(512),
+    title VARCHAR(255) UNIQUE,
+    body TEXT NOT NULL,
+    tags TEXT,
+    can_read TEXT,
+    can_edit TEXT,
+    changelog VARCHAR(512),
+    html TEXT,
+    render VARCHAR(512),
+    is_active CHAR(1),
+    created_on TIMESTAMP,
+    created_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    modified_on TIMESTAMP,
+    modified_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-24T10:16:34.283060
+CREATE TABLE wiki_tag(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(512),
+    wiki_page INTEGER REFERENCES wiki_page (id) ON DELETE CASCADE  ,
+    is_active CHAR(1),
+    created_on TIMESTAMP,
+    created_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    modified_on TIMESTAMP,
+    modified_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-24T10:16:34.294681
+CREATE TABLE wiki_media(
+    id SERIAL PRIMARY KEY,
+    wiki_page INTEGER REFERENCES wiki_page (id) ON DELETE CASCADE  ,
+    title VARCHAR(512),
+    filename VARCHAR(512),
+    is_active CHAR(1),
+    created_on TIMESTAMP,
+    created_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    modified_on TIMESTAMP,
+    modified_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-24T11:07:12.659391
+CREATE TABLE field_trip(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    title VARCHAR(512) NOT NULL,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    proposal_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T11:17:05.419970
+ALTER TABLE research_visit ADD arrival_date DATE NOT NULL;
+timestamp: 2016-03-24T11:17:05.422147
+ALTER TABLE research_visit ADD title__tmp VARCHAR(512) NOT NULL;
+UPDATE research_visit SET title__tmp=title;
+ALTER TABLE research_visit DROP COLUMN title;
+ALTER TABLE research_visit ADD title VARCHAR(512) NOT NULL;
+UPDATE research_visit SET title=title__tmp;
+ALTER TABLE research_visit DROP COLUMN title__tmp;
+timestamp: 2016-03-24T11:17:05.429274
+ALTER TABLE research_visit ADD departure_date DATE NOT NULL;
+timestamp: 2016-03-24T11:17:05.430756
+ALTER TABLE research_visit ADD purpose DATE NOT NULL;
+timestamp: 2016-03-24T11:17:05.431624
+ALTER TABLE research_visit ADD licence_details VARCHAR(512);
+success!
+timestamp: 2016-03-24T11:40:35.466923
+ALTER TABLE research_visit ADD purpose__tmp TEXT NOT NULL;
+UPDATE research_visit SET purpose__tmp=purpose;
+ALTER TABLE research_visit DROP COLUMN purpose;
+ALTER TABLE research_visit ADD purpose TEXT NOT NULL;
+UPDATE research_visit SET purpose=purpose__tmp;
+ALTER TABLE research_visit DROP COLUMN purpose__tmp;
+success!
+timestamp: 2016-03-24T12:10:46.611628
+CREATE TABLE research_visit_member(
+    id SERIAL PRIMARY KEY,
+    research_visit_id INTEGER REFERENCES research_visit (id) ON DELETE CASCADE  NOT NULL ,
+    project_member_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL 
+);
+success!
+timestamp: 2016-03-24T14:37:11.274885
+ALTER TABLE research_visit_member ADD user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ;
+timestamp: 2016-03-24T14:39:07.573542
+ALTER TABLE research_visit_member ADD user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ;
+timestamp: 2016-03-24T14:39:49.894561
+CREATE TABLE research_visit_member(
+    id SERIAL PRIMARY KEY,
+    research_visit_id INTEGER REFERENCES research_visit (id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL 
+);
+timestamp: 2016-03-24T14:40:08.131181
+CREATE TABLE research_visit_member(
+    id SERIAL PRIMARY KEY,
+    research_visit_id INTEGER REFERENCES research_visit (id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL 
+);
+success!
+timestamp: 2016-03-24T21:18:12.946966
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    alternative_email VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    legacy_user_id INTEGER
+);
+timestamp: 2016-03-24T21:18:55.324654
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    alternative_email VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    legacy_user_id INTEGER
+);
+timestamp: 2016-03-24T21:19:14.744522
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    alternative_email VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    legacy_user_id INTEGER
+);
+timestamp: 2016-03-24T21:23:43.541660
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    alternative_email VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    legacy_user_id INTEGER
+);
+timestamp: 2016-03-24T21:26:41.312676
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    alternative_email VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    legacy_user_id INTEGER
+);
+success!
+timestamp: 2016-03-24T21:26:41.329152
+CREATE TABLE auth_group(
+    id SERIAL PRIMARY KEY,
+    role VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-24T21:26:41.339177
+CREATE TABLE auth_membership(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-24T21:26:41.348586
+CREATE TABLE auth_permission(
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  ,
+    name VARCHAR(512),
+    table_name VARCHAR(512),
+    record_id INTEGER
+);
+success!
+timestamp: 2016-03-24T21:26:41.360664
+CREATE TABLE auth_event(
+    id SERIAL PRIMARY KEY,
+    time_stamp TIMESTAMP,
+    client_ip VARCHAR(512),
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    origin VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-24T21:26:41.373098
+CREATE TABLE auth_cas(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    created_on TIMESTAMP,
+    service VARCHAR(512),
+    ticket VARCHAR(512),
+    renew CHAR(1)
+);
+success!
+timestamp: 2016-03-24T21:26:41.384408
+CREATE TABLE plugin_ckeditor_upload(
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255),
+    filename VARCHAR(255),
+    flength INTEGER,
+    mime_type VARCHAR(128),
+    upload VARCHAR(512)
+);
+success!
+timestamp: 2016-03-24T21:26:41.393786
+CREATE TABLE rcuk_tags(
+    id SERIAL PRIMARY KEY,
+    level INTEGER NOT NULL,
+    subject VARCHAR(512),
+    topic VARCHAR(512),
+    tag VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-24T21:26:41.403205
+CREATE TABLE project(
+    id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    project_home_country VARCHAR(512) NOT NULL,
+    sampling_sites TEXT,
+    sampling_scales TEXT,
+    research_areas TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    rationale TEXT NOT NULL,
+    methods TEXT NOT NULL,
+    requires_ra CHAR(1) NOT NULL DEFAULT 'F',
+    requires_vehicle CHAR(1) NOT NULL DEFAULT 'F',
+    resource_notes VARCHAR(512),
+    legacy_project_id INTEGER,
+    data_sharing CHAR(1) NOT NULL,
+    proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    proposal_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:26:41.417271
+CREATE TABLE project_members(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_role VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-24T21:26:41.428270
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    description TEXT NOT NULL,
+    format VARCHAR(512) NOT NULL,
+    citation VARCHAR(1024),
+    doi VARCHAR(512),
+    url VARCHAR(512),
+    legacy_output_id INTEGER,
+    creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:26:41.439714
+CREATE TABLE project_outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    output_id INTEGER REFERENCES outputs (id) ON DELETE CASCADE  NOT NULL ,
+    added_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    date_added DATE NOT NULL
+);
+success!
+timestamp: 2016-03-24T21:26:41.450891
+CREATE TABLE help_offered(
+    id SERIAL PRIMARY KEY,
+    volunteer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    volunteer_type VARCHAR(512) NOT NULL,
+    available_from DATE NOT NULL,
+    available_to DATE NOT NULL,
+    research_statement TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:26:41.462624
+CREATE TABLE help_request(
+    id SERIAL PRIMARY KEY,
+    contact_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    submission_date DATE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    work_description TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:26:41.475824
+CREATE TABLE research_visit(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    title VARCHAR(512) NOT NULL,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    purpose TEXT NOT NULL,
+    licence_details VARCHAR(512),
+    proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    proposal_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:26:41.489187
+CREATE TABLE research_visit_member(
+    id SERIAL PRIMARY KEY,
+    research_visit_id INTEGER REFERENCES research_visit (id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL 
+);
+success!
+timestamp: 2016-03-24T21:26:41.497491
+CREATE TABLE bed_reservations(
+    id SERIAL PRIMARY KEY,
+    research_visit_id INTEGER,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    number_of_visitors INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    look_see_visit CHAR(1) NOT NULL DEFAULT 'F',
+    reserver_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    reservation_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:26:41.509850
+CREATE TABLE bed_data(
+    id SERIAL PRIMARY KEY,
+    day DATE,
+    approved INTEGER,
+    pending INTEGER
+);
+success!
+timestamp: 2016-03-24T21:26:41.519104
+CREATE TABLE health_and_safety(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    passport_number VARCHAR(512) NOT NULL,
+    emergency_contact_name VARCHAR(512) NOT NULL,
+    emergency_contact_address TEXT NOT NULL,
+    emergency_contact_phone VARCHAR(512) NOT NULL,
+    emergency_contact_email VARCHAR(512),
+    insurance_company VARCHAR(512) NOT NULL,
+    insurance_emergency_phone VARCHAR(512) NOT NULL,
+    insurance_policy_number VARCHAR(512) NOT NULL,
+    medical_conditions TEXT,
+    date_last_edited DATE
+);
+success!
+timestamp: 2016-03-24T21:26:41.532115
+CREATE TABLE species_profile(
+    id SERIAL PRIMARY KEY,
+    binomial VARCHAR(512),
+    common_name VARCHAR(512),
+    iucn_status VARCHAR(512),
+    global_population VARCHAR(512),
+    local_abundance VARCHAR(512),
+    in_primary CHAR(1),
+    in_logged CHAR(1),
+    in_plantation CHAR(1),
+    animal_facts TEXT,
+    where_do_they_live TEXT,
+    habitat TEXT,
+    what_do_they_eat TEXT,
+    who_eats_them TEXT,
+    threatened_by TEXT,
+    image_link VARCHAR(512),
+    image_href VARCHAR(512),
+    image_title VARCHAR(512),
+    google_scholar_link VARCHAR(512),
+    wikipedia_link VARCHAR(512),
+    eol_link VARCHAR(512),
+    iucn_link VARCHAR(512),
+    arkive_link VARCHAR(512),
+    gbif_link VARCHAR(512)
+);
+success!
+timestamp: 2016-03-24T21:26:41.542835
+CREATE TABLE safe_contacts(
+    id SERIAL PRIMARY KEY,
+    display_name VARCHAR(512),
+    contact_type VARCHAR(512),
+    role VARCHAR(512),
+    picture VARCHAR(512),
+    institution VARCHAR(512),
+    address VARCHAR(512),
+    email VARCHAR(512),
+    website VARCHAR(512),
+    taxonomic_speciality VARCHAR(512)
+);
+success!
+timestamp: 2016-03-24T21:26:41.551710
+CREATE TABLE blog_posts(
+    id SERIAL PRIMARY KEY,
+    thumbnail_figure VARCHAR(512),
+    authors VARCHAR(512),
+    title VARCHAR(512),
+    content TEXT,
+    poster_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    date_posted DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:26:41.564848
+CREATE TABLE news_posts(
+    id SERIAL PRIMARY KEY,
+    thumbnail_figure VARCHAR(512),
+    title VARCHAR(512),
+    content TEXT,
+    poster_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    date_posted DATE
+);
+success!
+timestamp: 2016-03-24T21:31:06.024059
+CREATE TABLE auth_user(
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(128),
+    last_name VARCHAR(128),
+    email VARCHAR(512),
+    password VARCHAR(512),
+    registration_key VARCHAR(512),
+    reset_password_key VARCHAR(512),
+    registration_id VARCHAR(512),
+    title VARCHAR(512),
+    nationality VARCHAR(512),
+    academic_status VARCHAR(512),
+    orcid VARCHAR(512),
+    phone VARCHAR(512),
+    mobile_phone VARCHAR(512),
+    alternative_email VARCHAR(512),
+    institution VARCHAR(512),
+    institution_address VARCHAR(512),
+    institution_phone VARCHAR(512),
+    supervisor_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    legacy_user_id INTEGER
+);
+success!
+timestamp: 2016-03-24T21:31:06.039859
+CREATE TABLE auth_group(
+    id SERIAL PRIMARY KEY,
+    role VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-24T21:31:06.048798
+CREATE TABLE auth_membership(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  
+);
+success!
+timestamp: 2016-03-24T21:31:06.057346
+CREATE TABLE auth_permission(
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER REFERENCES auth_group (id) ON DELETE CASCADE  ,
+    name VARCHAR(512),
+    table_name VARCHAR(512),
+    record_id INTEGER
+);
+success!
+timestamp: 2016-03-24T21:31:06.066786
+CREATE TABLE auth_event(
+    id SERIAL PRIMARY KEY,
+    time_stamp TIMESTAMP,
+    client_ip VARCHAR(512),
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    origin VARCHAR(512),
+    description TEXT
+);
+success!
+timestamp: 2016-03-24T21:31:06.079781
+CREATE TABLE auth_cas(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    created_on TIMESTAMP,
+    service VARCHAR(512),
+    ticket VARCHAR(512),
+    renew CHAR(1)
+);
+success!
+timestamp: 2016-03-24T21:31:06.092020
+CREATE TABLE plugin_ckeditor_upload(
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255),
+    filename VARCHAR(255),
+    flength INTEGER,
+    mime_type VARCHAR(128),
+    upload VARCHAR(512)
+);
+success!
+timestamp: 2016-03-24T21:31:06.101043
+CREATE TABLE rcuk_tags(
+    id SERIAL PRIMARY KEY,
+    level INTEGER NOT NULL,
+    subject VARCHAR(512),
+    topic VARCHAR(512),
+    tag VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-24T21:31:06.112127
+CREATE TABLE project(
+    id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    project_home_country VARCHAR(512) NOT NULL,
+    sampling_sites TEXT,
+    sampling_scales TEXT,
+    research_areas TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    rationale TEXT NOT NULL,
+    methods TEXT NOT NULL,
+    requires_ra CHAR(1) NOT NULL DEFAULT 'F',
+    requires_vehicle CHAR(1) NOT NULL DEFAULT 'F',
+    resource_notes VARCHAR(512),
+    legacy_project_id INTEGER,
+    data_sharing CHAR(1) NOT NULL,
+    proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    proposal_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:31:06.123775
+CREATE TABLE project_members(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_role VARCHAR(512) NOT NULL
+);
+success!
+timestamp: 2016-03-24T21:31:06.137439
+CREATE TABLE outputs(
+    id SERIAL PRIMARY KEY,
+    picture VARCHAR(512),
+    file VARCHAR(512),
+    title VARCHAR(512) NOT NULL,
+    description TEXT NOT NULL,
+    format VARCHAR(512) NOT NULL,
+    citation VARCHAR(1024),
+    doi VARCHAR(512),
+    url VARCHAR(512),
+    legacy_output_id INTEGER,
+    creator_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:31:06.150212
+CREATE TABLE project_outputs(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    output_id INTEGER REFERENCES outputs (id) ON DELETE CASCADE  NOT NULL ,
+    added_by INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    date_added DATE NOT NULL
+);
+success!
+timestamp: 2016-03-24T21:31:06.161452
+CREATE TABLE help_offered(
+    id SERIAL PRIMARY KEY,
+    volunteer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    submission_date DATE,
+    volunteer_type VARCHAR(512) NOT NULL,
+    available_from DATE NOT NULL,
+    available_to DATE NOT NULL,
+    research_statement TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:31:06.173557
+CREATE TABLE help_request(
+    id SERIAL PRIMARY KEY,
+    contact_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL ,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    submission_date DATE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    work_description TEXT NOT NULL,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:31:06.185929
+CREATE TABLE research_visit(
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES project (id) ON DELETE CASCADE  NOT NULL ,
+    title VARCHAR(512) NOT NULL,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    purpose TEXT NOT NULL,
+    licence_details VARCHAR(512),
+    proposer_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    proposal_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:31:06.199127
+CREATE TABLE research_visit_member(
+    id SERIAL PRIMARY KEY,
+    research_visit_id INTEGER REFERENCES research_visit (id) ON DELETE CASCADE  NOT NULL ,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  NOT NULL 
+);
+success!
+timestamp: 2016-03-24T21:31:06.209085
+CREATE TABLE bed_reservations(
+    id SERIAL PRIMARY KEY,
+    research_visit_id INTEGER,
+    arrival_date DATE NOT NULL,
+    departure_date DATE NOT NULL,
+    number_of_visitors INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    look_see_visit CHAR(1) NOT NULL DEFAULT 'F',
+    reserver_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    reservation_date DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:31:06.219422
+CREATE TABLE bed_data(
+    id SERIAL PRIMARY KEY,
+    day DATE,
+    approved INTEGER,
+    pending INTEGER
+);
+success!
+timestamp: 2016-03-24T21:31:06.226029
+CREATE TABLE health_and_safety(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    passport_number VARCHAR(512) NOT NULL,
+    emergency_contact_name VARCHAR(512) NOT NULL,
+    emergency_contact_address TEXT NOT NULL,
+    emergency_contact_phone VARCHAR(512) NOT NULL,
+    emergency_contact_email VARCHAR(512),
+    insurance_company VARCHAR(512) NOT NULL,
+    insurance_emergency_phone VARCHAR(512) NOT NULL,
+    insurance_policy_number VARCHAR(512) NOT NULL,
+    medical_conditions TEXT,
+    date_last_edited DATE
+);
+success!
+timestamp: 2016-03-24T21:31:06.239995
+CREATE TABLE species_profile(
+    id SERIAL PRIMARY KEY,
+    binomial VARCHAR(512),
+    common_name VARCHAR(512),
+    iucn_status VARCHAR(512),
+    global_population VARCHAR(512),
+    local_abundance VARCHAR(512),
+    in_primary CHAR(1),
+    in_logged CHAR(1),
+    in_plantation CHAR(1),
+    animal_facts TEXT,
+    where_do_they_live TEXT,
+    habitat TEXT,
+    what_do_they_eat TEXT,
+    who_eats_them TEXT,
+    threatened_by TEXT,
+    image_link VARCHAR(512),
+    image_href VARCHAR(512),
+    image_title VARCHAR(512),
+    google_scholar_link VARCHAR(512),
+    wikipedia_link VARCHAR(512),
+    eol_link VARCHAR(512),
+    iucn_link VARCHAR(512),
+    arkive_link VARCHAR(512),
+    gbif_link VARCHAR(512)
+);
+success!
+timestamp: 2016-03-24T21:31:06.252402
+CREATE TABLE safe_contacts(
+    id SERIAL PRIMARY KEY,
+    display_name VARCHAR(512),
+    contact_type VARCHAR(512),
+    role VARCHAR(512),
+    picture VARCHAR(512),
+    institution VARCHAR(512),
+    address VARCHAR(512),
+    email VARCHAR(512),
+    website VARCHAR(512),
+    taxonomic_speciality VARCHAR(512)
+);
+success!
+timestamp: 2016-03-24T21:31:06.262909
+CREATE TABLE blog_posts(
+    id SERIAL PRIMARY KEY,
+    thumbnail_figure VARCHAR(512),
+    authors VARCHAR(512),
+    title VARCHAR(512),
+    content TEXT,
+    poster_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    date_posted DATE,
+    admin_status VARCHAR(512),
+    admin_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    admin_notes TEXT,
+    admin_decision_date DATE
+);
+success!
+timestamp: 2016-03-24T21:31:06.275474
+CREATE TABLE news_posts(
+    id SERIAL PRIMARY KEY,
+    thumbnail_figure VARCHAR(512),
+    title VARCHAR(512),
+    content TEXT,
+    poster_id INTEGER REFERENCES auth_user (id) ON DELETE CASCADE  ,
+    date_posted DATE
+);
+success!

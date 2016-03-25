@@ -1,0 +1,17 @@
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+{{=H1('Upload a project output')}}
+
+<p><strong>Many thanks for uploading your project outputs</strong> - allowing people to see and read the great science being carried out by researchers at SAFE is hugely important. Please use the form below to provide details of the output. </p>
+	
+<p>If your output is associated with a project of which you are a memmber, use the project dropdown to link it to that project. You can leave this field blank if your output isn't associated with a particular project</p>
+	
+<p> We do screen outputs, so your submitted output will be checked by an administrator before becoming available. You will get an email to confirm your submission and then another email to confirm that the output has been accepted.</p>
+
+<br>
+
+{{=form}}
+
+<br>

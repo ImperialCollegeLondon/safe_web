@@ -1,0 +1,45 @@
+{{response.files.append(URL(r=request,c='static',f='js/moment.min.js'))}}
+{{response.files.append(URL(r=request,c='static',f='js/jquery.min.js'))}}
+{{response.files.append(URL(r=request,c='static',f='js/fullcalendar.min.js'))}}
+{{response.files.append(URL(r=request,c='static',f='css/fullcalendar.min.css'))}}
+
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash or ' '}}</div>
+
+
+{{=A('Got to bed reservations',_class='button btn btn-default',
+    _href=URL("visits","reserve_beds"),
+    _title="There is a javascript incompatibility with the calendar that breaks the dropdown menus on this page, so this is here as an escape button. Or you can use the SAFE logo to go the home page. Sorry!")}}
+
+
+{{=H3('Bed availability')}}
+
+The calender below shows the current availability of beds at the SAFE project. If there are no entries for a date, then there are no current pending or confirmed bed reservations.
+<br/><br/>
+
+<script type='text/javascript'>
+jQuery(document).ready(function() {
+ $('#calendar').fullCalendar({
+     editable: false,
+     eventOrder: "orderField",
+     height: 600,
+     events: [
+     {{for e in events:}}
+         {
+             title: "{{=e[0]}}",
+             allDay: true,
+             start: "{{=e[1]}}",
+             orderField: "{{=e[3]}}",
+             backgroundColor: "{{=e[4]}}",
+             borderColor: "{{=e[4]}}"
+         },
+     {{pass}}
+   ]
+ });
+});
+</script>
+
+<div id='calendar'></div>
+
+<br/>

@@ -1,0 +1,21 @@
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash or ' '}}</div>
+
+{{=H2("View bed reservations")}}
+
+<p>The form below shows current approved bed reservations and the button at the bottom allows you to download an Excel file showing the current approved visits.</p>
+
+
+<p>You can use the delete buttons on this form to cancel approved reservations and you can also use the "add record"" button to create new approved bookings. Note that this interface <strong>ignores the cap on bed bookings</strong> and <strong>ignores the usual fortnight notice</strong>, allowing an admin user to make exceptions for a particular booking.</p>
+
+<p>When you create a new booking, use the reserver_id field to identify the person you are making the booking for - they will be emailed automatically. At the moment, there is no functionality to <I>edit</I> an existing booking. This could be added but for the moment, users should cancel and rebook.</p>
+
+<div class="flash">{{=response.flash or BR()}}</div>
+
+<br>
+{{=form}}
+<br>
+{{=A('Download Reservations Workbook',_class='button btn btn-default',
+    _href=URL("visits","export_bed_reservation_workbook"))}}
+<br><br>

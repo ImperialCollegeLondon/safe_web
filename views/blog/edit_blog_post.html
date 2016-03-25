@@ -1,0 +1,12 @@
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+{{=H1('Edit your blog post')}}
+
+<p>Use the form below to edit your post.</p>
+<br>
+
+{{=form}}
+
+<br>

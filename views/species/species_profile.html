@@ -1,0 +1,114 @@
+{{left_sidebar_enabled,right_sidebar_enabled=False,('message' in globals())}}
+{{extend 'layout.html'}}
+
+<!-- Yes, yes, I've redefined css locally, I know that is bad but I'm implementing function -->
+<style>
+hr { 
+    display: block;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    margin-left: auto;
+    margin-right: auto;
+    border-style: inset;
+    border-width: 1px;
+} 
+</style>
+
+<!--Insert a consistently styled back button to return to the grid view-->
+{{= A(SPAN('',_class="icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left"),
+      SPAN('Back', _class="buttontext button"),
+      _class="button btn btn-default", 
+      _href=URL("species","species", user_signature=True),
+      _style='padding: 3px 5px 3px 5px;')}}
+
+<!--Define some view dictionaries -->
+{{rlist = dict([('Not Evaluated', 'images/species/status_ne_on.gif'),
+                ('Data Deficient', 'images/species/status_dd_on.gif'),
+                ('Least Concern', 'images/species/status_lc_on.gif'),
+                ('Near Threatened', 'images/species/status_nt_on.gif'),
+                ('Vulnerable', 'images/species/status_vu_on.gif'),
+                ('Endangered', 'images/species/status_en_on.gif'),
+                ('Critically Endangered', 'images/species/status_cr_on.gif'),
+                ('Extinct in the Wild', 'images/species/status_ew_on.gif'),
+                ('Extinct', 'images/species/status_ex_on.gif')])}} 
+
+{{tlist = dict([('stable', 'images/species/stable.png'),
+                ('increasing', 'images/species/increasing.png'),
+                ('unknown', 'images/species/unknown.png'),
+                ('decreasing', 'images/species/decreasing.png')])}} 
+
+{{alist = dict([('commonly seen', 'images/species/common.png'),
+                ('often seen', 'images/species/often.png'),
+                ('sometimes seen', 'images/species/sometimes.png'),
+                ('rarely seen', 'images/species/rare.png')])}} 
+
+{{prilist = dict(True = 'images/species/Natural-Colour.jpg',
+                 False = 'images/species/Natural-Grey.jpg')}}
+
+{{palmlist = dict(True = 'images/species/Plantation-Colour.jpg',
+                 False = 'images/species/Plantation-Grey.jpg')}}
+
+{{loglist = dict(True = 'images/species/Logged-Colour.jpg',
+                 False = 'images/species/Logged-Grey.jpg')}}
+
+
+<hr>
+{{=TABLE(TR(TD(IMG(_src=species.image_link, _height='85px'), 
+	       _rowspan=2, _style='width:130px', ),
+	    TD(H3(species.common_name)),
+	    TD(IMG(_src=URL('static', rlist[species.iucn_status]), _height='85'), 
+	       _rowspan=2, _style='text-align:right')),
+	 TR(TD(H4(I(species.binomial)))),_width='100%')}}
+<hr>
+
+
+{{=TABLE(TR(TD('Global populations'), TD('Local abundance'), TD('In plantations'), TD('In logged areas'), T('In primary forest')),
+         TR(TD(IMG(_src=URL('static', tlist[species.global_population]), _height='85px')),
+            TD(IMG(_src=URL('static', alist[species.local_abundance]),_height='85px')),
+	    TD(IMG(_src=URL('static', palmlist[str(species.in_plantation)]),_height='85px')),
+	    TD(IMG(_src=URL('static', loglist[str(species.in_logged)]),_height='85px')),
+	    TD(IMG(_src=URL('static', prilist[str(species.in_primary)]),_height='85px'))),
+	    _style='text-align:center; table-layout: fixed', _width='100%')}}
+
+<hr>
+
+
+{{=H4('Animal facts')}}
+{{=XML(species.animal_facts.replace('\n', '<br /><br />'),
+        sanitize=True, permitted_tags=['br/'])}}
+
+<br>
+{{=H4('Where do they live?')}}
+{{=species.where_do_they_live}}
+
+<br>
+{{=H4('What habitats do they live in?')}}
+{{=species.habitat}}
+
+<br>
+{{=H4('What do they eat?')}}
+{{=species.what_do_they_eat}}
+
+<br>
+{{=H4('Who eats them?')}}
+{{=species.who_eats_them}}
+
+<br>
+{{=H4('What are they threatened by?')}}
+{{=species.threatened_by}}
+
+
+<br>
+
+
+<br>
+{{=TABLE(TR(TD(A(IMG(_src=URL('static', 'images/species/Google_scholar.png'), _height='50px'), _href=species.google_scholar_link)),
+            TD(A(IMG(_src=URL('static', 'images/species/Wikipedia.png'), _height='50px'), _href=species.wikipedia_link)),
+            TD(A(IMG(_src=URL('static', 'images/species/eol.png'), _height='50px'), _href=species.eol_link)),
+            TD(A(IMG(_src=URL('static', 'images/species/iucn.png'), _height='50px'), _href=species.iucn_link)),
+            TD(A(IMG(_src=URL('static', 'images/species/arkive.png'), _height='50px'), _href=species.arkive_link)),
+            TD(A(IMG(_src=URL('static', 'images/species/gbif.png'), _height='50px'), _href=species.gbif_link))), 
+            _style='text-align:center; table-layout: fixed', _width='100%')}}
+            
+<br>
+<br>

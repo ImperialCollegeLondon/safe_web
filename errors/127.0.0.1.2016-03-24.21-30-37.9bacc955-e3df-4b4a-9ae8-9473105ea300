@@ -1,0 +1,777 @@
+(dp1
+S'output'
+p2
+S'<class \'gluon.contrib.pg8000.ProgrammingError\'> (\'ERROR\', \'42P01\', \'relation "help_request" does not exist\')'
+p3
+sS'layer'
+p4
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/models/menu.py'
+p5
+sS'code'
+p6
+S'# -*- coding: utf-8 -*-\n# this file is released under public domain and you can use without limitations\n\n#########################################################################\n## Customize your APP title, subtitle and menus here\n#########################################################################\n\n# response.logo = A(B(\'web\',SPAN(2),\'py\'),XML(\'&trade;&nbsp;\'),\n#                   _class="navbar-brand",_href="http://www.web2py.com/",\n#                   _id="web2py-logo")\nresponse.title = request.application.replace(\'_\',\' \').title()\nresponse.subtitle = \'\'\n\n## read more at http://dev.w3.org/html5/markup/meta.name.html\nresponse.meta.author = \'David Orme <d.orme@imperial.ac.uk>\'\nresponse.meta.description = \'Information and administration for the SAFE project\'\nresponse.meta.keywords = \'Ecology\'\nresponse.meta.generator = \'Web2py Web Framework\'\n\n## your http://google.com/analytics id\nresponse.google_analytics_id = None\n\n## ----------------------------------------------------------------------------\n## MAIN MENU STRUCTURE\n## ----------------------------------------------------------------------------\n\nresponse.menu = [\n    (T(\'About\'), True, None, [\n        (T(\'Concept\'), True, URL(\'default\', \'concept\'), []),\n        (T(\'Ecological Monitoring\'), True, URL(\'default\', \'ecological_monitoring\'), []),\n        (T(\'Contacts\'), True, URL(\'people\', \'contacts\'), []),\n        (T(\'The Project design\'), True, URL(\'default\', \'todo\'), []),\n        (T(\'Funding and support\'), True, URL(\'default\', \'funders\'), [])\n    ]),\n    (T(\'From the field\'), True, None, [\n        (T(\'Research Projects\'), True, URL(\'projects\', \'projects\'), []),\n        (T(\'News\'), True, URL(\'news\', \'news\'), []),\n        (T(\'Blog\'), True, URL(\'blog\', \'blogs\'), []),\n        (T(\'Species profiles\'), True, URL(\'species\', \'species\'), []),\n        (T(\'Outputs\'), True, URL(\'outputs\', \'outputs\'), []),\n    ]),\n    (T(\'Research planning information\'), True, None, [\n        (T(\'FAQs and SAFE wiki\'), True, \'http://forestecology.net/dokuwiki/safe/start\', []),\n        (T(\'Research Requirements\'), True, URL(\'default\', \'todo\'), []),\n        (T(\'Health and Safety\'), True, URL(\'default\', \'todo\'), []),\n        (T(\'SAFE Calendars\'), True, URL(\'default\', \'calendars\'), []),\n        (T(\'Permits\'), True, URL(\'default\', \'todo\'), []),\n        (T(\'Costs\'), True, URL(\'default\', \'todo\'), []),\n        (T(\'Bed availability\'), True, URL(\'visits\', \'bed_availability\'), []),\n        LI(_class="divider"),\n        (T(\'Volunteers available\'), True, URL(\'marketplace\', \'volunteers\'), []),\n        (T(\'Help sought at SAFE\'), True, URL(\'marketplace\', \'help_requests\'), []),\n    ]),\n    ]\n\n## ----------------------------------------------------------------------------\n## REGISTERED USER MENU\n## -- adds an extra chunk to a menu for actions that require login. \n## -- Note that this basically just obfuscates the link, so the controllers\n##    for these links also need login decorators\n## -- having to use indexes to extend is a bit brittle, but hey.\n## ----------------------------------------------------------------------------\n\nuser_actions = [(T(\'Registered users\'), True, None, [\n                (T(\'User directory\'), True, URL(\'people\', \'users\'), []),\n                (T(\'View research visits\'), True, URL(\'visits\', \'research_visits\'), []),\n                (T(\'My SAFE\'), True, URL(\'default\', \'my_safe\'), []),\n                LI(_class="divider"),\n                (T(\'Propose a project\'), True, URL(\'projects\', \'new_project\'), []),\n                # (T(\'Manage project members\'), True, URL(\'projects\', \'manage_project_members\'), []),\n                (T(\'Submit a new output\'), True, URL(\'outputs\', \'new_output\'), []),\n                (T(\'Add an output to a project\'), True, URL(\'outputs\', \'add_output_to_project\'), []),\n                (T(\'Your health and safety info\'), True, URL(\'visits\', \'health_and_safety\'), []),\n                (T(\'Propose a research visit\'), True, URL(\'visits\', \'new_research_visit\'), []),\n                (T(\'Reserve bed space\'), True, URL(\'visits\', \'reserve_beds\'), []),\n                (T(\'Volunteer at SAFE\'), True, URL(\'marketplace\', \'new_volunteer\'), []),\n                (T(\'Request project help\'), True, URL(\'marketplace\', \'new_help_request\'), []),\n               ])]\n\nif (auth.user_id != None):\n    response.menu += user_actions\n\n## ----------------------------------------------------------------------------\n## ADMIN MENU\n## -- creates a new menu accessing admin tasks and shows how many need doing\n## -- Note that this basically just obfuscates the link, so the controllers\n##    for these links also need admin decorators to restrict access\n## ----------------------------------------------------------------------------\n\nn_dict = {\'bed\': db.bed_reservations.admin_status,\n          \'vis\': db.research_visit.admin_status,\n          \'proj\': db.project.admin_status,\n          \'output\': db.outputs.admin_status,\n          \'vol\': db.help_offered.admin_status,\n          \'help\': db.help_request.admin_status,\n          \'new_users\': db.auth_user.registration_key\n         }\n\nfor key, field in n_dict.iteritems():\n    \n    n = db(field.belongs([\'Pending\', \'pending\'])).count() # auth_user uses \'pending\' as part of built in mechanisms\n    if n > 0:\n        n_dict[key] = \' (\' + str(n) + \')\'\n    else:\n        n_dict[key] = \'\'\n\nif (auth.user_id != None) and (auth.has_membership(role = \'admin\')):\n    response.menu += [(\'Admin\',  False,  None, [\n                        (T(\'Manage users\'), True, URL(\'people\', \'manage_users\'), []),\n                        (T(\'Manage contacts\'), True, URL(\'people\', \'manage_contacts\'), []),\n                        (T(\'Manage bed reservations\'), True, URL(\'visits\', \'manage_bed_reservations\'), []),\n                        (T(\'Add news\'), True, URL(\'news\', \'new_news_post\'), []),\n                        (T(\'Add species\'), True, URL(\'species\', \'new_species\'), []),\n                        LI(_class="divider"),\n                        (B(\'Approvals\'), False, None, None),\n                        (T(\'> New users\') + n_dict[\'new_users\'], True, URL(\'people\', \'administer_new_users\'), []),\n                        (T(\'> New projects\') + n_dict[\'proj\'], True, URL(\'projects\', \'administer_new_projects\'), []),\n                        (T(\'> New outputs\') + n_dict[\'output\'], True, URL(\'outputs\', \'administer_outputs\'), []),\n                        (T(\'> Research visits\') + n_dict[\'vis\'], True, URL(\'visits\', \'administer_new_research_visits\'), []),\n                        (T(\'> Bed reservations\') + n_dict[\'bed\'], True, URL(\'visits\', \'administer_reserve_beds\'), []),\n                        (T(\'> Volunteers\') + n_dict[\'vol\'], True, URL(\'marketplace\', \'administer_volunteers\'), []),\n                        (T(\'> Help requests\' + n_dict[\'help\']), True, URL(\'marketplace\', \'administer_help_requests\'), []),\n                        LI(_class="divider"),\n                        (T(\'Database admin\'), True, URL(\'appadmin\', \'index\'))\n                      ])]\n\nif "auth" in locals(): auth.wikimenu() \n'
+p7
+sS'snapshot'
+p8
+(dp9
+S'exception'
+p10
+(dp11
+S'__module__'
+p12
+S"'gluon.contrib.pg8000'"
+p13
+sS'__getslice__'
+p14
+S"<method-wrapper '__getslice__' of ProgrammingError object>"
+p15
+sS'__str__'
+p16
+S"<method-wrapper '__str__' of ProgrammingError object>"
+p17
+sS'__reduce__'
+p18
+S'<built-in method __reduce__ of ProgrammingError object>'
+p19
+sS'__dict__'
+p20
+S'{}'
+p21
+sS'__sizeof__'
+p22
+S'<built-in method __sizeof__ of ProgrammingError object>'
+p23
+sS'__weakref__'
+p24
+S'None'
+p25
+sS'__init__'
+p26
+S"<method-wrapper '__init__' of ProgrammingError object>"
+p27
+sS'__setattr__'
+p28
+S"<method-wrapper '__setattr__' of ProgrammingError object>"
+p29
+sS'__reduce_ex__'
+p30
+S'<built-in method __reduce_ex__ of ProgrammingError object>'
+p31
+sS'__new__'
+p32
+S'<built-in method __new__ of type object>'
+p33
+sS'__format__'
+p34
+S'<built-in method __format__ of ProgrammingError object>'
+p35
+sS'__class__'
+p36
+S"<class 'gluon.contrib.pg8000.ProgrammingError'>"
+p37
+sS'__doc__'
+p38
+S"'Generic exception raised for programming errors....http://www.python.org/dev/peps/pep-0249/>`_.\\n    '"
+p39
+sS'__getitem__'
+p40
+S"<method-wrapper '__getitem__' of ProgrammingError object>"
+p41
+sS'__setstate__'
+p42
+S'<built-in method __setstate__ of ProgrammingError object>'
+p43
+sS'__getattribute__'
+p44
+S"<method-wrapper '__getattribute__' of ProgrammingError object>"
+p45
+sS'args'
+p46
+S'(\'ERROR\', \'42P01\', \'relation "help_request" does not exist\')'
+p47
+sS'__subclasshook__'
+p48
+S'<built-in method __subclasshook__ of type object>'
+p49
+sS'__unicode__'
+p50
+S'<built-in method __unicode__ of ProgrammingError object>'
+p51
+sS'__delattr__'
+p52
+S"<method-wrapper '__delattr__' of ProgrammingError object>"
+p53
+sS'__repr__'
+p54
+S"<method-wrapper '__repr__' of ProgrammingError object>"
+p55
+sS'__hash__'
+p56
+S"<method-wrapper '__hash__' of ProgrammingError object>"
+p57
+ssS'evalue'
+p58
+S'(\'ERROR\', \'42P01\', \'relation "help_request" does not exist\')'
+p59
+sS'request'
+p60
+cgluon.html
+XML_unpickle
+p61
+(S'sM\x80\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">ajax</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">application</td><td style="vertical-align:top;">:</td><td><div>SAFE_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">args</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>view</div></td></tr><tr><td><div>auth_user</div></td></tr><tr><td><div>55</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">controller</td><td style="vertical-align:top;">:</td><td><div>people</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">ckCsrfToken</td><td style="vertical-align:top;">:</td><td><div>zEFPDt3elRX5B3BSntrjWWU0YDmVqax77Llwfa40<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">csrftoken</td><td style="vertical-align:top;">:</td><td><div>ikREEuTW3OsYoKB4z6PI4WMWkQTuO1Vp<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_examples</td><td style="vertical-align:top;">:</td><td><div>5b3ef0c5e37da0cb28ee4b40d1c2c55d:sZF_QWPK-PPuyehpVT5DsqTTMgyFRBs2Ub73OcD4cFQn_viD8E7th5I0hIZ-kP3Uj1Sd-xF5LMIidQGf61V3iAH2thTaN3PCooyRVVFU2XG5JLhPtuKDl3QzO4YcC5OfDbJZjVf7g4aRe30YGKu5QR1nx11jd5ShD8Ns-JU7jOEHgcX9QlD5igMztwOUK4VKksxib6neoKi-z6BcmRA3oTemdbIeazZ7k-OoRzkusZ0OZ7D4cqKyPgJl-v_YTfOmgJs9-7dH8kuBBF5iP78PatZKTnr7PsP89yVQ6mBuphvh9UDL5g2zF06H4NS7OMoJtuG3PpySBjYEjHegxYAcc70X0OZF5uKoaeTIPVNoZBW0k8w_mpO-vOAKsJAcAzsK1OvFVp1wMxx-wjL1f2UEoWqafncz-cnHEFwMEEzrwAgVateLgChwdUV3vTQ5-H7hjzc82dADZaHQmMMbOcmK8kTsrqsbHGH__TOKVkAc6j0=<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_admin</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-9aa5ded4-fc56-45d0-9b61-77955fb8301c<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_examples</td><td style="vertical-align:top;">:</td><td><div>True<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_safe</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-72b7a28a-f922-43bd-b334-b6137a76cae6<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_safe_web</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_welcome</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-4ec3f6b5-440c-4c1f-b03f-a90ad6ae6ec3<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">env</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_ENCODING</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate, sdch</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_LANGUAGE</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CACHE_CONTROL</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONNECTION</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_COOKIE</td><td style="vertical-align:top;">:</td><td><div>csrftoken=ikREEuTW3OsYoKB4z6PI4WMWkQTuO1Vp; session_id_safe=127.0.0.1-72b7a28a-f922-43bd-b334-b6137a76cae6; session_data_examples=&quot;5b3ef0c5e37da0cb28ee4b40d1c2c55d:sZF_QWPK-PPuyehpVT5DsqTTMgyFRBs2Ub73OcD4cFQn_viD8E7th5I0hIZ-kP3Uj1Sd-xF5LMIidQGf61V3iAH2thTaN3PCooyRVVFU2XG5JLhPtuKDl3QzO4YcC5OfDbJZjVf7g4aRe30YGKu5QR1nx11jd5ShD8Ns-JU7jOEHgcX9QlD5igMztwOUK4VKksxib6neoKi-z6BcmRA3oTemdbIeazZ7k-OoRzkusZ0OZ7D4cqKyPgJl-v_YTfOmgJs9-7dH8kuBBF5iP78PatZKTnr7PsP89yVQ6mBuphvh9UDL5g2zF06H4NS7OMoJtuG3PpySBjYEjHegxYAcc70X0OZF5uKoaeTIPVNoZBW0k8w_mpO-vOAKsJAcAzsK1OvFVp1wMxx-wjL1f2UEoWqafncz-cnHEFwMEEzrwAgVateLgChwdUV3vTQ5-H7hjzc82dADZaHQmMMbOcmK8kTsrqsbHGH__TOKVkAc6j0=&quot;; session_id_examples=True; ckCsrfToken=zEFPDt3elRX5B3BSntrjWWU0YDmVqax77Llwfa40; session_id_welcome=127.0.0.1-4ec3f6b5-440c-4c1f-b03f-a90ad6ae6ec3; session_id_safe_web=127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420; session_id_admin=127.0.0.1-9aa5ded4-fc56-45d0-9b61-77955fb8301c</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_HOST</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_REFERER</td><td style="vertical-align:top;">:</td><td><div>http://127.0.0.1:8000/SAFE_web/people/manage_users?keywords=ewers</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_UPGRADE_INSECURE_REQUESTS</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_USER_AGENT</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_INFO</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/people/manage_users/view/auth_user/55</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">QUERY_STRING</td><td style="vertical-align:top;">:</td><td><div>keywords=ewers&amp;_signature=2a29b991bf9d251a916550b97e7aea8f3fab1817</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_ADDR</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_PORT</td><td style="vertical-align:top;">:</td><td><div>51091</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_METHOD</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SCRIPT_NAME</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_NAME</td><td style="vertical-align:top;">:</td><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PROTOCOL</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_SOFTWARE</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/admin/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/welcome/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x10437d050: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;fe80::a65e:60ff:feeb:b729%en0&#x27;, &#x27;192.168.1.73&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;Davids-MacBook-Pro.local&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;print_errors&#x27;: False, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_encoding</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate, sdch</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_language</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cache_control</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_connection</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cookie</td><td style="vertical-align:top;">:</td><td><div>csrftoken=ikREEuTW3OsYoKB4z6PI4WMWkQTuO1Vp; session_id_safe=127.0.0.1-72b7a28a-f922-43bd-b334-b6137a76cae6; session_data_examples=&quot;5b3ef0c5e37da0cb28ee4b40d1c2c55d:sZF_QWPK-PPuyehpVT5DsqTTMgyFRBs2Ub73OcD4cFQn_viD8E7th5I0hIZ-kP3Uj1Sd-xF5LMIidQGf61V3iAH2thTaN3PCooyRVVFU2XG5JLhPtuKDl3QzO4YcC5OfDbJZjVf7g4aRe30YGKu5QR1nx11jd5ShD8Ns-JU7jOEHgcX9QlD5igMztwOUK4VKksxib6neoKi-z6BcmRA3oTemdbIeazZ7k-OoRzkusZ0OZ7D4cqKyPgJl-v_YTfOmgJs9-7dH8kuBBF5iP78PatZKTnr7PsP89yVQ6mBuphvh9UDL5g2zF06H4NS7OMoJtuG3PpySBjYEjHegxYAcc70X0OZF5uKoaeTIPVNoZBW0k8w_mpO-vOAKsJAcAzsK1OvFVp1wMxx-wjL1f2UEoWqafncz-cnHEFwMEEzrwAgVateLgChwdUV3vTQ5-H7hjzc82dADZaHQmMMbOcmK8kTsrqsbHGH__TOKVkAc6j0=&quot;; session_id_examples=True; ckCsrfToken=zEFPDt3elRX5B3BSntrjWWU0YDmVqax77Llwfa40; session_id_welcome=127.0.0.1-4ec3f6b5-440c-4c1f-b03f-a90ad6ae6ec3; session_id_safe_web=127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420; session_id_admin=127.0.0.1-9aa5ded4-fc56-45d0-9b61-77955fb8301c</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_host</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_referer</td><td style="vertical-align:top;">:</td><td><div>http://127.0.0.1:8000/SAFE_web/people/manage_users?keywords=ewers</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_upgrade_insecure_requests</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_user_agent</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>fe80::a65e:60ff:feeb:b729%en0</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>192.168.1.73</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_info</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/people/manage_users/view/auth_user/55</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">query_string</td><td style="vertical-align:top;">:</td><td><div>keywords=ewers&amp;_signature=2a29b991bf9d251a916550b97e7aea8f3fab1817</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_addr</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_port</td><td style="vertical-align:top;">:</td><td><div>51091</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_method</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_uri</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/people/manage_users/view/auth_user/55?keywords=ewers&amp;_signature=2a29b991bf9d251a916550b97e7aea8f3fab1817</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_name</td><td style="vertical-align:top;">:</td><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_protocol</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_software</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_path</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.13.2-stable+timestamp.2015.12.18.11.00.46</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x1002971e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x10430a738&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x10ea8f8d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x1002971e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x10430a738&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x10ea8f8d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">extension</td><td style="vertical-align:top;">:</td><td><div>html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">folder</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">function</td><td style="vertical-align:top;">:</td><td><div>manage_users</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">global_settings</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/admin/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/welcome/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x10437d050: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;fe80::a65e:60ff:feeb:b729%en0&#x27;, &#x27;192.168.1.73&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;Davids-MacBook-Pro.local&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;print_errors&#x27;: False, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>fe80::a65e:60ff:feeb:b729%en0</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>192.168.1.73</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.13.2-stable+timestamp.2015.12.18.11.00.46</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_https</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_local</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_restful</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_scheduler</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_shell</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">now</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 3, 24, 21, 30, 37, 180822)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_args</td><td style="vertical-align:top;">:</td><td><div>view/auth_user/55</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_extension</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/people/manage_users/view/auth_user/55</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">utcnow</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 3, 24, 21, 30, 37, 180834)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi</td><td style="vertical-align:top;">:</td><td><div>&lt;gluon.main.LazyWSGI object at 0x11095ba10&gt;</div></td></tr></table></div>'
+tRp62
+sS'frames'
+p63
+(lp64
+(dp65
+S'file'
+p66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/restricted.py'
+p67
+sS'dump'
+p68
+(dp69
+S'environment'
+p70
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}"
+p71
+sS'ccode'
+p72
+S'<code object <module> at 0x112301eb0, file "/Use...y/applications/SAFE_web/models/menu.py", line 11>'
+p73
+ssS'lnum'
+p74
+I227
+sS'lines'
+p75
+(dp76
+I224
+S'            ccode = code'
+p77
+sI225
+S'        else:'
+p78
+sI226
+S'            ccode = compile2(code, layer)'
+p79
+sI227
+S'        exec ccode in environment'
+p80
+sI228
+S'    except HTTP:'
+p81
+sI229
+S'        raise'
+p82
+sI230
+S'    except RestrictedError:'
+p83
+sI231
+S'        # do not encapsulate (obfuscate) the original RestrictedError'
+p84
+sI222
+S'    try:'
+p85
+sI223
+S'        if isinstance(code, types.CodeType):'
+p86
+ssS'call'
+p87
+S'(code=\'# -*- coding: utf-8 -*-\\n# this file is released ...    ])]\\n\\nif "auth" in locals(): auth.wikimenu() \\n\', environment={\'A\': <class \'gluon.html.A\'>, \'ANY_OF\': <class \'gluon.validators.ANY_OF\'>, \'ASSIGNJS\': <function ASSIGNJS>, \'AppConfig\': <function AppConfig>, \'Auth\': <class \'gluon.tools.Auth\'>, \'B\': <class \'gluon.html.B\'>, \'BEAUTIFY\': <class \'gluon.html.BEAUTIFY\'>, \'BODY\': <class \'gluon.html.BODY\'>, \'BR\': <class \'gluon.html.BR\'>, \'BUTTON\': <class \'gluon.html.BUTTON\'>, ...}, layer=\'/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/models/menu.py\')'
+p88
+sS'func'
+p89
+S'restricted'
+p90
+sa(dp91
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/models/menu.py'
+p92
+sg68
+(dp93
+S'field'
+p94
+S'<pydal.objects.Field object>'
+p95
+sS'field.belongs'
+p96
+S'<bound method Field.belongs of <pydal.objects.Field object>>'
+p97
+sS'db'
+p98
+S'<DAL uri="postgres:******@localhost/safe_web2py">'
+p99
+sS').count'
+p100
+S'undefined'
+p101
+sS'n'
+g101
+ssg74
+I101
+sg75
+(dp102
+I96
+S"          'new_users': db.auth_user.registration_key"
+p103
+sI97
+S'         }'
+p104
+sI98
+S''
+sI99
+S'for key, field in n_dict.iteritems():'
+p105
+sI100
+S''
+sI101
+S"    n = db(field.belongs(['Pending', 'pending'])).count() # auth_user uses 'pending' as part of built in mechanisms"
+p106
+sI102
+S'    if n > 0:'
+p107
+sI103
+S"        n_dict[key] = ' (' + str(n) + ')'"
+p108
+sI104
+S'    else:'
+p109
+sI105
+S"        n_dict[key] = ''"
+p110
+ssg87
+S'()'
+p111
+sg89
+S'<module>'
+p112
+sa(dp113
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/objects.py'
+p114
+sg68
+(dp115
+S'self.query'
+p116
+S"<Query (help_request.admin_status IN ('pending','Pending'))>"
+p117
+sS'db._adapter'
+p118
+S'<pydal.adapters.postgres.PostgreSQLAdapter object>'
+p119
+sS'distinct'
+p120
+S'None'
+p121
+sS'self'
+p122
+S"<Set (help_request.admin_status IN ('pending','Pending'))>"
+p123
+sS'db'
+p124
+S'<DAL uri="postgres:******@localhost/safe_web2py">'
+p125
+sS'db._adapter.count'
+p126
+S'<bound method PostgreSQLAdapter.count of <pydal.adapters.postgres.PostgreSQLAdapter object>>'
+p127
+ssg74
+I2012
+sg75
+(dp128
+I2016
+S'        tablenames = adapter.tables(self.query,'
+p129
+sI2007
+S'            return cache_model('
+p130
+sI2008
+S'                key,'
+p131
+sI2009
+S'                (lambda self=self,distinct=distinct: \\'
+p132
+sI2010
+S'                  db._adapter.count(self.query,distinct)),'
+p133
+sI2011
+S'                time_expire)'
+p134
+sI2012
+S'        return db._adapter.count(self.query,distinct)'
+p135
+sI2013
+S''
+sI2014
+S'    def select(self, *fields, **attributes):'
+p136
+sI2015
+S'        adapter = self.db._adapter'
+p137
+ssg87
+S"(self=<Set (help_request.admin_status IN ('pending','Pending'))>, distinct=None, cache=None)"
+p138
+sg89
+S'count'
+p139
+sa(dp140
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/base.py'
+p141
+sg68
+(dp142
+S'distinct'
+p143
+S'None'
+p144
+sS'query'
+p145
+S"<Query (help_request.admin_status IN ('pending','Pending'))>"
+p146
+sS'self'
+p147
+S'<pydal.adapters.postgres.PostgreSQLAdapter object>'
+p148
+sS'self._count'
+p149
+S'<bound method PostgreSQLAdapter._count of <pydal.adapters.postgres.PostgreSQLAdapter object>>'
+p150
+sS'self.execute'
+p151
+S'<bound method PostgreSQLAdapter.execute of <pydal.adapters.postgres.PostgreSQLAdapter object>>'
+p152
+ssg74
+I1318
+sg75
+(dp153
+I1313
+S"            return 'SELECT count(DISTINCT %s) FROM %s%s;' % \\"
+p154
+sI1314
+S'                (sql_d, sql_t, sql_w)'
+p155
+sI1315
+S"        return 'SELECT count(*) FROM %s%s;' % (sql_t, sql_w)"
+p156
+sI1316
+S''
+sI1317
+S'    def count(self, query, distinct=None):'
+p157
+sI1318
+S'        self.execute(self._count(query, distinct))'
+p158
+sI1319
+S'        return self.cursor.fetchone()[0]'
+p159
+sI1320
+S''
+sI1321
+S'    def tables(self, *queries):'
+p160
+sI1322
+S'        tables = set()'
+p161
+ssg87
+S"(self=<pydal.adapters.postgres.PostgreSQLAdapter object>, query=<Query (help_request.admin_status IN ('pending','Pending'))>, distinct=None)"
+p162
+sg89
+g139
+sa(dp163
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/postgres.py'
+p164
+sg68
+(dp165
+S'a'
+S'[u"SELECT count(*) FROM help_request WHERE (help_request.admin_status IN (\'pending\',\'Pending\'));"]'
+p166
+sS'self'
+p167
+S'<pydal.adapters.postgres.PostgreSQLAdapter object>'
+p168
+sS'b'
+g21
+sS'BaseAdapter.execute'
+p169
+S'<unbound method BaseAdapter.execute>'
+p170
+sS'global BaseAdapter'
+p171
+S"<class 'pydal.adapters.base.BaseAdapter'>"
+p172
+ssg74
+I360
+sg75
+(dp173
+I355
+S''
+sI356
+S'    def execute(self, *a, **b):'
+p174
+sI357
+S'        if PY2 and self.driver_name == "pg8000":'
+p175
+sI358
+S'            a = list(a)'
+p176
+sI359
+S"            a[0] = a[0].decode('utf8')"
+p177
+sI360
+S'        return BaseAdapter.execute(self, *a, **b)'
+p178
+sI361
+S''
+sI362
+S''
+sI363
+S'class NewPostgreSQLAdapter(PostgreSQLAdapter):'
+p179
+sI364
+S"    drivers = ('psycopg2','pg8000')"
+p180
+ssg87
+S'(self=<pydal.adapters.postgres.PostgreSQLAdapter object>, *a=[u"SELECT count(*) FROM help_request WHERE (help_request.admin_status IN (\'pending\',\'Pending\'));"], **b={})'
+p181
+sg89
+S'execute'
+p182
+sa(dp183
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/base.py'
+p184
+sg68
+(dp185
+S'a'
+S'(u"SELECT count(*) FROM help_request WHERE (help_request.admin_status IN (\'pending\',\'Pending\'));",)'
+p186
+sS'self'
+p187
+S'<pydal.adapters.postgres.PostgreSQLAdapter object>'
+p188
+sS'b'
+g21
+sS'self.log_execute'
+p189
+S'<bound method PostgreSQLAdapter.log_execute of <pydal.adapters.postgres.PostgreSQLAdapter object>>'
+p190
+ssg74
+I1385
+sg75
+(dp191
+I1380
+S'        self.db._timings.append((command,time.time()-t0))'
+p192
+sI1381
+S'        del self.db._timings[:-TIMINGSSIZE]'
+p193
+sI1382
+S'        return ret'
+p194
+sI1383
+S''
+sI1384
+S'    def execute(self, *a, **b):'
+p195
+sI1385
+S'        return self.log_execute(*a, **b)'
+p196
+sI1386
+S''
+sI1387
+S'    def execute_test_query(self):'
+p197
+sI1388
+S'        return self.execute(self.test_query)'
+p198
+sI1389
+S''
+ssg87
+S'(self=<pydal.adapters.postgres.PostgreSQLAdapter object>, *a=(u"SELECT count(*) FROM help_request WHERE (help_request.admin_status IN (\'pending\',\'Pending\'));",), **b={})'
+p199
+sg89
+g182
+sa(dp200
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/base.py'
+p201
+sg68
+(dp202
+S'a'
+S'(u"SELECT count(*) FROM help_request WHERE (help_request.admin_status IN (\'pending\',\'Pending\'));",)'
+p203
+sS'b'
+g21
+sS'self'
+p204
+S'<pydal.adapters.postgres.PostgreSQLAdapter object>'
+p205
+sS'ret'
+p206
+g101
+sS'command'
+p207
+S'u"SELECT count(*) FROM help_request WHERE (help_request.admin_status IN (\'pending\',\'Pending\'));"'
+p208
+sS'self.get_cursor'
+p209
+S'<bound method PostgreSQLAdapter.get_cursor of <pydal.adapters.postgres.PostgreSQLAdapter object>>'
+p210
+sS').execute'
+p211
+g101
+ssg74
+I1379
+sg75
+(dp212
+I1376
+S"            self.db.logger.debug('SQL: %s' % command)"
+p213
+sI1377
+S'        self.db._lastsql = command'
+p214
+sI1378
+S'        t0 = time.time()'
+p215
+sI1379
+S'        ret = self.get_cursor().execute(command, *a[1:], **b)'
+p216
+sI1380
+S'        self.db._timings.append((command,time.time()-t0))'
+p217
+sI1381
+S'        del self.db._timings[:-TIMINGSSIZE]'
+p218
+sI1382
+S'        return ret'
+p219
+sI1383
+S''
+sI1374
+S'            command = self.filter_sql_command(command)'
+p220
+sI1375
+S'        if self.db._debug:'
+p221
+ssg87
+S'(self=<pydal.adapters.postgres.PostgreSQLAdapter object>, *a=(u"SELECT count(*) FROM help_request WHERE (help_request.admin_status IN (\'pending\',\'Pending\'));",), **b={})'
+p222
+sg89
+S'log_execute'
+p223
+sa(dp224
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/contrib/pg8000/core.py'
+p225
+sg68
+(dp226
+S'self'
+p227
+S'<gluon.contrib.pg8000.core.Cursor instance>'
+p228
+sS'args'
+p229
+S'None'
+p230
+sS'self._c.execute'
+p231
+S'<bound method Connection.execute of <gluon.contrib.pg8000.core.Connection object>>'
+p232
+sS'self._c'
+p233
+S'<gluon.contrib.pg8000.core.Connection object>'
+p234
+sS'operation'
+p235
+S'u"SELECT count(*) FROM help_request WHERE (help_request.admin_status IN (\'pending\',\'Pending\'));"'
+p236
+ssg74
+I573
+sg75
+(dp237
+I576
+S'                raise InterfaceError("Cursor closed")'
+p238
+sI577
+S'            elif self._c._sock is None:'
+p239
+sI568
+S'            self._c._lock.acquire()'
+p240
+sI569
+S'            self.stream = stream'
+p241
+sI570
+S''
+sI571
+S'            if not self._c.in_transaction and not self._c.autocommit:'
+p242
+sI572
+S'                self._c.execute(self, "begin transaction", None)'
+p243
+sI573
+S'            self._c.execute(self, operation, args)'
+p244
+sI574
+S'        except AttributeError:'
+p245
+sI575
+S'            if self._c is None:'
+p246
+ssg87
+S'(self=<gluon.contrib.pg8000.core.Cursor instance>, operation=u"SELECT count(*) FROM help_request WHERE (help_request.admin_status IN (\'pending\',\'Pending\'));", args=None, stream=None)'
+p247
+sg89
+g182
+sa(dp248
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/contrib/pg8000/core.py'
+p249
+sg68
+(dp250
+S'cursor'
+p251
+S'<gluon.contrib.pg8000.core.Cursor instance>'
+p252
+sS'self.handle_messages'
+p253
+S'<bound method Connection.handle_messages of <gluon.contrib.pg8000.core.Connection object>>'
+p254
+sS'self'
+p255
+S'<gluon.contrib.pg8000.core.Connection object>'
+p256
+ssg74
+I1626
+sg75
+(dp257
+I1621
+S'                if self._sock is None:'
+p258
+sI1622
+S'                    raise InterfaceError("connection is closed")'
+p259
+sI1623
+S'                else:'
+p260
+sI1624
+S'                    raise exc_info()[1]'
+p261
+sI1625
+S''
+sI1626
+S'            self.handle_messages(cursor)'
+p262
+sI1627
+S''
+sI1628
+S"            # We've got row_desc that allows us to identify what we're"
+p263
+sI1629
+S'            # going to get back from this statement.'
+p264
+sI1630
+S'            output_fc = tuple('
+p265
+ssg87
+S'(self=<gluon.contrib.pg8000.core.Connection object>, cursor=<gluon.contrib.pg8000.core.Cursor instance>, operation=u"SELECT count(*) FROM help_request WHERE (help_request.admin_status IN (\'pending\',\'Pending\'));", vals=())'
+p266
+sg89
+g182
+sa(dp267
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/contrib/pg8000/core.py'
+p268
+sg68
+(dp269
+S'self'
+p270
+S'<gluon.contrib.pg8000.core.Connection object>'
+p271
+sS'self.error'
+p272
+S'ProgrammingError(\'ERROR\', \'42P01\', \'relation "help_request" does not exist\')'
+p273
+ssg74
+I1774
+sg75
+(dp274
+I1769
+S'        except:'
+p275
+sI1770
+S'            self._close()'
+p276
+sI1771
+S'            raise'
+p277
+sI1772
+S''
+sI1773
+S'        if self.error is not None:'
+p278
+sI1774
+S'            raise self.error'
+p279
+sI1775
+S''
+sI1776
+S"    # Byte1('C') - Identifies the message as a close command."
+p280
+sI1777
+S'    # Int32 - Message length, including self.'
+p281
+sI1778
+S"    # Byte1 - 'S' for prepared statement, 'P' for portal."
+p282
+ssg87
+S'(self=<gluon.contrib.pg8000.core.Connection object>, cursor=<gluon.contrib.pg8000.core.Cursor instance>)'
+p283
+sg89
+S'handle_messages'
+p284
+sasS'pyver'
+p285
+S'Python 2.7.11: /Library/Frameworks/Python.framework/Versions/2.7/Resources/Python.app/Contents/MacOS/Python (prefix: /Library/Frameworks/Python.framework/Versions/2.7)'
+p286
+sS'session'
+p287
+g61
+(S's\r\x10\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">auth</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">expiration</td><td style="vertical-align:top;">:</td><td><div>3600</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">hmac_key</td><td style="vertical-align:top;">:</td><td><div>360ee028-6fb4-4d49-b31e-cc14fc6cf3bd</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_visit</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 3, 24, 21, 27, 39, 485431)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remember_me</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">academic_status</td><td style="vertical-align:top;">:</td><td><div>Research Fellow</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">alternative_email</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">email</td><td style="vertical-align:top;">:</td><td><div>d.orme@imperial.ac.uk</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">first_name</td><td style="vertical-align:top;">:</td><td><div>David</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">id</td><td style="vertical-align:top;">:</td><td><div>1L</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">institution</td><td style="vertical-align:top;">:</td><td><div>Imperial College London</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">institution_address</td><td style="vertical-align:top;">:</td><td><div>Imperial College London</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">institution_phone</td><td style="vertical-align:top;">:</td><td><div>00000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_name</td><td style="vertical-align:top;">:</td><td><div>Orme</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">legacy_user_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">mobile_phone</td><td style="vertical-align:top;">:</td><td><div>00000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">nationality</td><td style="vertical-align:top;">:</td><td><div>British</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">orcid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">phone</td><td style="vertical-align:top;">:</td><td><div>00000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_id</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_key</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">reset_password_key</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">supervisor_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Dr</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user_groups</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">1</td><td style="vertical-align:top;">:</td><td><div>admin</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">3</td><td style="vertical-align:top;">:</td><td><div>bloggers</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr></table></div>'
+tRp288
+sS'etype'
+p289
+S"<class 'gluon.contrib.pg8000.ProgrammingError'>"
+p290
+sS'date'
+p291
+S'Thu Mar 24 21:30:37 2016'
+p292
+sS'response'
+p293
+g61
+(S'sc8\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">body</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x10eb417d8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_safe_web</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div>/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">delimiters</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>{{</div></td></tr><tr><td><div>}}</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">files</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">form_label_separator</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">formstyle</td><td style="vertical-align:top;">:</td><td><div>bootstrap3_inline</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generic_patterns</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>*</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">google_analytics_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">headers</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">X-Powered-By</td><td style="vertical-align:top;">:</td><td><div>web2py</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">menu</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div><table><tr><td><div>About</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>Concept</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/concept</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Ecological Monitoring</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/ecological_monitoring</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Contacts</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/people/contacts</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>The Project design</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Funding and support</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/funders</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>From the field</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>Research Projects</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/projects/projects</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>News</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/news/news</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Blog</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/blog/blogs</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Species profiles</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/species/species</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Outputs</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/outputs/outputs</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Research planning information</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>FAQs and SAFE wiki</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>http://forestecology.net/dokuwiki/safe/start</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Research Requirements</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Health and Safety</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>SAFE Calendars</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/calendars</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Permits</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Costs</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Bed availability</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/visits/bed_availability</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><li class="divider"></li></div></td></tr><tr><td><div><table><tr><td><div>Volunteers available</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/volunteers</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Help sought at SAFE</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/help_requests</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Registered users</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>User directory</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/people/users</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>View research visits</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/visits/research_visits</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>My SAFE</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/my_safe</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><li class="divider"></li></div></td></tr><tr><td><div><table><tr><td><div>Propose a project</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/projects/new_project</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Submit a new output</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/outputs/new_output</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Add an output to a project</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/outputs/add_output_to_project</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Your health and safety info</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/visits/health_and_safety</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Propose a research visit</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/visits/new_research_visit</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Reserve bed space</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/visits/reserve_beds</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Volunteer at SAFE</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/new_volunteer</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Request project help</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/new_help_request</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">meta</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">author</td><td style="vertical-align:top;">:</td><td><div>David Orme &lt;d.orme@imperial.ac.uk&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">description</td><td style="vertical-align:top;">:</td><td><div>Information and administration for the SAFE project</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generator</td><td style="vertical-align:top;">:</td><td><div>Web2py Web Framework</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">keywords</td><td style="vertical-align:top;">:</td><td><div>Ecology</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">models_to_run</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>^\\w+\\.py$</div></td></tr><tr><td><div>^people/\\w+\\.py$</div></td></tr><tr><td><div>^people/manage_users/\\w+\\.py$</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">postprocessing</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_compression_level</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_expires</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_key</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_name</td><td style="vertical-align:top;">:</td><td><div>session_data_safe_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_file</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/sessions/0f7/01a/127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420&#x27;, mode &#x27;rb+&#x27; at 0x1114e5e40&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_filename</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/sessions/127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_hash</td><td style="vertical-align:top;">:</td><td><div>5b2f3d26614973eb109793dbf9989f8f</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-c5a566db-bf4e-4b95-96bf-014d2b078420</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_name</td><td style="vertical-align:top;">:</td><td><div>session_id_safe_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_locked</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_masterapp</td><td style="vertical-align:top;">:</td><td><div>SAFE_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_new</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_storage_type</td><td style="vertical-align:top;">:</td><td><div>file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">status</td><td style="vertical-align:top;">:</td><td><div>200</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">subtitle</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Safe Web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">view</td><td style="vertical-align:top;">:</td><td><div>people/manage_users.html</div></td></tr></table></div>'
+tRp294
+sS'locals'
+p295
+(dp296
+S'cursor'
+p297
+S'<gluon.contrib.pg8000.core.Cursor instance>'
+p298
+sS'self'
+p299
+S'<gluon.contrib.pg8000.core.Connection object>'
+p300
+sg6
+S"'Z'"
+p301
+sS'data_len'
+p302
+S'5'
+sssS'traceback'
+p303
+S'Traceback (most recent call last):\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/restricted.py", line 227, in restricted\n    exec ccode in environment\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/models/menu.py", line 101, in <module>\n    n = db(field.belongs([\'Pending\', \'pending\'])).count() # auth_user uses \'pending\' as part of built in mechanisms\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/objects.py", line 2012, in count\n    return db._adapter.count(self.query,distinct)\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/base.py", line 1318, in count\n    self.execute(self._count(query, distinct))\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/postgres.py", line 360, in execute\n    return BaseAdapter.execute(self, *a, **b)\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/base.py", line 1385, in execute\n    return self.log_execute(*a, **b)\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/base.py", line 1379, in log_execute\n    ret = self.get_cursor().execute(command, *a[1:], **b)\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/contrib/pg8000/core.py", line 573, in execute\n    self._c.execute(self, operation, args)\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/contrib/pg8000/core.py", line 1626, in execute\n    self.handle_messages(cursor)\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/contrib/pg8000/core.py", line 1774, in handle_messages\n    raise self.error\nProgrammingError: (\'ERROR\', \'42P01\', \'relation "help_request" does not exist\')\n'
+p304
+s.

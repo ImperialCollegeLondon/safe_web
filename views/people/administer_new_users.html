@@ -1,0 +1,14 @@
+{{left_sidebar_enabled,right_sidebar_enabled=False,('message' in globals())}}
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+{{=H1('Approve new users')}}
+
+<p>Newly registered users will not be able to access restricted functions until they have been validated.</p>
+
+<br>
+<!-- Show the volunteers form created by the controller -->
+{{=form}}
+
+<br>

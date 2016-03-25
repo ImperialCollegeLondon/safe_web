@@ -1,0 +1,47 @@
+{{extend 'layout.html'}}
+
+<!-- Yes, yes, I've redefined css locally, I know that is bad but I'm implementing function -->
+<style>
+hr { 
+    display: block;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    margin-left: auto;
+    margin-right: auto;
+    border-style: inset;
+    border-width: 1px;
+} 
+</style>
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+<!--Insert a consistently styled back button to return to the grid view-->
+{{= A(SPAN('',_class="icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left"),
+      SPAN('Back', _class="buttontext button"),
+      _class="button btn btn-default", 
+      _href=URL("projects","projects", user_signature=True),
+      _style='padding: 3px 5px 3px 5px;')}}
+
+<hr>
+{{=TABLE(TR(TD('Insert pic here'), 
+	#TR(TD(IMG(_src = URL('default','download', args = this_project.thumbnail_figure), _height = 100),  _style='text-align:right'),
+	    TD(H3(title))), 
+	    _width='100%')}}
+<hr>
+{{=H4("Project details")}}
+<hr>
+{{=this_project}}
+<hr>
+{{=H4("Project members")}}
+<hr>
+{{=membership_panel}}
+<br>
+
+{{if addform is not None:}}
+{{=addform}}
+{{pass}}
+
+<hr>
+{{=H4("Project outputs")}}
+<hr>
+{{=outputs_panel}}
+<br>

@@ -1,0 +1,12 @@
+{{extend 'layout.html'}}
+
+
+{{=H2("Administer new research visits")}}
+
+<p>The form below shows submitted research visit proposalsthat are pending approval. To approve or reject a request, click on the edit button and choose the response from the visit status dropdown menu. The researcher submitting the visit will be emailed automatically with your decision, so you should provide notes to help them understand any problems or information they may need.</p>
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+<br>
+{{=form}}
+<br>

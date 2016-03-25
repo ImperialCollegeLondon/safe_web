@@ -1,0 +1,14 @@
+{{left_sidebar_enabled,right_sidebar_enabled=False,('message' in globals())}}
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+{{=H1('Make decisions on request for project help')}}
+
+<p>The project contact will be automatically emailed your decision, along with any explanation provided in the admin notes field.</p>
+
+<br>
+<!-- Show the volunteers form created by the controller -->
+{{=form}}
+
+<br>
