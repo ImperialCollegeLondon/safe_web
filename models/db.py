@@ -148,10 +148,17 @@ auth.settings.on_failed_authentication = lambda url: redirect(url)
 ## -----------------------------------------------------------------------------
 
 mail = auth.settings.mailer
-mail.settings.server = 'smtp.cc.ic.ac.uk:25' # 'logging' if request.is_local else myconf.take('smtp.server')
-mail.settings.sender = 'd.orme@imperial.ac.uk'
-mail.settings.login = 'dorme:30AngryAardvarks'
 
+# # testing from imperial account
+# mail.settings.server = 'smtp.cc.ic.ac.uk:25' # 'logging' if request.is_local else myconf.take('smtp.server')
+# mail.settings.sender = 'd.orme@imperial.ac.uk'
+# mail.settings.login = 'dorme:notactuallymypassword'
+
+# use the hostgator SMTP server
+mail.settings.server = 'gator4079.hostgator.com:465'
+mail.settings.sender = 'info@safeproject.net'
+mail.settings.login = 'info@safeproject.net:info654='
+mail.settings.ssl = True
 
 ## -----------------------------------------------------------------------------
 ## SAFE TABLE DEFINITIONS
@@ -397,6 +404,11 @@ db.define_table('bed_reservations',
     Field('admin_id','reference auth_user'),
     Field('admin_notes','text'),
     Field('admin_decision_date','date'))
+
+
+db.define_table('bed_reservation_member',
+    Field('bed_reservation_id', 'reference bed_reservations', notnull=True),
+    Field('user_id', 'reference auth_user', notnull=True))
 
 
 # this table is used internally to keep track of available beds
