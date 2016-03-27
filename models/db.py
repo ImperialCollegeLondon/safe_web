@@ -42,13 +42,16 @@ if not request.env.web2py_runtime_gae:
     
     # PG LOCAL setup
     # NOTE - needs to have a created database: 'createdb dbname'
-    # NOTE - experimenting with the lazy_tables options
     connection = "postgres://test:test@localhost/safe_web2py"
     
-    # deploy to MYSQL database on python_anywhere as testing environment
+    # PG REMOTE setup
+    # - this is a link to an AWS RDS instance, which could then be shared by Earthcape
+    # connection = "postgres://safe_admin:Safe2016@earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com/safe_web2py"    
+    
+    # # MYSQL database on python_anywhere testing environment
     # connection = "mysql://DavidOrme:MonteCarloOrBust@DavidOrme.mysql.pythonanywhere-services.com/DavidOrme$safe_web2py"
     
-    db = DAL(connection, lazy_tables=False)
+    db = DAL(connection, lazy_tables=True, pool_size=5)
     
     
     # TODO - look at the myconf.take functionality and config file rather than hard coding
@@ -136,7 +139,7 @@ auth.settings.registration_requires_approval = True
 auth.settings.reset_password_requires_verification = True
 
 # 
-auth.settings.on_failed_authentication = lambda url: redirect(url)
+#auth.settings.on_failed_authentication = lambda url: redirect(url)
 
 # TODO - turn on captcha for regiastration
 # auth.settings.register_captcha = Recaptcha()
@@ -312,6 +315,13 @@ db.define_table('outputs',
     Field('admin_notes','text'),
     Field('admin_decision_date','date'),
     format='%(title)s') # set the way the row is represented in foreign tables
+
+# not sure about this - can fall back to a single owner
+# but want to be able to flag multiple members, perhaps mostly
+# just for the MY_SAFE page
+db.define_table('output_members',
+    Field('output_id', 'reference outputs', notnull=True),
+    Field('user_id', 'reference auth_user', notnull=True))
 
 
 db.define_table('project_outputs',
