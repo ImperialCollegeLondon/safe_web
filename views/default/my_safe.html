@@ -1,0 +1,54 @@
+{{extend 'layout.html'}}
+
+
+<style>
+td {
+    padding: 5px 20px;
+}
+hr { 
+    display: block;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    margin-left: auto;
+    margin-right: auto;
+    border-style: inset;
+    border-width: 1px;
+} 
+</style>
+
+{{=H3('My SAFE')}}
+<br>
+<p>This page allows you to quickly see projects, outputs, research visits and bed reservations of which you are a member. Use the buttons below to switch between the four panels.
+
+<hr>
+<!-- Simple table of links to pages of different contents (could make these actual buttons)-->
+<table width=100% style='table-layout: fixed; text-align:center; cellpadding:10;'>
+<tr><td>{{= A(SPAN('',_class="icon glyphicon zoom-in"),
+              SPAN('Projects', _class="buttontext button"),
+              _class="button btn btn-default btn-block", 
+              _href=URL('default','my_safe', vars=dict(set='project'), user_signature=True),
+              _style='padding: 3px 5px 3px 5px;')}}</td>
+    <td>{{= A(SPAN('',_class="glyphicon zoom-in"),
+              SPAN('Outputs', _class="buttontext button"),
+              _class="button btn btn-default btn-block", 
+              _href=URL('default','my_safe', vars=dict(set='outputs'), user_signature=True),
+              _style='padding: 3px 5px 3px 5px;')}}</td>
+    <td>{{= A(SPAN('',_class="glyphicon zoom-in"),
+              SPAN('Research visits', _class="buttontext button"),
+              _class="button btn btn-default btn-block", 
+              _href=URL('default','my_safe', vars=dict(set='research_visit'), user_signature=True),
+              _style='padding: 3px 5px 3px 5px;')}}</td>
+    <td>{{= A(SPAN('',_class="glyphicon zoom-in"),
+              SPAN('Reservations', _class="buttontext button"),
+              _class="button btn btn-default btn-block", 
+              _href=URL('default','my_safe', vars=dict(set='bed_reservations'), user_signature=True),
+              _style='padding: 3px 5px 3px 5px;')}}</td></tr></table>
+
+<hr>
+
+
+
+{{=grid}}
+
+
+<br>

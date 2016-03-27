@@ -3,3 +3,9 @@ errors/
 
 # ignore session details
 sessions/
+
+# ignore database definitions
+databases/
+
+# mac folder junk
+.DS_Store

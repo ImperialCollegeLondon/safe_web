@@ -54,6 +54,86 @@ def todo():
     
     return response.render()
 
+@auth.requires_login()
+def my_safe():
+    
+    """
+    This controller presents a simple set of grids showing projects, outputs
+    visits, reservations that a user is associated with.
+    """
+    table = request.vars['set']
+    
+    if table is None:
+        table = 'project'
+    
+    # do we present a grid
+    if table in db.tables:
+
+        # provide a look up of which tables and columns to query
+        membership_dict = {'project': {'tab':'project_members', 'col':'project_id',
+                                       'fld': ['title'], 'name': 'projects',
+                                       'mod': 'projects', 'view': 'project_details'},
+                           'outputs': {'tab':'output_members', 'col':'output_id',
+                                       'fld': ['title'], 'name': 'outputs',
+                                       'mod': 'outputs', 'view': 'output _details'},
+                           'research_visit': {'tab':'research_visit_member', 'col':'research_visit_id',
+                                       'fld': ['title'], 'name': 'research visits',
+                                       'mod': 'visits', 'view': 'research_visit_details'},
+                           'bed_reservations': {'tab':'bed_reservation_member', 'col':'bed_reservation_id',
+                                       'fld': ['purpose'], 'name': 'bed reservations',
+                                       'mod': 'visits', 'view': 'bed_reservation_details'}}
+
+
+        m = membership_dict[table]
+        print m
+        
+        # get the set of item ids that the user is a member of 
+        # and which are approved or pending
+        valid_ids = db(db[m['tab']].user_id == auth.user.id)._select(m['col'])
+        query = ((db[table].id.belongs(valid_ids)) & 
+                 (db[table].admin_status.belongs(['Approved', 'Pending'])))
+        
+        if db(query).count() > 0:
+            
+            # Set up some natty little icons to show approval status 
+            # which means including admin_status in fields but hiding it
+            approved_icon = SPAN('',_class="glyphicon glyphicon-ok-sign", 
+                                 _style="color:green;font-size: 1.3em;", 
+                                 _title='Approved')
+            pending_icon = SPAN('',_class="glyphicon glyphicon-question-sign",
+                                 _style="color:orange;font-size: 1.3em;", 
+                                 _title='Pending approval')
+            
+            # get the grid display fields
+            flds = [db[table][f] for f in m['fld']]
+            flds.append(db[table]['admin_status'])
+            db[table]['admin_status'].readable = False
+            print flds
+            
+            # create the links to the standalone controllers
+            links = [dict(header = '', 
+                          body = lambda row: A(SPAN('',_class="glyphicon glyphicon-zoom-in"),
+                                      SPAN('View', _class="buttontext button"),
+                                      _class="button btn btn-default", 
+                                      _href=URL(m['mod'], m['view'], args=[row.id], user_signature=True),
+                                      _style='padding: 3px 5px 3px 5px;')),
+                     dict(header = '', 
+                          body = lambda row: approved_icon if row.admin_status == 'Approved' else pending_icon)]
+            
+            grid = SQLFORM.grid(query, fields=flds,
+                                csv=False, create=False, 
+                                editable=False, deletable=False,
+                                details = False, maxtextlength=200,
+                                searchable=False,
+                                # links_placement='left',
+                                links=links)
+        else:
+            grid = B(CENTER('You are not a member of any {}'.format(m['name'])))
+    else:
+            grid = XML('Balls')
+    
+    return dict(grid = grid )
+    
 
 ## ----------------------------------------------------------------------------
 ## -- This uses a Google Service Account to connect to the Google Calendar API

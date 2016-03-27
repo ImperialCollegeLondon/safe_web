@@ -54,18 +54,69 @@ def output_details():
     # and then get the row and send it to the view
     output_id = request.args(0)
     output = db(db.outputs.id == output_id).select()[0]
-    
-    # get a grid of projects that this output is associated with
-    # query = (db.project_outputs.output_id == output_id)
-    # if db(query).count() == 0:
-    #     projects = None
-    # else:
+     
+    # set up a membership and projects panel 
+    # - note that these view don't exist, they're just a mechanism to load controllers
+    #   and get the contents of sub tables
     projects = LOAD(request.controller,
                     'get_output_projects.html',
                     args=[output_id],
                     ajax=True)
     
-    return dict(output = output, projects = projects)
+    membership_panel = LOAD(request.controller,
+                            'view_output_membership.html',
+                             args=[output_id],
+                             ajax=True)
+    
+    # if the user is a member of the outout then include a list of users to add
+    output_members = db(db.output_members.output_id == output_id).select()
+    output_member_ids = [r.user_id for r in output_members]
+    
+    if auth.is_logged_in() and auth.user.id in output_member_ids:
+        
+        # lock down the value of the output_id locally
+        db.output_members.output_id.default = output_id
+        
+        addform = SQLFORM(db.output_members, 
+                          fields = ['user_id'])
+        
+        if addform.process().accepted:
+            response.flash = CENTER(B('New output member added.'), _style='color: green')
+            # could email the new member here
+            pass
+    
+    else:
+        addform = None
+    
+    return dict(output = output, 
+                projects = projects, 
+                membership_panel = membership_panel, 
+                addform = addform)
+
+
+def view_output_membership():
+    
+    """
+    Present a members of a given output
+    """
+    
+    # retrieve the user id from the page arguments passed by the button
+    output_id = request.args(0)
+    
+    form = SQLFORM.grid((db.output_members.output_id == output_id),
+                       args=[output_id],
+                       fields = [db.output_members.user_id],
+                       maxtextlength=250,
+                       searchable=False,
+                       deletable=False,
+                       details=False,
+                       selectable=False,
+                       create=False,
+                       editable=False,
+                       csv=False,
+                       user_signature=False
+                       )  # change to True in production
+    return form
 
 
 def get_output_projects():
@@ -140,7 +191,8 @@ def new_output():
     
     # continue with form - this has to be defined on the fly
     # in order to bring in the project id choices, which are intercepted in accept()
-    form = SQLFORM.factory(*fields)
+    form = SQLFORM.factory(*fields,
+                           submit_button = 'Submit and add output members')
     
     # now intercept and parse the various inputs
     if form.process(onvalidation=validate_new_output).accepted:
@@ -156,11 +208,17 @@ def new_output():
                                       added_by = auth.user.id,
                                       date_added = datetime.date.today().isoformat())
         
+        # load the creator into the output members table
+        db.output_members.insert(output_id = new_output_id,
+                                 user_id = auth.user.id)
+        
         # Signal success and email the proposer
         mail.send(to=auth.user.email,
            subject='SAFE project output uploaded',
            message='Many thanks for uploading your output')
         session.flash = CENTER(B('SAFE project output successfully submitted.'), _style='color: green')
+        
+        # send back to the outputs page
         redirect(URL('outputs', 'outputs'))
     elif form.errors:
         response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
