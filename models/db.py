@@ -121,7 +121,8 @@ auth.settings.extra_fields['auth_user']= [
     Field('institution_address', 'string'),
     Field('institution_phone', 'string'),
     Field('supervisor_id', 'reference auth_user'),
-    Field('legacy_user_id','integer')]
+    Field('legacy_user_id','integer'),
+    Field('h_and_s_id', 'integer')]
 
 ## create auth tables 
 auth.define_tables(username=False, signature=False)

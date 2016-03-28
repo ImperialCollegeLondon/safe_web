@@ -4,7 +4,7 @@ from collections import Counter
 
 ## -----------------------------------------------------------------------------
 ## Visit controllers
-## - controllers to view and edit a user's H&S form
+## - controllers to view and edit a user's H&S form and for admin to view records
 ## - controllers to book accomodation at SAFE camp
 ## - controllers to approve bookings and manage bed reservations at SAFE camp
 ##   including an admin interface for creating 'special' bookings
@@ -60,6 +60,10 @@ def health_and_safety():
     
     # now intercept and parse the various inputs
     if form.process(onvalidation=validate_health_and_safety).accepted:
+        # insert the h&s record id into the user table 
+        #- this field is primarily to avoid a lookup to just to 
+        #  populate links from visit and reservation details pages
+        db(db.auth_user.id == auth.user.id).update(h_and_s_id = form.vars.id)
         session.flash = CENTER(B('Thanks for providing your health and safety information.'), _style='color: green')
         redirect(URL('default', 'index'))
     elif form.errors:
@@ -75,8 +79,27 @@ def validate_health_and_safety(form):
     """
     Pretty minimal - currently just updates the date edited
     """
-    
     form.vars.date_last_edited = datetime.date.today().isoformat()
+
+@auth.requires_membership('admin')
+def admin_view_health_and_safety():
+    
+    """
+    provides access to the health and safety information for admin
+    """
+    
+    user_id = request.args(0)
+        
+    # look for an existing record
+    rows = db(db.health_and_safety.user_id == user_id).select()
+    if len(rows) > 0:
+        # get the form with the existing or new record
+        form = SQLFORM(db.health_and_safety, record=user_id, 
+                       showid=False, labels={'user_id': 'Name'},
+                       readonly=True)
+    else:
+        form = None
+    return dict(form=form)
 
 
 ## -----------------------------------------------------------------------------
@@ -121,7 +144,7 @@ def bed_availability():
     
     return dict(events=events)
 
-
+@auth.requires_login()
 def reserve_beds():
 
     """
@@ -139,7 +162,8 @@ def reserve_beds():
                    labels = {'research_visit_id':'Approved research visit',
                              'look_see_visit':'These bed bookings are just to explore '
                              'the facilities and research opportunties at SAFE and are '
-                             'not associated with an ongoing research project.'})
+                             'not associated with an ongoing research project.'},
+                   submit_button = 'Submit and add names')
     
     if form.process(onvalidation=validate_reserve_beds).accepted:
         
@@ -159,7 +183,16 @@ def reserve_beds():
             else:
                 row.update_record(pending=row.pending + form.vars.number_of_visitors)
         
-        response.flash = CENTER(B('Bed reservation request submitted.'), _style='color: green')
+        # add the proposer to the reservation names list table
+        db.bed_reservation_member.insert(bed_reservation_id = form.vars.id,
+                                         user_id = auth.user.id)
+        
+        session.flash = CENTER(B('Bed reservation request submitted.'), _style='color: green')
+        print URL('visits','bed_reservation_details', args=form.vars.id)
+        
+        redirect(URL('visits','bed_reservation_details', args=form.vars.id))
+        print 'I am here too'
+    
     elif form.errors:
         response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red') 
     else:
@@ -208,6 +241,7 @@ def validate_reserve_beds(form):
                                           'period, although more may become available if some '
                                           'pending reservations are rejected.')
 
+
 def day_range(start, end):
     
     days = []
@@ -217,6 +251,86 @@ def day_range(start, end):
         curr += datetime.timedelta(days=1)
     
     return(days)
+
+
+@auth.requires_login()
+def bed_reservation_details():
+    
+    """
+    Controller to show the details of a bed reservatoin
+     - collects a bunch of information and passes it to the view for processing
+     - allows members to be added
+    """
+    
+    # get the reservation_id from the call
+    reservation_id = request.args(0)
+    
+    # get the reservation information
+    reservation_record = db.bed_reservations(reservation_id)
+    
+    if reservation_record is None:
+        redirect(URL('default','index'))
+    
+    # get current rows
+    these_rows = db.bed_reservation_member.bed_reservation_id == reservation_id
+    
+    # and hence members
+    reservation_members = db(these_rows).select(db.bed_reservation_member.user_id)
+    
+    # look up the visit and project details if there are any
+    if reservation_record.look_see_visit is False:
+        visit_record = db.research_visit(reservation_record.research_visit_id)
+    else:
+        visit_record = None
+    
+    # only provide active form to project members - can add themselves
+    # although there could be the idea of a coordinator
+    # - to implement
+    authorised_users = [None]
+    
+    if auth.user.id in authorised_users:
+        # Offer choices of new members to add
+        # - find users belonging to the project that this visit is for 
+        #   and which are not already members of the visit
+        already_users = db(these_rows)._select(db.research_visit_member.user_id)
+        which_users = ((db.project_members.project_id == visit_record.project_id) &
+                       (~ db.project_members.user_id.belongs(already_users)))
+        valid_members = db(which_users)._select(db.project_members.user_id)
+        query = db(db.auth_user.id.belongs(valid_members))
+    
+        # - require the visit members
+        db.research_visit_member.user_id.requires = IS_IN_DB(query, db.auth_user.id, '%(last_name)s, %(first_name)s')
+    
+        # lock down the possible value of research_visit_id
+        db.research_visit_member.research_visit_id.default = research_visit_id
+        db.research_visit_member.research_visit_id.readable = False
+        
+        # links for H&S status
+        hs_done_icon = SPAN('',_class="glyphicon glyphicon-list-alt", 
+                             _style="color:green;font-size: 1.3em;", 
+                             _title='H&S Completed')
+        hs_none_icon = SPAN('',_class="glyphicon glyphicon-list-alt",
+                             _style="color:red;font-size: 1.3em;", 
+                             _title='H&S missing')
+        
+        # create the links to the standalone controllers
+        links = [dict(header = '', 
+                      body = lambda row: hs_done_icon )]
+        #              body = lambda row: approved_icon if row.admin_status == 'Approved' else pending_icon)]
+        
+        form = SQLFORM(db.research_visit_member,
+                       fields = ['user_id'],
+                       links = links,
+                       labels = {'user_id':'Project member to add'})
+    
+        # process and reload the page
+        if form.process().accepted:
+            redirect(URL('visits', 'research_visit_details', args=research_visit_id))
+    else:
+        form = None
+    return dict(reservation_record = reservation_record, visit_record = visit_record,
+                reservation_members = reservation_members, form=form)
+
 
 # decorator restricts access to admin users
 # - the link is only revealed in the menu for admin users but 
