@@ -1,0 +1,742 @@
+(dp1
+S'output'
+p2
+S'<class \'gluon.contrib.pg8000.ProgrammingError\'> (\'ERROR\', \'23502\', \'null value in column "bed_reservation_id" violates not-null constraint\')'
+p3
+sS'layer'
+p4
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/controllers/bed_reservations.py'
+p5
+sS'code'
+p6
+S'import datetime\nimport openpyxl\nfrom collections import Counter\n\n## -----------------------------------------------------------------------------\n## BED RESERVATIONS\n## -- controllers to book blocks of beds and administer those bookings\n## -- controllers to book accomodation at SAFE camp\n## -- controllers to approve bookings and manage bed reservations at SAFE camp\n##    including an admin interface for creating \'special\' bookings\n## -- TODO Named beds - registered users only or just names?\n## -----------------------------------------------------------------------------\n\ndef bed_availability():\n\n    """\n    This controller:\n        - creates data for a free beds view using fullcalendar javascript\n        - combining this and the booking on a single page causes issues\n    """\n\n    # get the dates when beds are booked\n    # and select as an iterable of rows\n    bed_data = db(db.bed_data)\n    rows = bed_data.select()\n    \n    # Pass a list of events to the view for the javascript calendar\n    # - need to handle null values from db\n    pend = [0 if r.pending is None else r.pending for r in rows]\n    conf = [0 if r.approved is None else r.approved for r in rows]\n    avail = [n_beds_available - (x+y) for x, y in zip(pend, conf)]\n    # handle admin approved overbooking by trunctating\n    avail = [0 if x < 0 else x for x in avail]\n    date = [r.day.isoformat() for r in rows]\n    \n    # now zip into sets of events, with three per day\n    # one for each of pending confirmed and available\n    n_events = len(date)\n    event_n_beds =pend + conf + avail\n    event_class  = [\'pending\'] * n_events + [\'confirmed\'] * n_events + [\'available\'] * n_events\n    event_title  = [ str(x) + \' \' + y for x,y in zip(event_n_beds, event_class)]\n    event_order  = [2] * n_events + [3] * n_events + [1] * n_events\n    # pass colour information\n    event_backgrounds = [\'#CC9900\'] * n_events + [\'#CC0000\'] * n_events + [\'#228B22\'] * n_events\n    \n    events = zip(event_title, date * 3, event_class, event_order, event_backgrounds)\n    \n    return dict(events=events)\n\n@auth.requires_login()\ndef reserve_beds():\n\n    """\n    This controller:\n        - creates an SQLFORM form to submit a booking\n        - handles responses to errors and success\n        - adds bookings to google calendar (TODO - move to confirmed v pending)\n        - emails booker (TODO - turned off)\n    """\n    \n    form = SQLFORM(db.bed_reservations, \n                   fields=[\'research_visit_id\', \'arrival_date\',\n                           \'departure_date\', \'number_of_visitors\',\n                           \'purpose\', \'look_see_visit\'],\n                   labels = {\'research_visit_id\':\'Approved research visit\',\n                             \'look_see_visit\':\'These bed bookings are just to explore \'\n                             \'the facilities and research opportunties at SAFE and are \'\n                             \'not associated with an ongoing research project.\'},\n                   submit_button = \'Submit and add names\')\n    \n    if form.process(onvalidation=validate_reserve_beds).accepted:\n        \n        # # Mechanism for sending email to logged in user\n        # mail.send(to=auth.user.email,\n        #           subject=\'hello\',\n        #           message=\'hi there\')\n        \n        # update the bed bookings table\n        # - get a list of days to book\n        days_occupied = day_range(form.vars.arrival_date, form.vars.departure_date)\n        # - check those days are in the bed bookings table\n        for d in days_occupied:\n            row = db.bed_data(day=d)\n            if row is None:\n                db.bed_data.insert(day=d, pending=form.vars.number_of_visitors)\n            else:\n                row.update_record(pending=row.pending + form.vars.number_of_visitors)\n        \n        # add the proposer to the reservation names list table\n        db.bed_reservation_member.insert(bed_reservation_id = form.vars.id,\n                                         user_id = auth.user.id)\n\n        session.flash = CENTER(B(\'Bed reservation request submitted.\'), _style=\'color: green\')\n        redirect(URL(\'bed_reservations\',\'bed_reservation_details\', args=form.vars.id))\n    \n    elif form.errors:\n        response.flash = CENTER(B(\'Errors in form, please check and resubmit\'), _style=\'color: red\') \n    else:\n        pass\n    \n    return dict(form=form)\n\n\ndef validate_reserve_beds(form):\n    \n    # add the user id into the response\n    form.vars.reserver_id = auth.user_id\n    form.vars.reservation_date =  datetime.date.today().isoformat()\n    \n    # check the arrival date is more than a fortnight away\n    deadline = datetime.date.today() + datetime.timedelta(days=14)\n    if form.vars.arrival_date < deadline:\n        form.errors.arrival_date = \'14 days notice required. Arrival date must be later than {}.\'.format(deadline.isoformat())\n    \n    # check the departure date is after the arrival date\n    # TODO - think about day visits\n    if form.vars.arrival_date >= form.vars.departure_date:\n        form.errors.departure_date = \'The departure date must be later than the arrival date\'\n    \n    # can\'t be not a look see and not have a visit id - oddly the boolean checkbox widget\n    # returns None when not checked...\n    if form.vars.look_see_visit in [False, None] and form.vars.research_visit_id is None:\n        form.errors.research_visit_id = (\'Unless you just want to evaluate research \'\n                                        \'opportunities at SAFE (see check box below), \'\n                                        \'you must specify an approved research visit. \' \n                                        \'This menu will only give access to current approved \'\n                                        \'visits for projects of which you are a member.\')\n    \n    # Check there are enough beds for the visit\n    # - get a range of days\n    days_requested = day_range(form.vars.arrival_date, form.vars.departure_date)\n    rows = db(db.bed_data.day.belongs(days_requested)).select()\n    pend = [0 if r.pending is None else r.pending for r in rows]\n    conf = [0 if r.approved is None else r.approved for r in rows]\n    avail = [n_beds_available - (x+y) for x, y in zip(pend, conf)]\n    can_fit_request = [x >= form.vars.number_of_visitors for x in avail]\n    if not all(can_fit_request):\n        form.errors.number_of_visitors = (\'There are not enough available beds to cover\'\n                                          \' the requested visit. There is currently a maximum of \' +\n                                          str(min(avail)) + \' beds available throughout this \'\n                                          \'period, although more may become available if some \'\n                                          \'pending reservations are rejected.\')\n\n\ndef day_range(start, end):\n    \n    days = []\n    curr = start\n    while curr < end: # don\'t assign a bed on the departure date, so not <=\n        days.append(curr)\n        curr += datetime.timedelta(days=1)\n    \n    return(days)\n\n\n@auth.requires_login()\ndef bed_reservation_details():\n    \n    """\n    Controller to show the details of a bed reservatoin\n     - collects a bunch of information and passes it to the view for processing\n     - allows members to be added\n    """\n    \n    # get the reservation_id from the call\n    reservation_id = request.args(0)\n    \n    # get the reservation information\n    reservation_record = db.bed_reservations(reservation_id)\n    \n    if reservation_record is None:\n        redirect(URL(\'default\',\'index\'))\n    \n    # need to handle project reservations and look see reservations\n    if reservation_record.look_see_visit is False:\n        # get project members (who have the right to add themselves or others)\n        project_members_query = db.project_members.project_id == visit_record.project_id\n        project_members_rows = db(project_members_query).select(db.project_members.user_id)\n        authorised_users = [r.user_id for r in project_members_rows]\n        # get the visit record to give to the view\n        visit_record = db.research_visit(reservation_record.research_visit_id)\n    else:\n        # otherwise get current visit members and give them the right to add\n        these_rows = db.bed_reservation_member.bed_reservation_id == reservation_id\n        reservation_members = db(these_rows).select(db.bed_reservation_member.user_id)\n        authorised_users = [r.user_id for r in reservation_members]\n        # return an empty visit\n        visit_record = None\n    \n    if auth.user.id in authorised_users:\n        \n        # # Offer choices of new members to add\n        # # - find users belonging to the project that this visit is for\n        # #   and which are not already members of the visit\n        # already_users = db(these_rows)._select(db.research_visit_member.user_id)\n        # which_users = ((db.project_members.project_id == visit_record.project_id) &\n        #                (~ db.project_members.user_id.belongs(already_users)))\n        # valid_members = db(which_users)._select(db.project_members.user_id)\n        # query = db(db.auth_user.id.belongs(valid_members))\n        #\n        # # - require the visit members\n        # db.research_visit_member.user_id.requires = IS_IN_DB(query, db.auth_user.id, \'%(last_name)s, %(first_name)s\')\n    \n        # # lock down the possible value of research_visit_id\n        # db.bed_reservation_member.research_visit_id.default = research_visit_id\n        # db.research_visit_member.research_visit_id.readable = False\n        \n        # # links for H&S status\n        # hs_done_icon = SPAN(\'\',_class="glyphicon glyphicon-list-alt",\n        #                      _style="color:green;font-size: 1.3em;",\n        #                      _title=\'H&S Completed\')\n        # hs_none_icon = SPAN(\'\',_class="glyphicon glyphicon-list-alt",\n        #                      _style="color:red;font-size: 1.3em;",\n        #                      _title=\'H&S missing\')\n        #\n        # # create the links to the standalone controllers\n        # links = [dict(header = \'\',\n        #               body = lambda row: hs_done_icon )]\n        # #              body = lambda row: approved_icon if row.admin_status == \'Approved\' else pending_icon)]\n        \n        form = SQLFORM(db.bed_reservation_member,\n                       fields = [\'user_id\'],\n                       #links = links,\n                       labels = {\'user_id\':\'Project member to add\'})\n    \n        # process and reload the page\n        if form.process().accepted:\n            redirect(URL(\'bed_reservations\', \'bed_reservation_details\', args=reservation_id))\n    else:\n        form = None\n    return dict(reservation_record = reservation_record, visit_record = visit_record,\n                reservation_members = reservation_members, form=form)\n\n\n# decorator restricts access to admin users\n# - the link is only revealed in the menu for admin users but \n#   that doesn\'t prevent pasting in the link!\n@auth.requires_membership(\'admin\')\ndef administer_reserve_beds():\n    \n    """\n    This controller handles:\n     - presenting admin users with a list of current visits from the db\n     - allowing the admin to approve or reject visit requests\n     - Currently this locks all but the admin fields. Might also need\n       a separate admin visit booking form with fewer restrictions for\n       overbooking and special cases?\n    """\n    \n    # don\'t want the admin to change any of this about a visit\n    db.bed_reservations.research_visit_id.writable = False\n    db.bed_reservations.reserver_id.writable = False\n    db.bed_reservations.arrival_date.writable = False\n    db.bed_reservations.departure_date.writable = False\n    db.bed_reservations.number_of_visitors.writable = False\n    db.bed_reservations.purpose.writable = False\n    db.bed_reservations.look_see_visit.writable = False\n    \n    # get a query of pending requests with user_id\n    form = SQLFORM.grid(query=(db.bed_reservations.admin_status == \'Pending\'), csv=False,\n                        fields=[db.bed_reservations.arrival_date, \n                                db.bed_reservations.departure_date,\n                                db.bed_reservations.number_of_visitors],\n                         maxtextlength=250,\n                         deletable=False,\n                         editable=True,\n                         create=False,\n                         details=False,\n                         editargs = {\'fields\': [\'research_visit_id\',\'reserver_id\',\n                                                \'arrival_date\',\'departure_date\',\n                                                \'number_of_visitors\',\'purpose\', \'look_see_visit\',\n                                                \'admin_status\',\'admin_notes\'],\n                                     \'showid\': False},\n                         onvalidation = validate_administer_reserve_beds,\n                         onupdate = update_administer_reserve_beds)\n    \n    return dict(form=form)\n\n@auth.requires_membership(\'admin\')\ndef validate_administer_reserve_beds(form):\n    \n    # validation handles any checking (none here) and also any \n    # amendments to the form variable  - adding user and date of admin\n    form.vars.admin_id = auth.user_id\n    form.vars.admin_decision_date =  datetime.date.today().isoformat()\n    \n    return(form)\n\n@auth.requires_membership(\'admin\')\ndef update_administer_reserve_beds(form):\n\n    """\n    This handler updates the bed_data table to remove or confirm beds \n    on each day and then emails the person who made the reservation\n    """\n    \n    # recover the record to get all the stuff that isn\'t writable\n    record = form.record\n    \n    # get the dates when beds are pending booked\n    # and select as an iterable of rows\n    days_requested = day_range(record.arrival_date, record.departure_date)\n    for d in days_requested:\n        row = db.bed_data(day=d)\n        if(form.vars.admin_status == \'Approved\'):\n            row.update_record(pending=row.pending - record.number_of_visitors,\n                              approved=(0 if row.approved is None else row.approved) + record.number_of_visitors)\n        else:\n            row.update_record(pending= row.pending - record.number_of_visitors)\n    \n    # email the reserver\n    if(form.vars.admin_status == \'Approved\'):\n        \n        # email the proposer\n        mail.send(to=record.reserver_id.email,\n              subject=\'hello\',\n              message=\'Welcome to SAFE\')\n    \n    elif(form.vars.admin_status == \'Rejected\'):\n        \n        mail.send(to=record.reserver_id.email,\n              subject=\'hello\',\n              message=\'Nope\')\n    else:\n        pass\n    \n    return dict(form=form)\n\n\n\n\n@auth.requires_membership(\'admin\')\ndef manage_bed_reservations():\n    \n    """\n    This controller provides a grid view of approved bookings and allows\n    the admin to create new bookings and delete existing ones. Having function\n    to _edit_ bookings is probably necessary but would have to track changes in\n    date and number of beds, so for the moment just cancel and rebook.\n    """\n    \n    # admins can only make Approved bookings\n    db.bed_reservations.admin_status.default = \'Approved\'\n    db.bed_reservations.admin_status.writable = False\n    \n    form = SQLFORM.grid(query=(db.bed_reservations.admin_status == \'Approved\'),\n                        fields = [db.bed_reservations.arrival_date,\n                                  db.bed_reservations.departure_date,\n                                  db.bed_reservations.number_of_visitors,\n                                  db.bed_reservations.reserver_id],\n                        create = True,\n                        editable = False, \n                        deletable = True,\n                        formargs = {\'fields\': [\'research_visit_id\', \'arrival_date\',\n                                               \'departure_date\',\'number_of_visitors\',\n                                               \'purpose\',\'look_see_visit\',\'reserver_id\',\n                                               \'admin_status\', \'admin_notes\'],\n                                    \'showid\': False},\n                        csv = False,\n                        onvalidation = validate_administer_reserve_beds,\n                        oncreate = create_manage_bed_reservations,\n                        ondelete = delete_manage_bed_reservations)\n    \n    return dict(form=form)\n\n\n@auth.requires_membership(\'admin\')\ndef create_manage_bed_reservations(form):\n\n    """\n    This handler updates the bed_data table to add beds \n    on each day and then emails the person who made the reservation\n    but unlike the update_reserve, it know it is going to get approved posts\n    and it doesn\'t get the record but the form.vars\n    """\n        \n    # get the dates of the booking\n    days_requested = day_range(form.vars.arrival_date, form.vars.departure_date)\n    for d in days_requested:\n        row = db.bed_data(day=d)\n        if row is None:\n            db.bed_data.insert(day = d, approved = form.vars.number_of_visitors)\n        else:\n            row.update_record(approved=(0 if row.approved is None else row.approved) + form.vars.number_of_visitors)\n    \n    # email the proposer\n    reserver_email = db.auth_user(form.vars.reserver_id).email\n    mail.send(to=reserver_email,\n              subject=\'Admin bed reservation at SAFE\',\n              message=\'Welcome to SAFE\')\n    \n    response.flash = CENTER(B(\'Admin bed booking made.\'), _style=\'color: green\')\n\n\n\n@auth.requires_membership(\'admin\')\ndef delete_manage_bed_reservations(table, id):\n\n    """\n    This handler removes a record and gets rid of the bed data and emails the original reserver\n    """\n        \n    record = table(id)\n    \n    # get the dates of the booking\n    days_requested = day_range(record.arrival_date, record.departure_date)\n    for d in days_requested:\n        row = db.bed_data(day=d)\n        row.update_record(approved=row.approved - record.number_of_visitors)\n    \n    # email the proposer\n    mail.send(to=record.reserver_id.email,\n              subject=\'Your bed reservation at SAFE has been cancelled\',\n              message=\'Unlucky\')\n    \n    response.flash = CENTER(B(\'Bed booking cancelled.\'), _style=\'color: red\')\n\n\ndef export_bed_reservation_workbook():\n    \n    """\n    This creates an excel workbook showing the current bed reservation data\n    and pokes it out as an http download, so a button can call the controller\n    and return the file via the browser. Formatting needs some work but Ryan\n    was keen on this.\n    """\n    \n    query = ((db.bed_reservations.admin_status == \'Approved\') &\n             (db.bed_reservations.departure_date > datetime.date.today().isoformat()))\n    data = db(query).select(orderby=db.bed_reservations.arrival_date)\n    \n    if len(data) > 0:\n        # open the workbook object\n        wb = openpyxl.Workbook()\n        # get the worksheet\n        ws = wb.active\n        ws.title = \'Bed reservations\'\n        ws[\'A1\'] = \'Bed Reservations at SAFE as of {}\'.format(datetime.date.today().isoformat())\n    \n        # get the arrival date of the first row (which is the earliest, due to the orderby)\n        end_date = start_date = data.first().arrival_date\n    \n        current_row = start_row = 6\n        last_col = start_col = 1\n    \n        fill1 = openpyxl.styles.PatternFill(patternType=\'solid\', \n                                            fgColor=openpyxl.styles.Color(\'55BBBBBB\'))\n        fill2 = openpyxl.styles.PatternFill(patternType=\'solid\', \n                                            fgColor=openpyxl.styles.Color(\'FFDDDDDD\'))\n    \n        for i, row in enumerate(data):\n            this_start_col = (row.arrival_date - start_date).days + start_col \n            this_end_col = (row.departure_date - start_date).days + start_col \n            ws.merge_cells(start_row=current_row, \n                           start_column=this_start_col,\n                           end_row=current_row + row.number_of_visitors - 1 ,\n                           end_column=this_end_col)\n            if last_col < this_end_col:\n                last_col = this_end_col\n                end_date = row.departure_date\n            c = ws.cell(row=current_row, column=(row.arrival_date - start_date).days + start_col)\n            c.style.alignment.vertical = "top"\n            c.value = row.purpose\n            c.fill = fill1 if (i % 2 == 0) else fill2\n            current_row  += row.number_of_visitors \n    \n        # label up the dates\n        dates = day_range(start_date, end_date + datetime.timedelta(days=1))\n        weekday = [d.strftime(\'%a\') for d in dates]\n        month = [d.strftime(\'%B\') for d in dates]\n        day = [d.day for d in dates]\n    \n        for i, (d, w) in enumerate(zip(day, weekday)):\n            c = ws.cell(row=start_row - 1, column=start_col + i)\n            c.value = d\n            c = ws.cell(row=start_row - 2, column=start_col + i)\n            c.value = w\n    \n        current_col = start_col\n        while len(month) > 0:\n            m_counter = Counter(month)\n            this_month = month[0]\n            n_month = m_counter[this_month] \n            ws.merge_cells(start_row=start_row - 3, \n                           start_column=current_col,\n                           end_row=start_row - 3,\n                           end_column=current_col + n_month - 1)\n            c = ws.cell(row=start_row - 3, column=current_col)\n            c.value = this_month\n            current_col = current_col + n_month\n            month = month[n_month:]\n    \n        for i in range(start_col, last_col + 1):\n            ws.column_dimensions[openpyxl.cell.get_column_letter(i)].width = \'3\'\n    \n        # and now poke it out to the browser\n        response.headers[\'Content-Type\'] = \'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\'\n        attachment = \'attachment;filename=SAFE_Bed_reservations_{}.xlsx\'.format(datetime.date.today().isoformat())\n        response.headers[\'Content-Disposition\'] = attachment\n        content = openpyxl.writer.excel.save_virtual_workbook(wb)\n        raise HTTP(200, str(content),\n                   **{\'Content-Type\':\'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\',\n                      \'Content-Disposition\':attachment + \';\'})\n    else:\n        session.flash = CENTER(B(\'No approved bed reservations found.\'), _style=\'color: red\')\n        redirect(URL(\'bed_reservations\',\'manage_bed_reservations\'))\n\n\n\nresponse._vars=response._caller(bed_reservation_details)\n'
+p7
+sS'snapshot'
+p8
+(dp9
+S'exception'
+p10
+(dp11
+S'__module__'
+p12
+S"'gluon.contrib.pg8000'"
+p13
+sS'__getslice__'
+p14
+S"<method-wrapper '__getslice__' of ProgrammingError object>"
+p15
+sS'__str__'
+p16
+S"<method-wrapper '__str__' of ProgrammingError object>"
+p17
+sS'__reduce__'
+p18
+S'<built-in method __reduce__ of ProgrammingError object>'
+p19
+sS'__dict__'
+p20
+S'{}'
+p21
+sS'__sizeof__'
+p22
+S'<built-in method __sizeof__ of ProgrammingError object>'
+p23
+sS'__weakref__'
+p24
+S'None'
+p25
+sS'__init__'
+p26
+S"<method-wrapper '__init__' of ProgrammingError object>"
+p27
+sS'__setattr__'
+p28
+S"<method-wrapper '__setattr__' of ProgrammingError object>"
+p29
+sS'__reduce_ex__'
+p30
+S'<built-in method __reduce_ex__ of ProgrammingError object>'
+p31
+sS'__new__'
+p32
+S'<built-in method __new__ of type object>'
+p33
+sS'__format__'
+p34
+S'<built-in method __format__ of ProgrammingError object>'
+p35
+sS'__class__'
+p36
+S"<class 'gluon.contrib.pg8000.ProgrammingError'>"
+p37
+sS'__doc__'
+p38
+S"'Generic exception raised for programming errors....http://www.python.org/dev/peps/pep-0249/>`_.\\n    '"
+p39
+sS'__getitem__'
+p40
+S"<method-wrapper '__getitem__' of ProgrammingError object>"
+p41
+sS'__setstate__'
+p42
+S'<built-in method __setstate__ of ProgrammingError object>'
+p43
+sS'__getattribute__'
+p44
+S"<method-wrapper '__getattribute__' of ProgrammingError object>"
+p45
+sS'args'
+p46
+S'(\'ERROR\', \'23502\', \'null value in column "bed_reservation_id" violates not-null constraint\')'
+p47
+sS'__subclasshook__'
+p48
+S'<built-in method __subclasshook__ of type object>'
+p49
+sS'__unicode__'
+p50
+S'<built-in method __unicode__ of ProgrammingError object>'
+p51
+sS'__delattr__'
+p52
+S"<method-wrapper '__delattr__' of ProgrammingError object>"
+p53
+sS'__repr__'
+p54
+S"<method-wrapper '__repr__' of ProgrammingError object>"
+p55
+sS'__hash__'
+p56
+S"<method-wrapper '__hash__' of ProgrammingError object>"
+p57
+ssS'evalue'
+p58
+S'(\'ERROR\', \'23502\', \'null value in column "bed_reservation_id" violates not-null constraint\')'
+p59
+sS'request'
+p60
+cgluon.html
+XML_unpickle
+p61
+(S's^g\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">ajax</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">application</td><td style="vertical-align:top;">:</td><td><div>SAFE_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">args</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>2</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">controller</td><td style="vertical-align:top;">:</td><td><div>bed_reservations</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">csrftoken</td><td style="vertical-align:top;">:</td><td><div>ikREEuTW3OsYoKB4z6PI4WMWkQTuO1Vp<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_admin</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-0e610465-5db4-4076-98b3-df60db0d4d0f<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_safe_web</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-d03dadc0-b0c9-4b29-8f16-f27b29f9e0ed<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">env</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">CONTENT_LENGTH</td><td style="vertical-align:top;">:</td><td><div>396</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">CONTENT_TYPE</td><td style="vertical-align:top;">:</td><td><div>multipart/form-data; boundary=----WebKitFormBoundaryZ09xqkcIL9KhWtxP</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_ENCODING</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_LANGUAGE</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CACHE_CONTROL</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONNECTION</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONTENT_LENGTH</td><td style="vertical-align:top;">:</td><td><div>396</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONTENT_TYPE</td><td style="vertical-align:top;">:</td><td><div>multipart/form-data; boundary=----WebKitFormBoundaryZ09xqkcIL9KhWtxP</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_COOKIE</td><td style="vertical-align:top;">:</td><td><div>csrftoken=ikREEuTW3OsYoKB4z6PI4WMWkQTuO1Vp; session_id_admin=127.0.0.1-0e610465-5db4-4076-98b3-df60db0d4d0f; session_id_safe_web=127.0.0.1-d03dadc0-b0c9-4b29-8f16-f27b29f9e0ed</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_HOST</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ORIGIN</td><td style="vertical-align:top;">:</td><td><div>http://127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_REFERER</td><td style="vertical-align:top;">:</td><td><div>http://127.0.0.1:8000/SAFE_web/bed_reservations/bed_reservation_details/2?_signature=40fb8e05950435b29ba1abcf7c27f6a080ab60d8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_UPGRADE_INSECURE_REQUESTS</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_USER_AGENT</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_INFO</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/bed_reservations/bed_reservation_details/2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">QUERY_STRING</td><td style="vertical-align:top;">:</td><td><div>_signature=40fb8e05950435b29ba1abcf7c27f6a080ab60d8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_ADDR</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_PORT</td><td style="vertical-align:top;">:</td><td><div>63582</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_METHOD</td><td style="vertical-align:top;">:</td><td><div>POST</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SCRIPT_NAME</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_NAME</td><td style="vertical-align:top;">:</td><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PROTOCOL</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_SOFTWARE</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/admin/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/welcome/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x10437d050: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;fe80::a65e:60ff:feeb:b729%en0&#x27;, &#x27;192.168.1.73&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;Davids-MacBook-Pro.local&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;print_errors&#x27;: False, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">content_length</td><td style="vertical-align:top;">:</td><td><div>396</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">content_type</td><td style="vertical-align:top;">:</td><td><div>multipart/form-data; boundary=----WebKitFormBoundaryZ09xqkcIL9KhWtxP</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_encoding</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_language</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cache_control</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_connection</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_content_length</td><td style="vertical-align:top;">:</td><td><div>396</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_content_type</td><td style="vertical-align:top;">:</td><td><div>multipart/form-data; boundary=----WebKitFormBoundaryZ09xqkcIL9KhWtxP</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cookie</td><td style="vertical-align:top;">:</td><td><div>csrftoken=ikREEuTW3OsYoKB4z6PI4WMWkQTuO1Vp; session_id_admin=127.0.0.1-0e610465-5db4-4076-98b3-df60db0d4d0f; session_id_safe_web=127.0.0.1-d03dadc0-b0c9-4b29-8f16-f27b29f9e0ed</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_host</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_origin</td><td style="vertical-align:top;">:</td><td><div>http://127.0.0.1:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_referer</td><td style="vertical-align:top;">:</td><td><div>http://127.0.0.1:8000/SAFE_web/bed_reservations/bed_reservation_details/2?_signature=40fb8e05950435b29ba1abcf7c27f6a080ab60d8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_upgrade_insecure_requests</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_user_agent</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>fe80::a65e:60ff:feeb:b729%en0</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>192.168.1.73</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_info</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/bed_reservations/bed_reservation_details/2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">query_string</td><td style="vertical-align:top;">:</td><td><div>_signature=40fb8e05950435b29ba1abcf7c27f6a080ab60d8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_addr</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_port</td><td style="vertical-align:top;">:</td><td><div>63582</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_method</td><td style="vertical-align:top;">:</td><td><div>POST</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_uri</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/bed_reservations/bed_reservation_details/2?_signature=40fb8e05950435b29ba1abcf7c27f6a080ab60d8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_name</td><td style="vertical-align:top;">:</td><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_protocol</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_software</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_path</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.13.2-stable+timestamp.2015.12.18.11.00.46</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x1002971e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x10430a738&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x11053d3d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x1002971e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x10430a738&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x11053d3d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">extension</td><td style="vertical-align:top;">:</td><td><div>html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">folder</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">function</td><td style="vertical-align:top;">:</td><td><div>bed_reservation_details</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">global_settings</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/admin/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/welcome/&#x27;, &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x10437d050: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;fe80::a65e:60ff:feeb:b729%en0&#x27;, &#x27;192.168.1.73&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;Davids-MacBook-Pro.local&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;print_errors&#x27;: False, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>fe80::a65e:60ff:feeb:b729%en0</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>192.168.1.73</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>Davids-MacBook-Pro.local</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.13.2-stable+timestamp.2015.12.18.11.00.46</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_https</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_local</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_restful</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_scheduler</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_shell</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">now</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 3, 29, 16, 49, 52, 277119)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_args</td><td style="vertical-align:top;">:</td><td><div>2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_extension</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/SAFE_web/bed_reservations/bed_reservation_details/2</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">utcnow</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 3, 29, 15, 49, 52, 277127)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi</td><td style="vertical-align:top;">:</td><td><div>&lt;gluon.main.LazyWSGI object at 0x10ea9f490&gt;</div></td></tr></table></div>'
+tRp62
+sS'frames'
+p63
+(lp64
+(dp65
+S'file'
+p66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/restricted.py'
+p67
+sS'dump'
+p68
+(dp69
+S'environment'
+p70
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}"
+p71
+sS'ccode'
+p72
+S'<code object <module> at 0x1107231b0, file "/Use...AFE_web/controllers/bed_reservations.py", line 1>'
+p73
+ssS'lnum'
+p74
+I227
+sS'lines'
+p75
+(dp76
+I224
+S'            ccode = code'
+p77
+sI225
+S'        else:'
+p78
+sI226
+S'            ccode = compile2(code, layer)'
+p79
+sI227
+S'        exec ccode in environment'
+p80
+sI228
+S'    except HTTP:'
+p81
+sI229
+S'        raise'
+p82
+sI230
+S'    except RestrictedError:'
+p83
+sI231
+S'        # do not encapsulate (obfuscate) the original RestrictedError'
+p84
+sI222
+S'    try:'
+p85
+sI223
+S'        if isinstance(code, types.CodeType):'
+p86
+ssS'call'
+p87
+S"(code='import datetime\\nimport openpyxl\\nfrom collections...._vars=response._caller(bed_reservation_details)\\n', environment={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}, layer='/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/controllers/bed_reservations.py')"
+p88
+sS'func'
+p89
+S'restricted'
+p90
+sa(dp91
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/controllers/bed_reservations.py'
+p92
+sg68
+(dp93
+sg74
+I510
+sg75
+(dp94
+I499
+S"        response.headers['Content-Disposition'] = attachment"
+p95
+sI500
+S'        content = openpyxl.writer.excel.save_virtual_workbook(wb)'
+p96
+sI501
+S'        raise HTTP(200, str(content),'
+p97
+sI502
+S"                   **{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',"
+p98
+sI503
+S"                      'Content-Disposition':attachment + ';'})"
+p99
+sI504
+S'    else:'
+p100
+sI505
+S"        session.flash = CENTER(B('No approved bed reservations found.'), _style='color: red')"
+p101
+sI506
+S"        redirect(URL('bed_reservations','manage_bed_reservations'))"
+p102
+sI507
+S''
+sI508
+S''
+ssg87
+S'()'
+p103
+sg89
+S'<module>'
+p104
+sa(dp105
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/globals.py'
+p106
+sg68
+(dp107
+S'self'
+p108
+S'undefined'
+p109
+sS'f'
+S'<function bed_reservation_details>'
+p110
+ssg74
+I412
+sg75
+(dp111
+I416
+S"        self.generic_patterns = ['*']"
+p112
+sI407
+S"        self.flash = ''            # used by the default view layout"
+p113
+sI408
+S'        self.meta = Storage()      # used by web2py_ajax.html'
+p114
+sI409
+S'        self.menu = []             # used by the default view layout'
+p115
+sI410
+S'        self.files = []            # used by web2py_ajax.html'
+p116
+sI411
+S'        self._vars = None'
+p117
+sI412
+S'        self._caller = lambda f: f()'
+p118
+sI413
+S'        self._view_environment = None'
+p119
+sI414
+S'        self._custom_commit = None'
+p120
+sI415
+S'        self._custom_rollback = None'
+p121
+ssg87
+S'(f=<function bed_reservation_details>)'
+p122
+sg89
+S'<lambda>'
+p123
+sa(dp124
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/tools.py'
+p125
+sg68
+(dp126
+S'action'
+p127
+S'<function bed_reservation_details>'
+p128
+sS'a'
+S'()'
+p129
+sS'b'
+g21
+ssg74
+I3882
+sg75
+(dp130
+I3877
+S'                    flag = condition'
+p131
+sI3878
+S'                if not flag:'
+p132
+sI3879
+S'                    current.session.flash = self.messages.access_denied'
+p133
+sI3880
+S'                    return call_or_redirect('
+p134
+sI3881
+S'                        self.settings.on_failed_authorization)'
+p135
+sI3882
+S'                return action(*a, **b)'
+p136
+sI3883
+S'            f.__doc__ = action.__doc__'
+p137
+sI3884
+S'            f.__name__ = action.__name__'
+p138
+sI3885
+S'            f.__dict__.update(action.__dict__)'
+p139
+sI3886
+S'            return f'
+p140
+ssg87
+S'(*a=(), **b={})'
+p141
+sg89
+S'f'
+sa(dp142
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/controllers/bed_reservations.py'
+p143
+sg68
+(dp144
+S'form.process'
+p145
+S'<bound method SQLFORM.process of <gluon.sqlhtml.SQLFORM object>>'
+p146
+sS').accepted'
+p147
+g109
+sS'form'
+p148
+S'<gluon.sqlhtml.SQLFORM object>'
+p149
+ssg74
+I227
+sg75
+(dp150
+I224
+S"                       labels = {'user_id':'Project member to add'})"
+p151
+sI225
+S''
+sI226
+S'        # process and reload the page'
+p152
+sI227
+S'        if form.process().accepted:'
+p153
+sI228
+S"            redirect(URL('bed_reservations', 'bed_reservation_details', args=reservation_id))"
+p154
+sI229
+S'    else:'
+p155
+sI230
+S'        form = None'
+p156
+sI231
+S'    return dict(reservation_record = reservation_record, visit_record = visit_record,'
+p157
+sI222
+S"                       fields = ['user_id'],"
+p158
+sI223
+S'                       #links = links,'
+p159
+ssg87
+S'()'
+p160
+sg89
+S'bed_reservation_details'
+p161
+sa(dp162
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/html.py'
+p163
+sg68
+(dp164
+S'self'
+p165
+S'<gluon.sqlhtml.SQLFORM object>'
+p166
+sS'self.validate'
+p167
+S'<bound method SQLFORM.validate of <gluon.sqlhtml.SQLFORM object>>'
+p168
+sS'kwargs'
+p169
+S"{'dbio': True}"
+p170
+ssg74
+I2304
+sg75
+(dp171
+I2304
+S'        self.validate(**kwargs)'
+p172
+sI2305
+S'        return self'
+p173
+sI2306
+S''
+sI2307
+S'    REDIRECT_JS = "window.location=\'%s\';return false"'
+p174
+sI2308
+S''
+sI2299
+S''
+sI2300
+S''
+sI2301
+S'        """'
+p175
+sI2302
+S"        kwargs['dbio'] = kwargs.get('dbio', True)"
+p176
+sI2303
+S'                                    # necessary for SQLHTML forms'
+p177
+ssg87
+S"(self=<gluon.sqlhtml.SQLFORM object>, **kwargs={'dbio': True})"
+p178
+sg89
+S'process'
+p179
+sa(dp180
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/html.py'
+p181
+sg68
+(dp182
+S'self'
+p183
+S'<gluon.sqlhtml.SQLFORM object>'
+p184
+sS'self.accepts'
+p185
+S'<bound method SQLFORM.accepts of <gluon.sqlhtml.SQLFORM object>>'
+p186
+sS'kwargs'
+p187
+S"{'dbio': True, 'request_vars': <Storage {'_formkey': '3b671701-49d4-4281-b5e2-a...', '_formname': 'bed_reservation_member/create'}>, 'session': <Storage {'_formkey[research_visit/create]': ['8...157ad', '9cbba25e-a77e-4911-9272-95110adaa2e3']}>}"
+p188
+ssg74
+I2241
+sg75
+(dp189
+I2240
+S''
+sI2241
+S'        if self.accepts(**kwargs):'
+p190
+sI2242
+S"            if onsuccess == 'flash':"
+p191
+sI2243
+S'                if next:'
+p192
+sI2244
+S'                    current.session.flash = message_onsuccess'
+p193
+sI2245
+S'                else:'
+p194
+sI2236
+S"        for key in ('message_onsuccess', 'message_onfailure', 'onsuccess',"
+p195
+sI2237
+S"                    'onfailure', 'next', 'message_onchange', 'onchange'):"
+p196
+sI2238
+S'            if key in kwargs:'
+p197
+sI2239
+S'                del kwargs[key]'
+p198
+ssg87
+S"(self=<gluon.sqlhtml.SQLFORM object>, **kwargs={'dbio': True, 'request_vars': <Storage {'_formkey': '3b671701-49d4-4281-b5e2-a...', '_formname': 'bed_reservation_member/create'}>, 'session': <Storage {'_formkey[research_visit/create]': ['8...157ad', '9cbba25e-a77e-4911-9272-95110adaa2e3']}>})"
+p199
+sg89
+S'validate'
+p200
+sa(dp201
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/sqlhtml.py'
+p202
+sg68
+(dp203
+S'self.vars.id'
+p204
+S'None'
+p205
+sS'fields'
+p206
+S"{'user_id': 32}"
+p207
+sS'self'
+p208
+S'<gluon.sqlhtml.SQLFORM object>'
+p209
+sS'self.vars'
+p210
+S"<Storage {'user_id': '32'}>"
+p211
+sS'self.table.insert'
+p212
+S'<bound method Table.insert of <Table bed_reservation_member (id,bed_reservation_id,user_id)>>'
+p213
+sS'self.table'
+p214
+S'<Table bed_reservation_member (id,bed_reservation_id,user_id)>'
+p215
+ssg74
+I1725
+sg75
+(dp216
+I1728
+S''
+sI1729
+S'    AUTOTYPES = {'
+p217
+sI1720
+S'                    self.vars.id = self.record[self.id_field_name]'
+p218
+sI1721
+S'                    if fields:'
+p219
+sI1722
+S'                        self.table._db(self.table._id == self.record['
+p220
+sI1723
+S'                                       self.id_field_name]).update(**fields)'
+p221
+sI1724
+S'                else:'
+p222
+sI1725
+S'                    self.vars.id = self.table.insert(**fields)'
+p223
+sI1726
+S'        self.accepted = ret'
+p224
+sI1727
+S'        return ret'
+p225
+ssg87
+S"(self=<gluon.sqlhtml.SQLFORM object>, request_vars=<Storage {'_formkey': '3b671701-49d4-4281-b5e2-a...', '_formname': 'bed_reservation_member/create'}>, session=<Storage {'_formkey[research_visit/create]': ['8...157ad', '9cbba25e-a77e-4911-9272-95110adaa2e3']}>, formname='bed_reservation_member/create', keepvalues=False, onvalidation=None, dbio=True, hideerror=False, detect_record_change=False, **kwargs={})"
+p226
+sg89
+S'accepts'
+p227
+sa(dp228
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/objects.py'
+p229
+sg68
+(dp230
+S'self._listify'
+p231
+S'<bound method Table._listify of <Table bed_reservation_member (id,bed_reservation_id,user_id)>>'
+p232
+sS'fields'
+p233
+S"{'user_id': 32}"
+p234
+sS'self'
+p235
+S'<Table bed_reservation_member (id,bed_reservation_id,user_id)>'
+p236
+sS'ret'
+p237
+g109
+sS'self._db._adapter'
+p238
+S'<pydal.adapters.postgres.PostgreSQLAdapter object>'
+p239
+sS'self._db._adapter.insert'
+p240
+S'<bound method PostgreSQLAdapter.insert of <pydal.adapters.postgres.PostgreSQLAdapter object>>'
+p241
+sS'self._db'
+p242
+S'<DAL uri="postgres:******@localhost/safe_web2py">'
+p243
+ssg74
+I728
+sg75
+(dp244
+I723
+S'    def insert(self, **fields):'
+p245
+sI724
+S'        fields = self._defaults(fields)'
+p246
+sI725
+S'        self._attempt_upload(fields)'
+p247
+sI726
+S'        if any(f(fields) for f in self._before_insert):'
+p248
+sI727
+S'            return 0'
+p249
+sI728
+S'        ret = self._db._adapter.insert(self, self._listify(fields))'
+p250
+sI729
+S'        if ret and self._after_insert:'
+p251
+sI730
+S'            fields = Row(fields)'
+p252
+sI731
+S'            [f(fields, ret) for f in self._after_insert]'
+p253
+sI732
+S'        return ret'
+p254
+ssg87
+S"(self=<Table bed_reservation_member (id,bed_reservation_id,user_id)>, **fields={'user_id': 32})"
+p255
+sg89
+S'insert'
+p256
+sa(dp257
+g66
+S'/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/base.py'
+p258
+sg68
+(dp259
+S'e'
+S'ProgrammingError(\'ERROR\', \'23502\', \'null value i...ed_reservation_id" violates not-null constraint\')'
+p260
+ssg74
+I746
+sg75
+(dp261
+I741
+S'            self.execute(query)'
+p262
+sI742
+S'        except Exception:'
+p263
+sI743
+S'            e = sys.exc_info()[1]'
+p264
+sI744
+S"            if hasattr(table,'_on_insert_error'):"
+p265
+sI745
+S'                return table._on_insert_error(table,fields,e)'
+p266
+sI746
+S'            raise e'
+p267
+sI747
+S"        if hasattr(table, '_primarykey'):"
+p268
+sI748
+S'            mydict = dict([(k[0].name, k[1]) for k in fields if k[0].name in table._primarykey])'
+p269
+sI749
+S'            if mydict != {}:'
+p270
+sI750
+S'                return mydict'
+p271
+ssg87
+S'(self=<pydal.adapters.postgres.PostgreSQLAdapter object>, table=<Table bed_reservation_member (id,bed_reservation_id,user_id)>, fields=[(<pydal.objects.Field object>, 32)])'
+p272
+sg89
+g256
+sasS'pyver'
+p273
+S'Python 2.7.11: /Library/Frameworks/Python.framework/Versions/2.7/Resources/Python.app/Contents/MacOS/Python (prefix: /Library/Frameworks/Python.framework/Versions/2.7)'
+p274
+sS'session'
+p275
+g61
+(S's\x91\x10\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">auth</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">expiration</td><td style="vertical-align:top;">:</td><td><div>3600</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">hmac_key</td><td style="vertical-align:top;">:</td><td><div>12cea5dd-0fd2-4f32-b61c-802b2b25db15</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_visit</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 3, 29, 16, 46, 2, 980687)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remember_me</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">academic_status</td><td style="vertical-align:top;">:</td><td><div>Research Fellow</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">alternative_email</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">email</td><td style="vertical-align:top;">:</td><td><div>d.orme@imperial.ac.uk</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">first_name</td><td style="vertical-align:top;">:</td><td><div>David</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">h_and_s_id</td><td style="vertical-align:top;">:</td><td><div>1L</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">id</td><td style="vertical-align:top;">:</td><td><div>1L</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">institution</td><td style="vertical-align:top;">:</td><td><div>Imperial College London</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">institution_address</td><td style="vertical-align:top;">:</td><td><div>Imperial College London</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">institution_phone</td><td style="vertical-align:top;">:</td><td><div>00000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_name</td><td style="vertical-align:top;">:</td><td><div>Orme</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">legacy_user_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">mobile_phone</td><td style="vertical-align:top;">:</td><td><div>00000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">nationality</td><td style="vertical-align:top;">:</td><td><div>British</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">orcid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">phone</td><td style="vertical-align:top;">:</td><td><div>00000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_id</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_key</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">reset_password_key</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">supervisor_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Dr</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user_groups</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">1</td><td style="vertical-align:top;">:</td><td><div>admin</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">3</td><td style="vertical-align:top;">:</td><td><div>bloggers</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr></table></div>'
+tRp276
+sS'etype'
+p277
+S"<class 'gluon.contrib.pg8000.ProgrammingError'>"
+p278
+sS'date'
+p279
+S'Tue Mar 29 16:49:52 2016'
+p280
+sS'response'
+p281
+g61
+(S's\xc9E\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">body</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x1125097d8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_safe_web</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-d03dadc0-b0c9-4b29-8f16-f27b29f9e0ed<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div>/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">delimiters</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>{{</div></td></tr><tr><td><div>}}</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">files</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">form_label_separator</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">formstyle</td><td style="vertical-align:top;">:</td><td><div>bootstrap3_inline</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generic_patterns</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>*</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">google_analytics_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">headers</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">X-Powered-By</td><td style="vertical-align:top;">:</td><td><div>web2py</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">menu</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div><table><tr><td><div>About</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>Concept</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/concept</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Ecological Monitoring</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/ecological_monitoring</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Contacts</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/people/contacts</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>The Project design</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Funding and support</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/funders</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>From the field</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>Research Projects</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/projects/projects</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>News</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/news/news</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Blog</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/blog/blogs</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Species profiles</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/species/species</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Outputs</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/outputs/outputs</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Research planning information</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>FAQs and SAFE wiki</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>http://forestecology.net/dokuwiki/safe/start</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Research Requirements</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Health and Safety</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>SAFE Calendars</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/calendars</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Permits</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Costs</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/todo</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Bed availability</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/bed_reservations/bed_availability</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><li class="divider"></li></div></td></tr><tr><td><div><table><tr><td><div>Volunteers available</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/volunteers</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Help sought at SAFE</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/help_requests</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Registered users</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>User directory</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/people/users</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>View research visits</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/research_visits/research_visits</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>My SAFE</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/default/my_safe</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>My health and safety info</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/health_safety/health_and_safety</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><li class="divider"></li></div></td></tr><tr><td><div><table><tr><td><div>Propose a project</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/projects/new_project</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Submit a new output</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/outputs/new_output</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Add an output to a project</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/outputs/add_output_to_project</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Propose a research visit</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/research_visits/new_research_visit</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Reserve bed space</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/bed_reservations/reserve_beds</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Volunteer at SAFE</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/new_volunteer</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Request project help</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/new_help_request</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Admin</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>Manage users</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/people/manage_users</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Manage contacts</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/people/manage_contacts</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Manage bed reservations</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/bed_reservations/manage_bed_reservations</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Add news</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/news/new_news_post</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Add species</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/species/new_species</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><li class="divider"></li></div></td></tr><tr><td><div><table><tr><td><div><b>Approvals</b></div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div>None</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>&gt; New users</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/people/administer_new_users</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>&gt; New projects (4)</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/projects/administer_new_projects</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>&gt; New outputs (1)</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/outputs/administer_outputs</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>&gt; Research visits (4)</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/research_visits/administer_new_research_visits</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>&gt; Bed reservations (5)</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/bed_reservations/administer_reserve_beds</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>&gt; Volunteers</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/administer_volunteers</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>&gt; Help requests</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/marketplace/administer_help_requests</div></td></tr><tr><td><div>[]</div></td></tr></table></div></td></tr><tr><td><div><li class="divider"></li></div></td></tr><tr><td><div><table><tr><td><div>Database admin</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/SAFE_web/appadmin/index</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">meta</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">author</td><td style="vertical-align:top;">:</td><td><div>David Orme &lt;d.orme@imperial.ac.uk&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">description</td><td style="vertical-align:top;">:</td><td><div>Information and administration for the SAFE project</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generator</td><td style="vertical-align:top;">:</td><td><div>Web2py Web Framework</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">keywords</td><td style="vertical-align:top;">:</td><td><div>Ecology</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">models_to_run</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>^\\w+\\.py$</div></td></tr><tr><td><div>^bed_reservations/\\w+\\.py$</div></td></tr><tr><td><div>^bed_reservations/bed_reservation_details/\\w+\\.py$</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">postprocessing</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_compression_level</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_expires</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_key</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_name</td><td style="vertical-align:top;">:</td><td><div>session_data_safe_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_file</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/sessions/126/0f1/127.0.0.1-d03dadc0-b0c9-4b29-8f16-f27b29f9e0ed&#x27;, mode &#x27;rb+&#x27; at 0x11261fae0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_filename</td><td style="vertical-align:top;">:</td><td><div>/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/sessions/127.0.0.1-d03dadc0-b0c9-4b29-8f16-f27b29f9e0ed</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_hash</td><td style="vertical-align:top;">:</td><td><div>e74f45b6cfc735abac66dc3ac2a88b3d</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-d03dadc0-b0c9-4b29-8f16-f27b29f9e0ed</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_name</td><td style="vertical-align:top;">:</td><td><div>session_id_safe_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_locked</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_masterapp</td><td style="vertical-align:top;">:</td><td><div>SAFE_web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_new</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_storage_type</td><td style="vertical-align:top;">:</td><td><div>file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">status</td><td style="vertical-align:top;">:</td><td><div>200</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">subtitle</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Safe Web</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">view</td><td style="vertical-align:top;">:</td><td><div>bed_reservations/bed_reservation_details.html</div></td></tr></table></div>'
+tRp282
+sS'locals'
+p283
+(dp284
+S'query'
+p285
+S"'INSERT INTO bed_reservation_member(user_id) VALUES (32) RETURNING id;'"
+p286
+sS'self'
+p287
+S'<pydal.adapters.postgres.PostgreSQLAdapter object>'
+p288
+sS'e'
+S'ProgrammingError(\'ERROR\', \'23502\', \'null value i...ed_reservation_id" violates not-null constraint\')'
+p289
+sS'fields'
+p290
+S'[(<pydal.objects.Field object>, 32)]'
+p291
+sS'table'
+p292
+S'<Table bed_reservation_member (id,bed_reservation_id,user_id)>'
+p293
+sssS'traceback'
+p294
+S'Traceback (most recent call last):\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/restricted.py", line 227, in restricted\n    exec ccode in environment\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/controllers/bed_reservations.py", line 510, in <module>\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/globals.py", line 412, in <lambda>\n    self._caller = lambda f: f()\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/tools.py", line 3882, in f\n    return action(*a, **b)\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/controllers/bed_reservations.py", line 227, in bed_reservation_details\n    if form.process().accepted:\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/html.py", line 2304, in process\n    self.validate(**kwargs)\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/html.py", line 2241, in validate\n    if self.accepts(**kwargs):\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/sqlhtml.py", line 1725, in accepts\n    self.vars.id = self.table.insert(**fields)\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/objects.py", line 728, in insert\n    ret = self._db._adapter.insert(self, self._listify(fields))\n  File "/Users/dorme/Research/SAFE/Web2Py/web2py/gluon/packages/dal/pydal/adapters/base.py", line 746, in insert\n    raise e\nProgrammingError: (\'ERROR\', \'23502\', \'null value in column "bed_reservation_id" violates not-null constraint\')\n'
+p295
+s.
