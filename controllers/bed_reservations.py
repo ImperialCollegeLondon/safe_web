@@ -126,6 +126,19 @@ def validate_reserve_beds(form):
                                         'This menu will only give access to current approved '
                                         'visits for projects of which you are a member.')
     
+    # if this is a project visit then the beds have to be within the project dates
+    if form.vars.look_see_visit in [False, None] and form.vars.research_visit_id is not None:
+        
+        visit_record = db.research_visit(form.vars.research_visit_id)
+        
+        if form.vars.arrival_date < visit_record.arrival_date:
+            form.errors.arrival_date = ('The bed reservation cannot start before the approved '
+                                        'research visit start date of {}.').format(visit_record.arrival_date.isoformat())
+        
+        if form.vars.departure_date > visit_record.departure_date:
+            form.errors.departure_date = ('The bed reservation cannot end after the approved '
+                                          'research visit start date of {}.').format(visit_record.departure_date.isoformat())
+    
     # Check there are enough beds for the visit
     # - get a range of days
     days_requested = day_range(form.vars.arrival_date, form.vars.departure_date)
@@ -197,7 +210,7 @@ def bed_reservation_details():
         if reservation_record.look_see_visit is False:
             
             # who is already in the project but not visiting
-            already_reserved = [r.user_id for r in reservation_members_rows]
+            already_reserved = [r.id for r in reservation_members_rows]
             not_reserved = list(set(authorised_users) - set(already_reserved))
             query = db(db.auth_user.id.belongs(not_reserved))
             # - require the visit members to be in that set
@@ -207,11 +220,17 @@ def bed_reservation_details():
         db.bed_reservation_member.bed_reservation_id.default = reservation_id
         db.bed_reservation_member.bed_reservation_id.readable = False
         
+        # set the labels
+        if reservation_record.look_see_visit is False:
+            labels = {'user_id':'Project member to add'}
+        else:
+            labels = {'user_id':'SAFE registered member to add'}
+        
         if len(already_reserved) < reservation_record.number_of_visitors:
             form = SQLFORM(db.bed_reservation_member,
                            fields = ['user_id'],
-                           labels = {'user_id':'Project member to add'})
-    
+                           labels = labels)
+            
             # process and reload the page
             if form.process().accepted:
                 redirect(URL('bed_reservations', 'bed_reservation_details', args=reservation_id))
