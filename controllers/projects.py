@@ -239,10 +239,10 @@ def new_project():
                                   project_id = form.vars.id,
                                   project_role='Main Contact')  
         # Signal success and email the proposer
-        mail.send(to=auth.user.email,
+        tmp = mail.send(to=auth.user.email,
            subject='SAFE project proposal submitted',
            message='Many thanks for submitting your project proposal. You have been '
-                   'added as the main contact, please add other members nown')
+                   'added as the main contact, please add other members now')
         
         session.flash = CENTER(B('SAFE project output successfully submitted.'), _style='color: green')
         redirect(URL('projects', 'project_details', args=form.vars.id))

@@ -1,0 +1,42 @@
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash}}</div>
+
+{{=STYLE('td {padding: 5px 20px;}')}}
+
+{{=H3("Research visit details")}}
+
+
+<!-- Compile a set of rows for current members and H&S indicators and insert a title-->
+
+{{hs_ok =SPAN('',_class="glyphicon glyphicon-plus-sign", 
+                                 _style="color:green;font-size: 1em;", 
+                                 _title='H&S completed')}}
+{{hs_no = SPAN('',_class="glyphicon glyphicon-plus-sign", 
+                                 _style="color:red;font-size: 1em;", 
+                                 _title='H&S not completed')}}
+
+{{if(auth.has_membership('admin')):}}
+{{hs_icon = [hs_no if r.h_and_s_id is None else A(hs_ok, _href=URL('health_safety', 'admin_view_health_and_safety', args=r.h_and_s_id)) for r in visit_members]}}
+{{else:}}
+{{hs_icon = [hs_no if r.h_and_s_id is None else hs_ok for r in visit_members]}}
+{{pass}}
+
+{{names = [r.last_name +  ', ' +  r.first_name for r in visit_members]}}
+{{memb_rows = [TR(TD(),TD(hs, XML('&nbsp;')*3, n)) for n, hs in zip(names, hs_icon) ]}}
+{{memb_rows[0][0] = TD(B('Visit members'))}}
+
+{{=TABLE(TR(TD(B('Project')),TD(visit_record.project_id.title)),
+         TR(TD(B('Visit name')),TD(visit_record.title)),
+         TR(TD(B('Dates')),TD(visit_record.arrival_date, ' to ', visit_record.departure_date)),
+         TR(TD(B('Purpose')),TD(visit_record.purpose)),
+         TR(TD(B('Approval status')),TD(visit_record.admin_status)),
+	 memb_rows
+	 )}}
+
+<br>
+{{if form is not None:}}
+{{=P('You are a member of this project and have permission to add project members to this visit')}}
+{{=form}}
+{{pass}}
+<br>

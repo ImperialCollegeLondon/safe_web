@@ -131,6 +131,10 @@ auth.define_tables(username=False, signature=False)
 db.auth_user.legacy_user_id.readable = False
 db.auth_user.legacy_user_id.writable = False
 
+# don't let users edit the link to H&S
+db.auth_user.h_and_s_id.readable = False
+db.auth_user.h_and_s_id.writable = False
+
 # set a string formatting for representing user ID
 db.auth_user._format = '%(last_name)s, %(first_name)s'
 
