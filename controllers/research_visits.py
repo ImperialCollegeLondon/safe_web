@@ -164,13 +164,16 @@ def research_visit_details():
         db.research_visit_member.research_visit_id.default = research_visit_id
         db.research_visit_member.research_visit_id.readable = False
         
-        form = SQLFORM(db.research_visit_member,
-                       fields = ['user_id'],
-                       labels = {'user_id':'Project member to add'})
+        if query.count() > 0:
+            form = SQLFORM(db.research_visit_member,
+                           fields = ['user_id'],
+                           labels = {'user_id':'Project member to add'})
         
-        # process and reload the page
-        if form.process().accepted:
-            redirect(URL('research_visits', 'research_visit_details', args=research_visit_id))
+            # process and reload the page
+            if form.process().accepted:
+                redirect(URL('research_visits', 'research_visit_details', args=research_visit_id))
+        else:
+            form = CENTER(B('All project members are already members of this research visit'), _style='color: red')
     else:
         form = None
     return dict(visit_record = visit_record, visit_members=visit_members_rows, form=form)
