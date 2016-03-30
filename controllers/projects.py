@@ -74,68 +74,85 @@ def project_details():
 
     """
     Custom project view - displays the project and any members or outputs
-    and allow project members to add more project members
+    and allow project members to add more project members. This isn't protected
+    by a decorator because it is used to display approved projects to the public.
+    
+    However we need to protect the interface from being used to query any project 
+    id, so there is an initial block of code to handle who is allowed to view what
+    project status. This might all be shiftable to decorators, actually...
     """
     
     # retrieve the user id from the page arguments passed by the button
     project_id = request.args(0)
     
-    # set up the project form
-    this_project = SQLFORM(db.project, project_id,
-                   fields = ['project_home_country', 
-                             'sampling_sites', 'sampling_scales',
-                             'research_areas', 'start_date', 'end_date',
-                             'rationale', 'methods'],
-                   readonly=True,
-                   showid=False
-                  )
+    # control access to records based on status
+    project_record = db.project(project_id)
     
-    # we want the title as a display item not in the SQLFORM
-    # so it is excluded from fields above and retrieved below using the record
-    title = this_project.record.title
-    pic = this_project.record.picture
+    if (project_record is not None) and \
+       (auth.has_membership('admin') or \
+       (auth.is_logged_in() and project_record.admin_status != 'Rejected') or \
+       (project_record.admin_status == 'Approved')):
     
-    # set up a membership panel - this uses AJAX, which is black box woo to me at the moment
-    # - not that these view don't exist, they're just a mechanism to load controllers
-    #   and get the contents of sub tables
-    membership_panel = LOAD(request.controller,
-                            'view_project_membership.html',
-                             args=[project_id],
-                             ajax=True)
+        # set up the project form
+        this_project = SQLFORM(db.project, project_id,
+                       fields = ['project_home_country', 
+                                 'sampling_sites', 'sampling_scales',
+                                 'research_areas', 'start_date', 'end_date',
+                                 'rationale', 'methods'],
+                       readonly=True,
+                       showid=False
+                      )
     
-    # set up an outputs panel
-    outputs_panel = LOAD(request.controller,
-                            'view_project_outputs.html',
-                             args=[project_id],
-                             ajax=True)
+        # we want the title as a display item not in the SQLFORM
+        # so it is excluded from fields above and retrieved below using the record
+        title = this_project.record.title
+        pic = this_project.record.picture
     
-    # if the user is a member of the project then include a list of users to add
-    project_members = db(db.project_members.project_id == project_id).select()
-    project_member_ids = [r.user_id for r in project_members]
+        # set up a membership panel - this uses AJAX, which is black box woo to me at the moment
+        # - not that these view don't exist, they're just a mechanism to load controllers
+        #   and get the contents of sub tables
+        membership_panel = LOAD(request.controller,
+                                'view_project_membership.html',
+                                 args=[project_id],
+                                 ajax=True)
     
-    if auth.is_logged_in() and auth.user.id in project_member_ids:
+        # set up an outputs panel
+        outputs_panel = LOAD(request.controller,
+                                'view_project_outputs.html',
+                                 args=[project_id],
+                                 ajax=True)
+    
+        # if the user is a member of the project then include a list of users to add
+        project_members = db(db.project_members.project_id == project_id).select()
+        project_member_ids = [r.user_id for r in project_members]
+    
+        if auth.is_logged_in() and auth.user.id in project_member_ids:
         
-        # lock down the value of the project_id locally
-        db.project_members.project_id.default = project_id
+            # lock down the value of the project_id locally
+            db.project_members.project_id.default = project_id
         
-        addform = SQLFORM(db.project_members, 
-                          fields = ['user_id', 'project_role'])
+            addform = SQLFORM(db.project_members, 
+                              fields = ['user_id', 'project_role'])
         
-        if addform.process().accepted:
-            response.flash = CENTER(B('New project member added.'), _style='color: green')
-            # could email the new member here
-            pass
+            if addform.process().accepted:
+                response.flash = CENTER(B('New project member added.'), _style='color: green')
+                # could email the new member here
+                pass
     
+        else:
+            addform = None
+        
+        # pass components to the view
+        return dict(title=title, pic=pic,
+                    this_project=this_project, 
+                    membership_panel=membership_panel,
+                    outputs_panel=outputs_panel,
+                    addform=addform)
+    
+    # now for non-existant records or attempts to access user/admin only
     else:
-        addform = None
-        
-    # pass components to the view
-    return dict(title=title, pic=pic,
-                this_project=this_project, 
-                membership_panel=membership_panel,
-                outputs_panel=outputs_panel,
-                addform=addform)
-
+        session.flash = CENTER(B('Invalid project id number.'), _style='color: red')
+        redirect(URL('projects','projects'))
 
 def view_project_membership():
     
@@ -238,15 +255,26 @@ def new_project():
         # add the proposer as the Main Contact for the project
         db.project_members.insert(user_id = auth.user.id, 
                                   project_id = form.vars.id,
-                                  project_role='Main Contact')  
-        # Signal success and email the proposer
-        tmp = mail.send(to=auth.user.email,
-           subject='SAFE project proposal submitted',
-           message='Many thanks for submitting your project proposal. You have been '
-                   'added as the main contact, please add other members now')
+                                  project_role='Main Contact')
         
+        # email the proposer
+        template =  'email_templates/project_submitted.html'
+        message =  response.render(template,
+                                   {'name': auth.user.first_name,
+                                    'url': URL('projects', 'project_details', args=form.vars.id, scheme=True, host=True)})
+        
+        print message
+        
+        msg_status = mail.send(to=auth.user.email,
+                               subject='SAFE project proposal submission',
+                               message=message)
+        
+        print msg_status
+        
+        # signal success
         session.flash = CENTER(B('SAFE project output successfully submitted.'), _style='color: green')
         redirect(URL('projects', 'project_details', args=form.vars.id))
+        
     elif form.errors:
         response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
     else:
