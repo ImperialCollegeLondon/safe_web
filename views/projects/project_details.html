@@ -22,10 +22,9 @@ hr {
       _style='padding: 3px 5px 3px 5px;')}}
 
 <hr>
-{{=TABLE(TR(TD('Insert pic here'), 
-	#TR(TD(IMG(_src = URL('default','download', args = this_project.thumbnail_figure), _height = 100),  _style='text-align:right'),
+{{=TABLE(TR(TD(IMG(_src = URL('default','download', args = pic), _height = 100)),
 	    TD(H3(title))), 
-	    _width='100%')}}
+	 _width='100%')}}
 <hr>
 {{=H4("Project details")}}
 <hr>

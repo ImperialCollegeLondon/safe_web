@@ -93,6 +93,7 @@ def project_details():
     # we want the title as a display item not in the SQLFORM
     # so it is excluded from fields above and retrieved below using the record
     title = this_project.record.title
+    pic = this_project.record.picture
     
     # set up a membership panel - this uses AJAX, which is black box woo to me at the moment
     # - not that these view don't exist, they're just a mechanism to load controllers
@@ -129,7 +130,7 @@ def project_details():
         addform = None
         
     # pass components to the view
-    return dict(title=title,
+    return dict(title=title, pic=pic,
                 this_project=this_project, 
                 membership_panel=membership_panel,
                 outputs_panel=outputs_panel,
