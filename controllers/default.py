@@ -133,6 +133,18 @@ def my_safe():
     return dict(grid = grid )
     
 
+def lang_switch():
+    
+    """
+    Only exists to switch languages and reload calling page
+    """
+    
+    session.lang = 'my' if session.lang == 'en' else 'en'
+    
+    return response.render()
+
+
+
 ## ----------------------------------------------------------------------------
 ## -- This uses a Google Service Account to connect to the Google Calendar API
 ##    which operates as follows:
