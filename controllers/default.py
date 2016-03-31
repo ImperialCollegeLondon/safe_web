@@ -34,6 +34,10 @@ def concept():
     
     return response.render()
 
+def mailing_list():
+    
+    return response.render()
+
 
 def funders():
     
