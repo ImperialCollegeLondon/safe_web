@@ -110,7 +110,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (T('Manage users'), True, URL('people', 'manage_users'), []),
                         (T('Manage contacts'), True, URL('people', 'manage_contacts'), []),
                         (T('Manage bed reservations'), True, URL('bed_reservations', 'manage_bed_reservations'), []),
-                        (T('Add news'), True, URL('news', 'new_news_post'), []),
+                        (T('Manage news'), True, URL('news', 'manage_news'), []),
                         (T('Add species'), True, URL('species', 'new_species'), []),
                         LI(_class="divider"),
                         (B('Approvals'), False, None, None),

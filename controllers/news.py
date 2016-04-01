@@ -1,4 +1,5 @@
 import datetime
+from fs.osfs import OSFS
 
 ## -----------------------------------------------------------------------------
 ## NEWS
@@ -51,24 +52,54 @@ def news_post():
     return dict(news_post = news_post)
     
 
+## ADMIN
+
 @auth.requires_membership('admin')
-def new_news_post():
+def manage_news():
     
-    # set where the controller is going to save uploads
-    ckeditor.settings.uploadfs = 'uploads/news'
+    """
+    Controller to allow admin to create, edit and delete news posts
+    """
     
-    form = SQLFORM(db.news_posts,
-                   fields=['thumbnail_figure','title','content'])
+    links = [dict(header = '', body = lambda row: A(IMG(_src = URL('default', 
+                  'download', args = row.thumbnail_figure), _height = 100)))]
+                  
+    # need these three fields in the fields list to allow the links
+    # to be created but don't want to actually show them in the grid
+    db.news_posts.thumbnail_figure.readable=False
     
-    if form.process(onvalidation=validate_new_news_post).accepted:
-        response.flash = CENTER(B('News post submitted.'), _style='color: green')
-    else:
-        response.flash = CENTER(B('Problems with the form, check below.'), _style='color: red')
+    form = SQLFORM.grid(db.news_posts, csv=False, 
+                        fields=[db.news_posts.thumbnail_figure,
+                                db.news_posts.title,
+                                db.news_posts.date_posted,
+                                ],
+                        maxtextlength=100,
+                        create=True,
+                        deletable=True,
+                        editable=True, 
+                        details=False, # just reveals a bunch of crappy html.
+                        # searchable=False,
+                        formargs={'showid':False,
+                                  'fields': ['thumbnail_figure', 'title','content']},
+                        editargs={'deletable':False},
+                        links=links,
+                        links_placement='left',
+                        onvalidation = onvalidate_news_post,
+                        oncreate = oncreate_news_post,
+                        onupdate = onupdate_news_post
+                        )
     
     return dict(form=form)
 
 
-def validate_new_news_post(form):
+@auth.requires_membership('admin')
+def oncreate_news_post(form):
+    
+    
+    session.flash = CENTER(B('News post submitted.'), _style='color: green')
+
+
+def onvalidate_news_post(form):
     
     # validation handles any checking and also any 
     # amendments to the form variable  - adding user and date 
@@ -77,21 +108,6 @@ def validate_new_news_post(form):
 
 
 @auth.requires_membership('admin')
-def edit_news_post():
+def onupdate_news_post(form):
     
-    # edits a requested news post
-    news_id = request.args(0)
-    
-    form = SQLFORM(db.news_posts, news_id,
-                   fields=['thumbnail_figure','title','content'], 
-                   showid=False)
-    
-    # Note - no validation, don't want to overwrite original poster/date
-    if form.process().accepted:
-        session.flash = CENTER(B('News post edited.'), _style='color: green')
-        redirect(URL('news','news_post', args=news_id))
-    else:
-        response.flash = CENTER(B('Problems with the form, check below.'), _style='color: red')
-    
-    return dict(form=form)
-
+    session.flash = CENTER(B('News post edited.'), _style='color: green')

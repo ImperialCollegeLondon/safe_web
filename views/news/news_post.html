@@ -15,15 +15,6 @@ td {padding: 5px 20px;}
 
 <div class="flash">{{=response.flash or session.flash or ' '}}</div>
 
-<!-- Add an edit button for admin users -->
-{{if(auth.has_membership('admin')):}}
-{{= A(SPAN(_class="icon glyphicon glyphicon-edit"),
-      SPAN(' Edit news item', _class="buttontext button"),
-      _class="button btn btn-default", 
-      _href=URL("news","edit_news_post", args=[news_post.id]),
-      _style='padding: 3px 5px 3px 5px;')}}
-{{pass}}
-
 <!--Insert a consistently styled back button to return to the grid view-->
 {{= A(SPAN(_class="glyphicon glyphicon-arrow-left"),
       SPAN(' Back', _class="buttontext button"),

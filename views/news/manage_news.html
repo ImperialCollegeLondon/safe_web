@@ -1,0 +1,14 @@
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+{{=H1('Manage news posts')}}
+
+<p> Current news posts are shown below. You can use the links to add a new post, edit an existing post or delete a post. </p>
+	
+<p> <strong> Remember that your post will immediately go live on the internet!</strong></p>
+<br>
+
+{{=form}}
+
+<br>
