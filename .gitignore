@@ -9,3 +9,6 @@ databases/
 
 # mac folder junk
 .DS_Store
+
+# byte compliled python
+*.pyc
