@@ -374,22 +374,22 @@ if db(db.blog_posts).count() == 0:
     # db.outputs.import_from_csv_file(open(data_file, 'rb'))
 
     img_dir = 'private/db_preload_data/images/blog_thumbnails'
-    
+
     with open(data_file) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            
+
             # get the images
             if row['thumb'] != '':
                 img_in = os.path.join(request.folder, img_dir, row['thumb'])
                 img_st = db.blog_posts.thumbnail_figure.store(open(img_in, 'rb'), row['thumb'])
             else:
                 img_st = None
-            
+
             # now insert all the information
             db.blog_posts.insert(thumbnail_figure = img_st,
                               authors = row['authors'],
-                              title = row['title'], 
+                              title = row['title'],
                               content = row['content'],
                               date_posted = row['date_posted'],
                               admin_status = 'Approved',
@@ -421,21 +421,21 @@ if db(db.news_posts).count() == 0:
     # db.outputs.import_from_csv_file(open(data_file, 'rb'))
 
     img_dir = 'private/db_preload_data/images/news_thumbnails'
-    
+
     with open(data_file) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            
+
             # get the images
             if row['thumb'] != '':
                 img_in = os.path.join(request.folder, img_dir, row['thumb'])
                 img_st = db.news_posts.thumbnail_figure.store(open(img_in, 'rb'), row['thumb'])
             else:
                 img_st = None
-            
+
             # now insert all the information
             db.news_posts.insert(thumbnail_figure = img_st,
-                              title = row['title'], 
+                              title = row['title'],
                               content = row['content'],
                               date_posted = row['date_posted'],
                               poster_id = 1, # DO assuming ownership

@@ -1,5 +1,7 @@
 {{extend 'layout.html'}}
 
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
 <br>
 {{=form}}
 <br>

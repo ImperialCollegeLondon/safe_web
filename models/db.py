@@ -46,12 +46,12 @@ if not request.env.web2py_runtime_gae:
     
     # PG REMOTE setup
     # - this is a link to an AWS RDS instance, which could then be shared by Earthcape
-    # connection = "postgres://safe_admin:Safe2016@earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com/safe_web2py"    
+    # connection = "postgres://safe_admin:Safe2016@earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com/safe_web2py"
     
     # # MYSQL database on python_anywhere testing environment
     # connection = "mysql://DavidOrme:MonteCarloOrBust@DavidOrme.mysql.pythonanywhere-services.com/DavidOrme$safe_web2py"
     
-    db = DAL(connection, lazy_tables=True, pool_size=5)
+    db = DAL(connection, lazy_tables=False, pool_size=5)
     
     
     # TODO - look at the myconf.take functionality and config file rather than hard coding
@@ -138,6 +138,9 @@ db.auth_user.h_and_s_id.writable = False
 # set a string formatting for representing user ID
 db.auth_user._format = '%(last_name)s, %(first_name)s'
 
+# turn user emails into email links
+db.auth_user.email.represent = lambda value, row: A(value, _href='mailto:{}'.format(value))
+
 ## configure auth policies
 auth.settings.registration_requires_verification = False
 auth.settings.registration_requires_approval = True
@@ -182,8 +185,22 @@ mail.settings.ssl = True
 
 from plugin_ckeditor import CKEditor
 ckeditor = CKEditor(db)
+
+## TODO URGENT - playing around with 
+# ckeditor.settings.table_upload_name = 'ckeditor_news'
+#
+#
+# from fs.osfs import OSFS
+# app_root = request.folder
+# app_root_fs = OSFS(app_root)
+# ckeditor.settings.uploadfs = app_root_fs.opendir('uploads/news/')
+
 ckeditor.define_tables()
 
+# ckeditor.settings.table_upload_name = 'ckeditor_blog'
+# ckeditor.define_tables()
+#
+# print ckeditor.settings
 ## -----------------------------------------------------------------------------
 ## RCUK PROJECT SUBJECT TAGS
 ## Populated by fixtures file
@@ -548,7 +565,8 @@ db.define_table('blog_posts',
                 Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
                 Field('admin_id','reference auth_user'),
                 Field('admin_notes','text'),
-                Field('admin_decision_date','date'))
+                Field('admin_decision_date','date'),
+                Field('expired','boolean', default=False))
 
 
 ## -----------------------------------------------------------------------------
@@ -564,7 +582,8 @@ db.define_table('news_posts',
                 Field('content', 'text', widget=ckeditor.widget),
                 # who posted it and when
                 Field('poster_id', 'reference auth_user'),
-                Field('date_posted', 'date'))
+                Field('date_posted', 'date'),
+                Field('expired', 'boolean', default = False))
 
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)

@@ -97,6 +97,7 @@ n_dict = {'bed': db.bed_reservations.admin_status,
           'proj': db.project.admin_status,
           'output': db.outputs.admin_status,
           'vol': db.help_offered.admin_status,
+          'blog': db.blog_posts.admin_status,
           'help': db.help_request.admin_status,
           'new_users': db.auth_user.registration_key
          }
@@ -124,6 +125,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (T('> New outputs') + n_dict['output'], True, URL('outputs', 'administer_outputs'), []),
                         (T('> Research visits') + n_dict['vis'], True, URL('research_visits', 'administer_new_research_visits'), []),
                         (T('> Bed reservations') + n_dict['bed'], True, URL('bed_reservations', 'administer_reserve_beds'), []),
+                        (T('> Blog posts') + n_dict['blog'], True, URL('blog', 'administer_blogs'), []),
                         (T('> Volunteers') + n_dict['vol'], True, URL('marketplace', 'administer_volunteers'), []),
                         (T('> Help requests' + n_dict['help']), True, URL('marketplace', 'administer_help_requests'), []),
                         LI(_class="divider"),

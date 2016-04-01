@@ -21,7 +21,7 @@ def news():
     
     db.news_posts.thumbnail_figure.readable=False
     
-    form = SQLFORM.grid(db.news_posts, 
+    form = SQLFORM.grid(query=db.news_posts.expired == False, 
                         fields=[db.news_posts.thumbnail_figure,
                                 db.news_posts.title,
                                 db.news_posts.date_posted],
@@ -47,7 +47,11 @@ def news_post():
     # retrieve the news post id from the page arguments passed by the button
     # and then get the row and send it to the view
     news_id = request.args(0)
-    news_post = db(db.news_posts.id == news_id).select()[0]
+    news_post = db.news_posts(news_id)
+    
+    if news_post is None or news_post.expired:
+        session.flash = CENTER(B('Invalid news post number.'), _style='color: red')
+        redirect(URL('news','news'))
     
     return dict(news_post = news_post)
     
@@ -75,12 +79,14 @@ def manage_news():
                                 ],
                         maxtextlength=100,
                         create=True,
-                        deletable=True,
+                        deletable=False,
                         editable=True, 
                         details=False, # just reveals a bunch of crappy html.
                         # searchable=False,
-                        formargs={'showid':False,
-                                  'fields': ['thumbnail_figure', 'title','content']},
+                        formargs={'showid': False,
+                                  'fields': ['expired','thumbnail_figure', 'title','content'],
+                                  'labels': {'expired':'Remove news post from public view.'},
+                                  'links': None},
                         editargs={'deletable':False},
                         links=links,
                         links_placement='left',
