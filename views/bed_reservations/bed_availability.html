@@ -8,14 +8,14 @@
 <div class="flash">{{=response.flash or ' '}}</div>
 
 
-{{=A('Got to bed reservations',_class='button btn btn-default',
+{{=A('Go to bed reservations',_class='button btn btn-default',
     _href=URL("bed_reservations","reserve_beds"),
     _title="There is a javascript incompatibility with the calendar that breaks the dropdown menus on this page, so this is here as an escape button. Or you can use the SAFE logo to go the home page. Sorry!")}}
 
 
 {{=H3('Bed availability')}}
 
-The calender below shows the current availability of beds at the SAFE project. If there are no entries for a date, then there are no current pending or confirmed bed reservations.
+The calender below shows the current availability of beds at the SAFE project. There are {{=B(n_beds_available, ' beds available')}} in total and the calendar indicates how many are currently confirmed booked or in pending bookings for each day. Empty dates have no current pending or confirmed bed reservations!
 <br/><br/>
 
 <script type='text/javascript'>

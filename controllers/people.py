@@ -18,8 +18,7 @@ def users():
                         fields=[db.auth_user.last_name,
                                 db.auth_user.first_name, 
                                 db.auth_user.email,
-                                #db.auth_user.id.represent
-                               ],
+                               ], 
                         maxtextlength=250,
                         deletable=False,
                         editable=False,
