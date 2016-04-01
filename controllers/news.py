@@ -10,8 +10,9 @@ from fs.osfs import OSFS
 
 def news():
     
-    links = [dict(header = '', body = lambda row: A(IMG(_src = URL('default', 
-                  'download', args = row.thumbnail_figure), _height = 100))),
+    links = [dict(header = '', body = lambda row: IMG(_src = URL('default', 'download', args = row.thumbnail_figure) if row.thumbnail_figure is not None else 
+                                                             URL('static', 'images/default_thumbnails/missing_news.png'),
+                                                        _height = 100)),
              dict(header = '', 
                   body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
                                        SPAN('View', _class="buttontext button"),
@@ -65,8 +66,9 @@ def manage_news():
     Controller to allow admin to create, edit and delete news posts
     """
     
-    links = [dict(header = '', body = lambda row: A(IMG(_src = URL('default', 
-                  'download', args = row.thumbnail_figure), _height = 100)))]
+    links = [dict(header = '', body = lambda row: IMG(_src = URL('default', 'download', args = row.thumbnail_figure) if row.thumbnail_figure is not None else 
+                                                             URL('static', 'images/default_thumbnails/missing_news.png'),
+                                                        _height = 100))]
                   
     # need these three fields in the fields list to allow the links
     # to be created but don't want to actually show them in the grid

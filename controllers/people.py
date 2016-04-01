@@ -158,7 +158,13 @@ def contacts():
         contact_type=request.vars.group
     
     # create a link to show the pictures
-    links = [dict(header = '', body = lambda row: A(IMG(_src = URL('default', 'download', args = row.picture) if row.picture is not None else URL('static', 'images/missing_person.png', args = row.picture) , _height = 100)))]
+    links = [dict(header = '', body = lambda row: IMG(_src = URL('default', 'download', args = row.picture) if row.picture is not None else
+                                                             URL('static', 'images/default_thumbnails/missing_person.png'),
+                                                      _height = 100))]
+    
+    # set a default image for the picture
+    db.safe_contacts.picture.default = os.path.join(request.folder, 'static', 'images/default_thumbnails/missing_person.png')
+    
     
     # need picture in the fields list to allow the links to be created 
     # but don't want to actually show them in the grid
