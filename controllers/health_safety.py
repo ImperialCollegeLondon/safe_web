@@ -24,22 +24,11 @@ def health_and_safety():
     db.health_and_safety.date_last_edited.writable = False
     
     # look for an existing record, otherwise initialise a blank one
-    # - this is a bit of a hack. The DB backend accepts the empty strings
-    #   but conveniently the SQLFORM validation doesn't, so you can't just
-    #   click through with the blank form 
     rows = db(db.health_and_safety.user_id == auth.user.id).select()
     if len(rows) > 0:
         record = rows.first().id
     else:
-        record = db.health_and_safety.insert(user_id = auth.user.id, 
-                                             passport_number = '',
-                                             emergency_contact_name = '',
-                                             emergency_contact_address = '',
-                                             emergency_contact_phone = '',
-                                             emergency_contact_email = '',
-                                             insurance_company = '',
-                                             insurance_emergency_phone = '',
-                                             insurance_policy_number = '')
+        record = None
     
     # get the form with the existing or new record
     form = SQLFORM(db.health_and_safety, record=record, 

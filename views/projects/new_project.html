@@ -2,14 +2,118 @@
 
 <div class="flash">{{=response.flash or session.flash or ' '}}</div>
 
-{{=H1('New project proposal submission')}}
+{{=H1('Project submission record')}}
 
-<p> Please use the form below to propose a new research project at SAFE. The proposal will be considered by a panel of current researchers at SAFE. You will get an email to confirm that you have submitted a project and then another email to confirm whether the project has been accepted or not.</p>
+<p> This page allows registered users to submit new projects, to edit existing projects of which they are a project coordinator and to view a full record of project proposals submitted to SAFE. 
+	
+<p> If you are submitting a new proposal, it will first be screened by an administrator and then sent out to all project coordinators at SAFE for comments. This process usually takes about 14 days. You will get an email to confirm that you have submitted a project and then another email to confirm whether the project has been accepted or not.</p>
 
 <p> You will be added as the main contact for the new project and then forwarded to the project details page, where you can add more members.</p>
 
+<!--http://web2py.com/books/default/chapter/29/07/forms-and-validators#Custom-forms-->
 <br>
 
-{{=form}}
+{{=form.custom.begin}}
+
+{{if record is not None:}}
+{{=B('Project status:') + XML('&nbsp;')*3 + approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.admin_status}}
+{{else:}}
+{{=B('Project status:') + XML('&nbsp;')*3 + approval_icons_big['Pending'] + XML('&nbsp;')*3 + 'Pending'}}
+{{pass}}
+{{=BR()+HR()}}
+
+{{=B('Title:')}} <div>{{=form.custom.widget.title}}</div>
+
+<table width='100%'><tr><td width='33%'>
+{{=B('Start date:')}}<div style='width:150px'>{{=form.custom.widget.start_date}}</div>
+{{=B('End date:')}}<div style='width:150px'>{{=form.custom.widget.end_date}}</div>
+</td>
+<td width='33%'>
+{{=B('Load a picture:')}}
+{{=form.custom.widget.picture}}
+<br>
+{{=B('Home country:')}}
+{{=form.custom.widget.project_home_country}}
+</td>
+<td width='33%'>
+{{=B('Data use:')}}
+{{=form.custom.widget.data_use}}
+</td>
+</tr></table>
+
+<hr>
+
+<!--Way to edit the default settings on the widgets - like the number of rows on the text box 
+  - but this setting isn't available when the form is readonly.-->
+{{=H3('Science case')}}
+
+<p>
+{{=B('Rationale')}}
+
+{{rat=form.custom.widget.rationale}}
+{{if form.readonly is False:}}
+{{rat['_rows'] = 5}}
+{{pass}}
+{{=rat}}
 
 <br>
+{{=B('Methods')}}
+{{meth=form.custom.widget.methods}}
+
+{{if form.readonly is False:}}
+{{meth['_rows'] = 5}}
+{{pass}}
+{{=meth}}
+
+<hr>
+{{=H3('Ethics and stewardship')}}
+
+{{=B('List any animal taxa that this project will work with:')}} <div>{{=form.custom.widget.which_animal_taxa}}</div>
+
+
+<script>
+$(document).ready(function(){
+    $("#project_destructive_sampling").click(function(){
+        $("#sample_box").fadeToggle();
+    });
+});
+</script>
+
+{{=form.custom.widget.destructive_sampling + B('Will your project involve destructive sampling?')}}
+
+{{sample_init = 'display:block;' if form.vars.destructive_sampling is True else 'display:none'}}
+<div id='sample_box', style={{=sample_init}}>
+{{='Provide a detailed explanation of what destructive sampling you will use and why.'}}
+{{sampling_info=form.custom.widget.destructive_sampling_info}}
+{{=sampling_info}}
+</div>
+<br>
+{{=form.custom.widget.destructive_sampling + B('Do you have any required ethics approval?')}}
+
+
+<hr>
+{{=H3('Requirements')}}
+
+{{=form.custom.widget.requires_ra + XML('&nbsp;') * 3 + B('Will this project require Research Assistant time?') + BR()}}
+{{=form.custom.widget.requires_vehicle + XML('&nbsp;') * 3 + B('Will this project require the use of vehicles to access sites?')+ BR()}}
+{{=B('Please describe any RA, vehicle or other resources the project will need:')}} <div>{{=form.custom.widget.title}}</div>
+
+<hr>
+{{=H3('Funding and data sharing')}}
+<p>The SAFE Project requires that you deposit a copy of any primary field data you collect in the Project's central database, and to provide metadata file. </p>
+
+{{=form.custom.widget.data_sharing + XML('&nbsp;') * 3 + B('Check this box to confirm you agree to provide your data to the SAFE project')+ BR()*2}}
+
+<p>It is very important for us to show our funders the extent to which their investment has been leveraged to support work beyond their central donation. If you have a grant to support this work or applying for one, please give details of the grant title, funder, year of award and amount below:</p>
+{{=form.custom.widget.funding}}
+<hr>
+{{=form.custom.submit}}
+{{=form.custom.end}}
+
+{{if record is not None:}}
+{{=B('Admin notes')}}
+{{=TEXTAREA(record.admin_history, _rows=5)}}
+{{pass}}
+
+<br>
+

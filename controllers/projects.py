@@ -71,7 +71,7 @@ def projects():
 
 
 def project_details():
-
+    
     """
     Custom project view - displays the project and any members or outputs
     and allow project members to add more project members. This isn't protected
@@ -94,9 +94,9 @@ def project_details():
        (project_record.admin_status == 'Approved')):
     
         # set up the project form
+        # TODO - what new fields to add for public consumption?
         this_project = SQLFORM(db.project, project_id,
                        fields = ['project_home_country', 
-                                 'sampling_sites', 'sampling_scales',
                                  'research_areas', 'start_date', 'end_date',
                                  'rationale', 'methods'],
                        readonly=True,
@@ -232,55 +232,87 @@ def view_project_outputs():
 def new_project():
 
     """
-    Controller to handle the creation of new project proposals and to
-    insert a check that the user agrees to data sharing
+    Controller to handle the creation of new project proposals. This needs to be a 
+    form that users can return to to fix problems etc, so this controller accepts project_id
+    as an argument to reload existing records. We therefore also need access control.
     """
 
-    form = SQLFORM(db.project,
-                   fields = ['picture', 'title', 'project_home_country',
-                             'sampling_sites', 'sampling_scales',
-                             'research_areas', 'start_date', 'end_date',
-                             'rationale', 'methods', 'requires_ra',
-                             'requires_vehicle','resource_notes', 'data_sharing'],
-                   labels = {'requires_ra': 'Will your project require Research Assistant time?',
-                             'requires_vehicle': 'Will your project need a vehicle to access sites?',
-                             'resource_notes': 'Give details of expected resources needed',
-                             'data_sharing': 'I agree to the requirements of the SAFE project and will '
-                                             'submit the project data to the SAFE database at the '
-                                             'conclusion of this project.'},
-                  submit_button = 'Submit and add project members')
-
-    if form.process(onvalidation=validate_new_project).accepted:
-        
-        # add the proposer as the Main Contact for the project
-        db.project_members.insert(user_id = auth.user.id, 
-                                  project_id = form.vars.id,
-                                  project_role='Main Contact')
-        
-        # email the proposer
-        template =  'email_templates/project_submitted.html'
-        message =  response.render(template,
-                                   {'name': auth.user.first_name,
-                                    'url': URL('projects', 'project_details', args=form.vars.id, scheme=True, host=True)})
-        
-        print message
-        
-        msg_status = mail.send(to=auth.user.email,
-                               subject='SAFE project proposal submission',
-                               message=message)
-        
-        print msg_status
-        
-        # signal success
-        session.flash = CENTER(B('SAFE project output successfully submitted.'), _style='color: green')
-        redirect(URL('projects', 'project_details', args=form.vars.id))
-        
-    elif form.errors:
-        response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
+    # look for an existing record, otherwise a fresh start with an empty record
+    project_id = request.args(0)
+    if project_id is not None:
+        record = db.project(project_id)
     else:
-        pass
+        record = None
+    
+    # need access control here for existing projects and provide:
+    # - default readonly access to all users to allow project oversight.
+    # - but give write access to project coordinator members
+    
+    if project_id is not None and db.project(project_id) is None:
+        # avoid unknown projects
+        session.flash = B(CENTER('Invalid project id'), _style='color:red;')
+        redirect(URL('projects','projects'))
+    else:
+        if project_id is not None:
+            readonly = True
+            project_coords = db((db.project_members.project_id == project_id) &
+                                (db.project_members.is_coordinator is True)).select()
+            project_coords = [r.user_id for r in project_coords]
+            if auth.user.id in project_coords:
+                readonly = False
+        else:
+            readonly = False
+    
+        form = SQLFORM(db.project, record = record, readonly=readonly,
+                       fields = ['picture', 'title', 'project_home_country',
+                                 'research_areas', 'start_date', 'end_date', 'data_use',
+                                 'rationale', 'methods', 'which_animal_taxa',
+                                 'destructive_sampling','destructive_sampling_info',
+                                 'ethics_approval','funding', 'requires_ra',
+                                 'requires_vehicle','resource_notes', 'data_sharing'],
+                             
+                       labels = {'requires_ra': 'Will your project require Research Assistant time?',
+                                 'requires_vehicle': 'Will your project need a vehicle to access sites?',
+                                 'resource_notes': 'Give details of expected resources needed',
+                                 'data_sharing': 'I agree to the requirements of the SAFE project and will '
+                                                 'submit the project data to the SAFE database at the '
+                                                 'conclusion of this project.'},
+                      submit_button = 'Submit and add project members')
 
-    return dict(form=form)
+        if form.process(onvalidation=validate_new_project).accepted:
+        
+            # add the proposer as the Main Contact for the project
+            db.project_members.insert(user_id = auth.user.id, 
+                                      project_id = form.vars.id,
+                                      project_role='Main Contact')
+        
+            # email the proposer
+            template =  'email_templates/project_submitted.html'
+            message =  response.render(template,
+                                       {'name': auth.user.first_name,
+                                        'url': URL('projects', 'project_details', args=form.vars.id, scheme=True, host=True)})
+        
+            print message
+        
+            msg_status = mail.send(to=auth.user.email,
+                                   subject='SAFE project proposal submission',
+                                   message=message)
+        
+            print msg_status
+        
+            # signal success
+            session.flash = CENTER(B('SAFE project output successfully submitted.'), _style='color: green')
+            redirect(URL('projects', 'project_details', args=form.vars.id))
+        
+        elif form.errors:
+            response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
+        else:
+            pass
+        
+        # pass the form and record, for info look up on admin status
+        # - this could be implemented by setting writable = FALSE and getting fields
+        #   contents through the widget
+        return dict(form=form, record=record)
 
 
 def validate_new_project(form):
@@ -345,8 +377,6 @@ def administer_new_project_details():
     db.project.title.writable = False
     db.project.project_home_country.writable = False
     db.project.research_areas.writable = False
-    db.project.sampling_sites.writable = False
-    db.project.sampling_scales.writable = False
     db.project.start_date.writable = False
     db.project.end_date.writable = False
     db.project.methods.writable = False
@@ -366,11 +396,12 @@ def administer_new_project_details():
     
     # set up the project form
     this_project = SQLFORM(db.project, project_id,
-                   fields = ['project_home_country', 'sampling_sites', 
-                             'sampling_scales', 'research_areas', 
+                   fields = ['project_home_country',
+                             'research_areas', 
                              'start_date', 'end_date',
                              'rationale', 'methods',
-                             'admin_status','admin_notes'],
+                             'admin_status','admin_notes',
+                             'admin_history'],
                    showid=False)
     
     # process the form and handle actions
@@ -424,8 +455,16 @@ def validate_administer_new_projects(form):
     
     # validation handles any checking (none here) and also any 
     # amendments to the form variable  - adding user and date of admin
-    form.vars.admin_id = auth.user_id
-    form.vars.admin_decision_date =  datetime.date.today().isoformat()
+    form.vars.admin_id = auth.user.id
+    today = datetime.date.today().isoformat()
+    form.vars.admin_decision_date = today
+    # update the history
+    new_history = '[{} {}, {}]\\n {}'.format(auth.user.first_name, 
+                   auth.user.last_name, today, form.vars.admin_notes)
+    if form.vars.admin_history is None:
+        form.vars.admin_history = new_history
+    else:
+        form.vars.admin_history += new_history
 
 
 # ## -----------------------------------------------------------------------------

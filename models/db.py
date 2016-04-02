@@ -201,6 +201,49 @@ ckeditor.define_tables()
 # ckeditor.define_tables()
 #
 # print ckeditor.settings
+
+
+## -----------------------------------------------------------------------------
+## Define some global items (maybe move these to a separate model)
+## -----------------------------------------------------------------------------
+
+# Set up some natty little icons to show approval status 
+# which means including admin_status in fields but hiding it
+approval_icons = {'Approved': SPAN('',_class="glyphicon glyphicon-ok-sign", 
+                                      _style="color:green;font-size: 1.3em;", 
+                                      _title='Approved'),
+                  'Resubmit': SPAN('',_class="glyphicon glyphicon-exclamation-sign", 
+                                      _style="color:red;font-size: 1.3em;", 
+                                      _title='Changes required'),
+                  'Review':  SPAN('',_class="glyphicon glyphicon-eye-open",
+                                      _style="color:orange;font-size: 1.3em;", 
+                                      _title='Under review'),
+                  'Pending':  SPAN('',_class="glyphicon glyphicon-question-sign",
+                                      _style="color:orange;font-size: 1.3em;", 
+                                      _title='Pending approval'),
+                  'Rejected': SPAN('',_class="glyphicon glyphicon-remove-sign",
+                                      _style="color:red;font-size: 1.3em;", 
+                                      _title='Rejected')}
+
+approval_icons_big = {'Approved': SPAN('',_class="glyphicon glyphicon-ok-sign", 
+                                      _style="color:green;font-size: 2.6em;", 
+                                      _title='Approved'),
+                  'Resubmit': SPAN('',_class="glyphicon glyphicon-exclamation-sign", 
+                                      _style="color:red;font-size: 2.6em;", 
+                                      _title='Changes required'),
+                  'Review':  SPAN('',_class="glyphicon glyphicon-eye-open",
+                                      _style="color:orange;font-size: 2.6em;", 
+                                      _title='Under review'),
+                  'Pending':  SPAN('',_class="glyphicon glyphicon-question-sign",
+                                      _style="color:orange;font-size: 2.6em;", 
+                                      _title='Pending approval'),
+                  'Rejected': SPAN('',_class="glyphicon glyphicon-remove-sign",
+                                      _style="color:red;font-size: 2.6em;", 
+                                      _title='Rejected')}
+
+n_beds_available = 25
+
+
 ## -----------------------------------------------------------------------------
 ## RCUK PROJECT SUBJECT TAGS
 ## Populated by fixtures file
@@ -243,7 +286,9 @@ sites_set = ['Old growth controls', 'Logged forest controls',
 
 spatial_scales_set = ['First order', 'Second order', 'Third order', 'Fourth order', 'Other']
 
-admin_status_set = ['Pending', 'Approved', 'Rejected']
+data_use_set = ['Undergraduate Project','Masters Project', 'PhD Thesis','Research Grant','Other']
+
+admin_status_set = ['Pending', 'Approved', 'Resubmit', 'Rejected']
 
 # define table
 # - TODO - work out how to get represemntation to link to project pages
@@ -253,40 +298,49 @@ db.define_table('project',
           # represent = lambda value, row: A(row.title, _href='www.google.co.uk')
           ),
     Field('project_home_country','string', notnull=True,
-          requires=IS_IN_SET(['Malaysian', 'International'])),
-    Field('sampling_sites', type='list:string', 
-          requires=IS_IN_SET(sites_set, multiple=True), 
-          widget=SQLFORM.widgets.checkboxes.widget),
-    Field('sampling_scales', type='list:string', 
-          requires=IS_IN_SET(spatial_scales_set, multiple=True), 
-          widget=SQLFORM.widgets.checkboxes.widget),
+          requires=IS_IN_SET(['Malaysian', 'International']),
+          widget=SQLFORM.widgets.radio.widget),
     Field('research_areas', type='list:string',
           requires=IS_IN_DB(db, db.rcuk_tags.id, '%(tag)s', multiple=True), 
           widget=SQLFORM.widgets.multiple.widget),
     Field('start_date','date', notnull=True),
     Field('end_date','date', notnull=True),
+    Field('data_use', type='list:string', 
+          requires=IS_IN_SET(data_use_set, multiple=True),
+          widget = SQLFORM.widgets.checkboxes.widget),
     Field('rationale','text', notnull=True),
     Field('methods','text', notnull=True),
+    Field('which_animal_taxa', 'string'),
+    Field('destructive_sampling', 'boolean', default=False),
+    Field('destructive_sampling_info', 'string'),
+    Field('ethics_approval', 'boolean', default=False),
+    Field('funding', 'string'),
     Field('requires_ra','boolean', notnull=True, default=False),
     Field('requires_vehicle','boolean', notnull=True, default=False),
     Field('resource_notes','string'),
-    Field('legacy_project_id', 'integer'), 
     Field('data_sharing','boolean', notnull=True),
+    # this allows us to link project pages
+    Field('legacy_project_id', 'integer', readable = False, writable = False),
+    # these are fields collected in the old site that are now not used.
+    Field('legacy_sampling_sites', type='list:string', 
+          requires=IS_IN_SET(sites_set, multiple=True),
+          readable = False, writable = False),
+    Field('legacy_sampling_scales', type='list:string', 
+          requires=IS_IN_SET(spatial_scales_set, multiple=True),
+          readable = False, writable = False),
     # proposer id and date
     Field('proposer_id','reference auth_user'),
     Field('proposal_date','date'),
     # The fields below are to handle approval of new records
+    # - admin_history is used internally to maintain a record of admin notes
     Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
     Field('admin_id','reference auth_user'),
     Field('admin_notes','text'),
+    Field('admin_history','text', writable=False), 
     Field('admin_decision_date','date'),
     # set the way the row is represented in foreign tables
     format='%(title)s'
     ) 
-
-## suppress the legacy_user_id field as a general rule
-db.project.legacy_project_id.readable = False
-db.project.legacy_project_id.writable = False
 
 
 ## -----------------------------------------------------------------------------
@@ -308,7 +362,8 @@ project_roles = ['Main Contact', 'Supervisor', 'Co-supervisor', 'PhD student',
 db.define_table('project_members',
     Field('project_id', 'reference project', notnull=True),
     Field('user_id', 'reference auth_user', notnull=True),
-    Field('project_role', requires=IS_IN_SET(project_roles), notnull=True))
+    Field('project_role', requires=IS_IN_SET(project_roles), notnull=True),
+    Field('is_coordinator','boolean', notnull=True, default=False))
 
 ## -----------------------------------------------------------------------------
 ## OUTPUTS
@@ -392,9 +447,6 @@ db.define_table('help_request',
 ##      with a research visit for a project for look-see type bookings
 ##   2) a booking for people working on an existing approved visit
 ## -----------------------------------------------------------------------------
-
-# not sure where to put global variable definitions!
-n_beds_available = 25
 
 db.define_table('research_visit',
     Field('project_id', 'reference project', notnull=True),

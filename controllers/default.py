@@ -98,15 +98,6 @@ def my_safe():
         
         if db(query).count() > 0:
             
-            # Set up some natty little icons to show approval status 
-            # which means including admin_status in fields but hiding it
-            approved_icon = SPAN('',_class="glyphicon glyphicon-ok-sign", 
-                                 _style="color:green;font-size: 1.3em;", 
-                                 _title='Approved')
-            pending_icon = SPAN('',_class="glyphicon glyphicon-question-sign",
-                                 _style="color:orange;font-size: 1.3em;", 
-                                 _title='Pending approval')
-            
             # get the grid display fields
             flds = [db[table][f] for f in m['fld']]
             flds.append(db[table]['admin_status'])
@@ -120,7 +111,7 @@ def my_safe():
                                       _href=URL(m['cntr'], m['view'], args=[row.id], user_signature=True),
                                       _style='padding: 3px 5px 3px 5px;')),
                      dict(header = '', 
-                          body = lambda row: approved_icon if row.admin_status == 'Approved' else pending_icon)]
+                          body = lambda row: approval_icons[row.admin_status])]
             
             grid = SQLFORM.grid(query, fields=flds,
                                 csv=False, create=False, 
@@ -132,7 +123,7 @@ def my_safe():
         else:
             grid = B(CENTER('You are not a member of any {}'.format(m['name'])))
     else:
-            grid = XML('Balls')
+            grid = XML('Invalid table id')
     
     return dict(grid = grid )
     
