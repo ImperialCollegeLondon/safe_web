@@ -2,8 +2,6 @@
 
 This is the bitbucket repository for the code underlying the SAFE website. The web application is written using the [web2py](http://web2py.com/) framework and is intended to work with the same database backend as the SAFE Earthcape database.
 
-It is currently not fully running on any externally available IP address, although a version is running on pythonanywhere: [https://davidorme.pythonanywhere.com/SAFE_web/default/index](https://davidorme.pythonanywhere.com/SAFE_web/default/index)
-
 ## Deployment recipe ##
 
 The website has been deployed on an AWC EC2 instance running Ubuntu 14.04 LTS . The following steps were used (once the instance was created):
@@ -34,7 +32,7 @@ After this the web2py interface should available at (e.g.)
     https://ec2-52-50-144-96.eu-west-1.compute.amazonaws.com/admin
 
 There are some issues here with the SSL certificate, so there may be warnings about https certificates. These need to be resolved by getting a trusted certificate for the site, which I haven't done yet.
-### Python package management ###
+#### Python package management ####
 
 For any extra python packages, you'll then need:
 
@@ -46,7 +44,7 @@ I didn't muck around with virtualenv for packages as these ones should probably 
     sudo pip install --upgrade google-api-python-client
     sudo pip install openpyxl
 
-### Deploying the web2py application from a bitbucket repo###
+#### Deploying the web2py application from a bitbucket repo ####
 
 First up, install git:
 
@@ -57,14 +55,11 @@ Now clone the repo into the web2py applications folder. You could set up SSH, wh
     cd /home/www-data/web2py/applications
     sudo -u www-data git clone https://davidorme@bitbucket.org/davidorme/safe_web.git
 
-
-## web2py notes ##
-
-### Plugins ###
+#### web2py Plugins ####
 
 The SAFE website only uses [web2py_ckeditor4](https://github.com/timrichardson/web2py_ckeditor4/releases) to add a WYSIWYG interface for blogs and news.
 
-### On SQLFORM.grid usage ###
+#### On SQLFORM.grid usage ####
 
 SQLFORM.grid  provides a nice searchable view of a table contents. The function has a built in details view with a nice link button, and you can personalise that view
    
@@ -80,7 +75,7 @@ Which is neat but means that you can't (not to my current knowledge) provide a d
 
 So.... instead, I've used SQLFORM.grid links to provide custom buttons to a separate controller for the view, passing the row.id to retrieve the row record and hence a standalone custom view.
 
-### Email templates ###
+#### Email templates ####
 
 The email templating system is reasonbly tricky to get your head around. Basically, you create a new _view_, and then use the web2py rendering engine to generate the email. You can create an html message or plain text and make use of the web2py html helpers etc.
 
@@ -93,7 +88,7 @@ The gotchas are:
 2. Don't try naming any arguments in `response.render()`. It just makes it angry.
 
 
-### Languages ###
+#### Languages ####
 
 We potentially have Malay and English content, so need to separate the content of pages from the page. At the moment, this isn't 
  - Need to provide translation of menu headers
@@ -132,3 +127,5 @@ bloggers group for adding new blog posts (using markmin?)
 
 CRON JOB
 automated email on project expiry to check it is closed and email members about database.
+
+### Deploying Dokuwiki ###
