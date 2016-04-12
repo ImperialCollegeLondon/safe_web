@@ -91,10 +91,11 @@ def my_safe():
         m = membership_dict[table]
         
         # get the set of item ids that the user is a member of 
-        # and which are approved or pending
+        # currently showing all statuses but could restrict
         valid_ids = db(db[m['tab']].user_id == auth.user.id)._select(m['col'])
-        query = ((db[table].id.belongs(valid_ids)) & 
-                 (db[table].admin_status.belongs(['Approved', 'Pending'])))
+        # query = ((db[table].id.belongs(valid_ids)) &
+        #          (db[table].admin_status.belongs(['Approved', 'Pending'])))
+        query = (db[table].id.belongs(valid_ids)) 
         
         if db(query).count() > 0:
             

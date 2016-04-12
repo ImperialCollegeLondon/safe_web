@@ -23,7 +23,7 @@ hr {
 <hr>
 <!-- Simple table of links to pages of different contents (could make these actual buttons)-->
 <table width=100% style='table-layout: fixed; text-align:center; cellpadding:10;'>
-<tr><td>{{= A(SPAN('',_class="icon glyphicon zoom-in"),
+<tr><td>{{= A(SPAN('',_class="glyphicon glyphicon-zoom-in"),
               SPAN('Projects', _class="buttontext button"),
               _class="button btn btn-default btn-block", 
               _href=URL('default','my_safe', vars=dict(set='project'), user_signature=True),
@@ -47,8 +47,25 @@ hr {
 <hr>
 
 
+<!-- <ul class="nav nav-tabs nav-justified">
+  <li role="presentation" class="active">
+{{= A(SPAN('',_class="icon glyphicon zoom-in"),'Projects',
+              _href=URL('default','my_safe', vars=dict(set='project'), user_signature=True))}}
+  </li>
+  <li role="presentation">
+{{= A(SPAN('',_class="icon glyphicon zoom-in"),'Outputs',
+              _href=URL('default','my_safe', vars=dict(set='outputs'), user_signature=True))}}
+  </li>
+  <li role="presentation">
+{{= A(SPAN('',_class="icon glyphicon zoom-in"),'Research visits',
+              _href=URL('default','my_safe', vars=dict(set='research_visit'), user_signature=True))}}
+  </li>
+  <li role="presentation">
+{{= A(SPAN('',_class="icon glyphicon zoom-in"),'Bed Reservations',
+              _href=URL('default','my_safe', vars=dict(set='bed_reservations'), user_signature=True))}}
+  </li>
+</ul> -->
 
 {{=grid}}
-
 
 <br>
