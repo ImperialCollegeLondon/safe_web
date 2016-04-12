@@ -94,8 +94,7 @@ the form is readonly so need to be wrapped in a test to avoid errors.-->
 {{=record.rationale}}
 {{=BR()*2 + P(B('Methods'))}}
 {{=record.methods}}
-{{=BR()*2 + P(B('Research areas'))}}
-{{= 'None given' if record.research_areas is None else ', '.join(record.research_areas)}}
+{{=BR()*2 + P(B('Research areas: ' ), 'None given' if record.research_areas is None else ', '.join(record.research_areas))}}
 {{=P(B('Data use: '), 'None given' if record.data_use is None else ', '.join(record.data_use))}}
 {{pass}}
 
@@ -129,10 +128,11 @@ the form is readonly so need to be wrapped in a test to avoid errors.-->
 {{else:}}
 {{=P('This project will work with the following animal taxa: ',  ', '.join(record.which_animal_taxa))}}
 {{pass}}
-{{if record.ethics_approval == 'True':}}
-{{=P('The project coordinator has confirmed that ethics approval is being sought.')}}
+{{if record.ethics_approval_required == 'True':}}
+{{=P('The project coordinator has confirmed that ethics approval is required. The reported details of the approval needed and approval plans are:')}}
+{{=P(record.ethics_approval_details)}}
 {{else:}}
-{{=P('The project coordinator has not confirmed that ethics approval is being sought.')}}
+{{=P('The project coordinator has reported that no ethics approval is required.')}}
 {{pass}}
 {{pass}}
 
@@ -175,14 +175,17 @@ the form is readonly so need to be wrapped in a test to avoid errors.-->
 {{pass}}
 {{pass}}
 
+{{if readonly is False:}}
 {{=BR()}}
 {{=form.custom.submit}}
 {{=form.custom.end}}
-{{=BR()}}
+{{pass}}
 
-{{if record is not None and record.admin_history is not None:}}
+{{if record is not None:}}
 {{=H4('Administration status and history', _style='background-color: lightgrey; line-height: 40px')}}
 {{=P(B('Admin status: '), approval_icons[record.admin_status], XML('&nbsp;') *2, record.admin_status)}}
+{{pass}}
+{{if record.admin_history is not None:}}
 {{=P(B('Admin history: '))}}
 {{=XML(record.admin_history.replace('\\n', '<br />'),
         sanitize=True, permitted_tags=['br/'])}}

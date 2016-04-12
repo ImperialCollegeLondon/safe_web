@@ -44,10 +44,11 @@
 {{else:}}
 {{=P('This project will work with the following animal taxa: ',  ', '.join(record.which_animal_taxa))}}
 {{pass}}
-{{if record.ethics_approval == 'True':}}
-{{=P('The project coordinator has confirmed that ethics approval is being sought.')}}
+{{if record.ethics_approval_required == 'True':}}
+{{=P('The project coordinator has confirmed that ethics approval is required. The reported details of the approval needed and approval plans are:')}}
+{{=P(record.ethics_approval_details)}}
 {{else:}}
-{{=P('The project coordinator has not confirmed that ethics approval is being sought.')}}
+{{=P('The project coordinator has reported that no ethics approval is required.')}}
 {{pass}}
 
 {{=H4('Project resource requirements', _style='background-color: lightgrey; line-height: 40px')}}
