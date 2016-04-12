@@ -9,10 +9,11 @@
 ## be redirected to HTTPS, uncomment the line below:
 # request.requires_https()
 
+import uuid
+
 ## app configuration made easy. Look inside private/appconfig.ini
 from gluon.contrib.appconfig import AppConfig
 from gluon.tools import Recaptcha
-
 
 ## once in production, remove reload=True to gain full speed
 myconf = AppConfig(reload=True)
@@ -195,6 +196,30 @@ ckeditor = CKEditor(db)
 # app_root_fs = OSFS(app_root)
 # ckeditor.settings.uploadfs = app_root_fs.opendir('uploads/news/')
 
+# Following up on this, I think the complexity is that plugin_ckeditor uses a single table to store all uploads, and the upload folder is a fixed property of the upload field for that table. That isn't something you'd want to mess around with because the web2py internals use the upload name (which includes the table.field) to retrieve the upload folder from the table definition.
+#
+# So, my guess is that the cleanest way to implement this might be to have multiple ckeditor upload tables:
+# - you can change
+#
+#
+# - you'd then need to be manipulate the settings within controllers to point to the correct table for a post.
+#
+# I think this would need minimal changes to the plugin:  just adding  uploadfolder to the CKEditor settings
+#
+#
+#
+# On Friday, 18 March 2016 12:02:20 UTC, David Orme wrote:
+# Hi,
+#
+# I've installed the web2py_ckeditor plugin from:
+# https://github.com/timrichardson/web2py_ckeditor4/releases
+#
+# I think this will working really nicely for providing a table of simple blog posts, but I'd like to control where uploaded files get stored. I had a look at the source and it seemed like ckeditor.settings.uploadfs might be the answer, but I can't get it to work. Everything just gets stores in the root of app/uploads.
+#
+# In an ideal world, I'd like to able to modify this in different controllers so that uploads for 'blog' posts go to one folder and uploads for 'news' posts go to another.
+
+
+
 ckeditor.define_tables()
 
 # ckeditor.settings.table_upload_name = 'ckeditor_blog'
@@ -215,9 +240,9 @@ approval_icons = {'Approved': SPAN('',_class="glyphicon glyphicon-ok-sign",
                   'Resubmit': SPAN('',_class="glyphicon glyphicon-exclamation-sign", 
                                       _style="color:red;font-size: 1.3em;", 
                                       _title='Changes required'),
-                  'Review':  SPAN('',_class="glyphicon glyphicon-eye-open",
+                  'In Review':  SPAN('',_class="glyphicon glyphicon-eye-open",
                                       _style="color:orange;font-size: 1.3em;", 
-                                      _title='Under review'),
+                                      _title='In review'),
                   'Pending':  SPAN('',_class="glyphicon glyphicon-question-sign",
                                       _style="color:orange;font-size: 1.3em;", 
                                       _title='Pending approval'),
@@ -225,15 +250,33 @@ approval_icons = {'Approved': SPAN('',_class="glyphicon glyphicon-ok-sign",
                                       _style="color:red;font-size: 1.3em;", 
                                       _title='Rejected')}
 
+coordinator_icon = SPAN('',_class="glyphicon glyphicon-ok",
+                                      _style="color:grey;font-size: 1.3em;", 
+                                      _title='Project Coordinator')
+
+not_coordinator_icon = SPAN('',_class="glyphicon glyphicon-remove",
+                                      _style="color:grey;font-size: 1.3em;", 
+                                      _title='Not a Project Coordinator')
+
+
+remove_member_icon = SPAN('',_class="glyphicon glyphicon-minus-sign",
+                                      _style="color:red;font-size: 1.6em;padding: 0px 10px;", 
+                                      _title='Remove member')
+
+add_member_icon = SPAN('',_class="glyphicon glyphicon-plus-sign",
+                                      _style="color:green;font-size: 1.6em;", 
+                                      _title='Add member')
+
+
 approval_icons_big = {'Approved': SPAN('',_class="glyphicon glyphicon-ok-sign", 
                                       _style="color:green;font-size: 2.6em;", 
                                       _title='Approved'),
                   'Resubmit': SPAN('',_class="glyphicon glyphicon-exclamation-sign", 
                                       _style="color:red;font-size: 2.6em;", 
                                       _title='Changes required'),
-                  'Review':  SPAN('',_class="glyphicon glyphicon-eye-open",
+                  'In Review':  SPAN('',_class="glyphicon glyphicon-eye-open",
                                       _style="color:orange;font-size: 2.6em;", 
-                                      _title='Under review'),
+                                      _title='In review'),
                   'Pending':  SPAN('',_class="glyphicon glyphicon-question-sign",
                                       _style="color:orange;font-size: 2.6em;", 
                                       _title='Pending approval'),
@@ -245,18 +288,21 @@ n_beds_available = 25
 
 
 ## -----------------------------------------------------------------------------
-## RCUK PROJECT SUBJECT TAGS
-## Populated by fixtures file
-## TODO - cut this giant list down to relevant ones
-## TODO - rethink implementation
+## RESEARCH SUBJECT TAGS
+## - this was going to be populated into a table from the RCUK list of research
+##   areas but that has been dropped as it is long and unwieldy in favour of
+##   the set of tags listed below.
+## - These are a custom pick from the WoS list of research areas:
+##   http://incites.isiknowledge.com/common/help/h_field_category_oecd_wos.html
+## - Tags are handled as list fields in the DB - which is a little ugly but 
+##   avoids having a bunch of extra tag matching tables hanging around
 ## -----------------------------------------------------------------------------
 
-db.define_table('rcuk_tags',
-    Field('level', 'integer', notnull=True),
-    Field('subject', 'string'),
-    Field('topic', 'string'),
-    Field('tag',  'string', notnull=True))
-
+#db.define_table('rcuk_tags',
+#    Field('level', 'integer', notnull=True),
+#    Field('subject', 'string'),
+#    Field('topic', 'string'),
+#    Field('tag',  'string', notnull=True))
 
 ## -----------------------------------------------------------------------------
 ## -- USERS RESEARCH TAGS
@@ -266,17 +312,22 @@ db.define_table('rcuk_tags',
 #     Field('user_id', 'reference auth_user'),
 #     Field('tag_id', 'reference rcuk_tags'))
 
+research_tags = ['Water resources', 'Biodiversity conservation', 'Plant sciences', 
+                 'Zoology', 'Ecology', 'Freshwater biology', 'Agriculture', 
+                 'Forestry', 'Infectious diseases', 'Soil science', 
+                 'Meteorology and atmospheric sciences', 'Geochemistry and geophysics']
+
 ## -----------------------------------------------------------------------------
 ## PROJECTS:
 ## -- A table of the projects and then a table of members
 ## -- Populated from fixtures file
 ## -- 'legacy_project_id': used only to match in links when loading old website data
-## -- TODO - think about use of list:string - they are a bit fugly but they do save tables
-## -- TODO - consider moving 'data_sharing' to a T&C link extra (Manual p370)
+## -- 'legacy_sampling_scales' and 'legacy_sampling_sites': in previous website but discarded 
 ## -----------------------------------------------------------------------------
 
 # define some sets for controlled fields
 
+# these two fields are no longer used but retaining the controlled vocab for loading archival data
 sites_set = ['Old growth controls', 'Logged forest controls',
              'Logged forest edge','Virgin Jungle Reserve',
              'Fragments block A','Fragments block B',
@@ -288,20 +339,33 @@ spatial_scales_set = ['First order', 'Second order', 'Third order', 'Fourth orde
 
 data_use_set = ['Undergraduate Project','Masters Project', 'PhD Thesis','Research Grant','Other']
 
-admin_status_set = ['Pending', 'Approved', 'Resubmit', 'Rejected']
+admin_status_set = ['Pending', 'Rejected', 'In Review', 'Approved', 'Resubmit']
+
+animal_groups = ['Oligochaetes (earthworms)', 'Hirudinea (leeches)', 
+                 'Chelicerata (spiders, scorpions, and kin)', 
+                 'Crustacea (crabs, shrimp, woodlice and kin)', 
+                 'Hexapoda (insects, springtails and kin)', 
+                 'Myriapoda (centipedes and millipedes)', 'Amphibia', 
+                 'Mammalia (mammals)', 'Aves (birds)', 'Reptilia (reptiles)', 
+                 'Osteichthyes (bony fish)', 'Bivalvia (mussels etc.)', 
+                 'Gastropoda (snails and slugs)', 'Nematoda', 'Nematomorpha ', 
+                 'Platyhelminthes (flatworms)', 'Rotifera (rotifers)', 
+                 'Tardigrada (tardigrades)']
 
 # define table
-# - TODO - work out how to get represemntation to link to project pages
+# - TODO - think how best to link to project pages from title.
+
 db.define_table('project',
+    Field('uuid', length=64, default=uuid.uuid4),
     Field('picture','upload', uploadfolder= request.folder+'/uploads/images/projects'),
     Field('title','string', notnull=True,
           # represent = lambda value, row: A(row.title, _href='www.google.co.uk')
           ),
-    Field('project_home_country','string', notnull=True,
-          requires=IS_IN_SET(['Malaysian', 'International']),
-          widget=SQLFORM.widgets.radio.widget),
+    # Field('project_home_country','string', notnull=True,
+    #       requires=IS_IN_SET(['Malaysian', 'International']),
+    #       widget=SQLFORM.widgets.radio.widget),
     Field('research_areas', type='list:string',
-          requires=IS_IN_DB(db, db.rcuk_tags.id, '%(tag)s', multiple=True), 
+          requires=IS_IN_SET(research_tags, multiple=True), 
           widget=SQLFORM.widgets.multiple.widget),
     Field('start_date','date', notnull=True),
     Field('end_date','date', notnull=True),
@@ -310,10 +374,13 @@ db.define_table('project',
           widget = SQLFORM.widgets.checkboxes.widget),
     Field('rationale','text', notnull=True),
     Field('methods','text', notnull=True),
-    Field('which_animal_taxa', 'string'),
     Field('destructive_sampling', 'boolean', default=False),
     Field('destructive_sampling_info', 'string'),
-    Field('ethics_approval', 'boolean', default=False),
+    Field('which_animal_taxa', type='list:string',
+          requires=IS_IN_SET(animal_groups, multiple=True), 
+          widget=SQLFORM.widgets.multiple.widget),
+    Field('ethics_approval_required', 'boolean', default=False),
+    Field('ethics_approval_details', 'text'),
     Field('funding', 'string'),
     Field('requires_ra','boolean', notnull=True, default=False),
     Field('requires_vehicle','boolean', notnull=True, default=False),
@@ -341,6 +408,9 @@ db.define_table('project',
     # set the way the row is represented in foreign tables
     format='%(title)s'
     ) 
+
+## TODO - do we need to build an index on the UUID
+# db.executesql('CREATE INDEX IF NOT EXISTS myidx ON person (name);')
 
 
 ## -----------------------------------------------------------------------------

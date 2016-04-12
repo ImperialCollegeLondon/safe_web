@@ -31,6 +31,9 @@ if RESET:
 ## ------------------------------------------------------------------------
 ## LOAD RCUK TAGS
 ## - has to come early, so projects and users can reference them
+## - the RCUK tags are way too complicated, so we're using a bespoke list
+##   instead. These are defined as a set in the db rather than populating 
+##   a whole table.
 ## ------------------------------------------------------------------------
 
 # if db(db.rcuk_tags).count() == 0:
@@ -42,7 +45,6 @@ if RESET:
 #     # e.g. rcuk_tags.level,rcuk_tags.subject,rcuk_tags.topic,rcuk_tags.tag
 #     db.rcuk_tags.import_from_csv_file(open(data_file, 'rb'))
 #     db.commit()
-
 
 ## ------------------------------------------------------------------------
 ## LOAD EXISTING USERS

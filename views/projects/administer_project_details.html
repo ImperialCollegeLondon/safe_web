@@ -1,0 +1,80 @@
+{{extend 'layout.html'}}
+
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+
+
+{{=H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)}}
+
+<!-- This section of code handles providing a list of members -->
+
+{{=H4('Project members', _style='background-color: lightgrey; line-height: 40px')}}
+{{=TABLE(TR(TH('Coordinator', _style='text-align:center'),TH('Name'), TH('Project Role')), 
+         *[TR(TD(coordinator_icon if r.is_coordinator else not_coordinator_icon, _style='text-align:center'), 
+	      TD(r.user_id.last_name + ', ' + r.user_id.first_name), 
+	      TD(r.project_role)) for r in members], _width='100%')}}
+
+{{=H4('Project title and dates', _style='background-color: lightgrey; line-height: 40px')}}
+
+{{=P(B('Title: '), record.title)}}
+{{=P(B('Project dates: '), record.start_date, ' to ', record.end_date)}}
+
+{{=H4('Science case', _style='background-color: lightgrey; line-height: 40px')}}
+
+{{=P(B('Rationale'))}}
+{{=record.rationale}}
+{{=BR()*2 + P(B('Methods'))}}
+{{=record.methods}}
+{{=BR()*2 + P(B('Research areas: '), 'None given' if record.research_areas is None else ', '.join(record.research_areas))}}
+{{=P(B('Data use: '), 'None given' if record.data_use is None else ', '.join(record.data_use))}}
+
+{{=H4('Destructive sampling', _style='background-color: lightgrey; line-height: 40px')}}
+
+{{if record.destructive_sampling is False or record.destructive_sampling is None:}}
+{{=P('This project has not declared any destructive sampling.')}}
+{{else:}}
+{{=P('This project will involve the following destructive sampling:') + record.destructive_sampling_info}}
+{{pass}}
+
+{{=H4('Animal research and ethics', _style='background-color: lightgrey; line-height: 40px')}}
+
+{{if record.which_animal_taxa is None or len(record.which_animal_taxa) == 0:}}
+{{=P('This project has not recorded working with any animal taxa.')}}
+{{else:}}
+{{=P('This project will work with the following animal taxa: ',  ', '.join(record.which_animal_taxa))}}
+{{pass}}
+{{if record.ethics_approval == 'True':}}
+{{=P('The project coordinator has confirmed that ethics approval is being sought.')}}
+{{else:}}
+{{=P('The project coordinator has not confirmed that ethics approval is being sought.')}}
+{{pass}}
+
+{{=H4('Project resource requirements', _style='background-color: lightgrey; line-height: 40px')}}
+
+{{if record.requires_ra == 'True':}}
+{{=P('This project will require Research Assistant time.')}}
+{{else:}}
+{{=P('This project will not require Research Assistant time.')}}
+{{pass}}
+{{if record.requires_vehicle == 'True':}}
+{{=P('This project require the use of vehicles to access sites.')}}
+{{else:}}
+{{=P('This project does not require the use of vehicles to access sites.')}}
+{{pass}}
+{{if record.resource_notes is not None and record.resource_notes <> '':}}
+{{=P('Further resource requirements and notes: ', record.resource_notes)}}
+{{pass}}
+
+{{=H4('Funding and data sharing', _style='background-color: lightgrey; line-height: 40px')}}
+{{=P('The project coordinators have agreed to share research data with the SAFE project.')}}
+{{if record.funding is not None and record.funding <> '':}}
+{{=P('The following funding information has been provided:', record.funding)}}
+{{else:}}
+{{=P('No funding information has been declared.')}}
+{{pass}}
+
+{{=H4('Administration status and history', _style='background-color: lightgrey; line-height: 40px')}}
+{{=form}}
+{{=XML(record.admin_history.replace('\\n', '<br />'),
+        sanitize=True, permitted_tags=['br/'])}}

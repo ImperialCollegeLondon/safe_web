@@ -1,0 +1,16 @@
+{{left_sidebar_enabled,right_sidebar_enabled=False,('message' in globals())}}
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+{{=H1('Make decisions on project proposals')}}
+
+<p>The table below lists all projects that are currently <strong>Pending</strong> {{=approval_icons['Pending']}} - waiting for an administrator decision - or <strong>In Review</strong> {{=approval_icons['In Review']}} - waiting to see if any objections are raised by the SAFE research community. You can make a decision to Reject, Approve or send the project back for Resubmission by following the links below</p>
+	
+<p>The project coordinator will be automatically emailed your decision, along with any explanation provided in the approval notes field.</p>
+
+<br>
+<!-- Show the volunteers form created by the controller -->
+{{=form}}
+
+<br>

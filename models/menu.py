@@ -68,7 +68,7 @@ user_actions = [(T('Registered users'), True, None, [
                 (T('My health and safety info'), True, URL('health_safety', 'health_and_safety'), []),
                 (T('SAFE Mailing list'), True, URL('default', 'mailing_list'), []),
                 LI(_class="divider"),
-                (T('Propose a project'), True, URL('projects', 'new_project'), []),
+                (T('Propose a project'), True, URL('projects', 'project_details'), []),
                 # (T('Manage project members'), True, URL('projects', 'manage_project_members'), []),
                 (T('Submit a new output'), True, URL('outputs', 'new_output'), []),
                 (T('Add an output to a project'), True, URL('outputs', 'add_output_to_project'), []),
@@ -104,7 +104,7 @@ n_dict = {'bed': db.bed_reservations.admin_status,
 
 for key, field in n_dict.iteritems():
     
-    n = db(field.belongs(['Pending', 'pending'])).count() # auth_user uses 'pending' as part of built in mechanisms
+    n = db(field.belongs(['Pending', 'pending', 'In Review'])).count() # auth_user uses 'pending' as part of built in mechanisms
     if n > 0:
         n_dict[key] = ' (' + str(n) + ')'
     else:
@@ -121,7 +121,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         LI(_class="divider"),
                         (B('Approvals'), False, None, None),
                         (T('> New users') + n_dict['new_users'], True, URL('people', 'administer_new_users'), []),
-                        (T('> New projects') + n_dict['proj'], True, URL('projects', 'administer_new_projects'), []),
+                        (T('> Project proposals') + n_dict['proj'], True, URL('projects', 'administer_projects'), []),
                         (T('> New outputs') + n_dict['output'], True, URL('outputs', 'administer_outputs'), []),
                         (T('> Research visits') + n_dict['vis'], True, URL('research_visits', 'administer_new_research_visits'), []),
                         (T('> Bed reservations') + n_dict['bed'], True, URL('bed_reservations', 'administer_reserve_beds'), []),
