@@ -1,0 +1,14 @@
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+{{=H2('Request group membership')}}
+
+{{=P('This form can be used to request membership of groups that allow registered users access to some restricted functionality. The groups are shown below but note that requests to join the admin group ', B('will not'), ' be approved unless it has been previously discussed by the admin team.')}}
+
+{{=TABLE(TR(TH('Group name'), TH('Description')),
+	*[TR(TD(r.role),TD(r.description)) for r in groups],
+	_width='100%')}}
+
+{{=BR()*2}}
+{{=form}}

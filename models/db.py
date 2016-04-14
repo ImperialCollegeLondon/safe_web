@@ -704,4 +704,21 @@ db.define_table('news_posts',
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)
 
+## -----------------------------------------------------------------------------
+## Group membership requests
+## -- Could do this via the existing appadmin interface but need a mechanism
+##    for users to request group membership
+## -----------------------------------------------------------------------------
+
+db.define_table('group_request',
+                Field('user_id', 'reference auth_user'),
+                Field('group_id', 'reference auth_group'),
+                Field('justification', 'string'),
+                # The fields below are to handle approval of new records
+                Field('admin_status','string', 
+                      requires=IS_IN_SET(['Approved',"Pending","Rejected"]),
+                      default='Pending'), 
+                Field('admin_id','reference auth_user'),
+                Field('admin_decision_date','date'))
+
 

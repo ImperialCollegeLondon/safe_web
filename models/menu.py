@@ -68,6 +68,7 @@ user_actions = [(T('Registered users'), True, None, [
                 (T('My health and safety info'), True, URL('health_safety', 'health_and_safety'), []),
                 (T('SAFE Mailing list'), True, URL('default', 'mailing_list'), []),
                 LI(_class="divider"),
+                (T('Request to join web group'), True, URL('groups', 'group_request'), []),
                 (T('Propose a project'), True, URL('projects', 'project_details'), []),
                 # (T('Manage project members'), True, URL('projects', 'manage_project_members'), []),
                 (T('Submit a new output'), True, URL('outputs', 'new_output'), []),
@@ -95,7 +96,8 @@ if auth.is_logged_in():
 ##    for these links also need admin decorators to restrict access
 ## ----------------------------------------------------------------------------
 
-n_dict = {'bed': db.bed_reservations.admin_status,
+n_dict = {'grp': db.group_request.admin_status,
+          'bed': db.bed_reservations.admin_status,
           'vis': db.research_visit.admin_status,
           'proj': db.project.admin_status,
           'output': db.outputs.admin_status,
@@ -123,6 +125,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         LI(_class="divider"),
                         (B('Approvals'), False, None, None),
                         (T('> New users') + n_dict['new_users'], True, URL('people', 'administer_new_users'), []),
+                        (T('> New group requests') + n_dict['grp'], True, URL('groups', 'administer_group_requests'), []),
                         (T('> Project proposals') + n_dict['proj'], True, URL('projects', 'administer_projects'), []),
                         (T('> New outputs') + n_dict['output'], True, URL('outputs', 'administer_outputs'), []),
                         (T('> Research visits') + n_dict['vis'], True, URL('research_visits', 'administer_new_research_visits'), []),
