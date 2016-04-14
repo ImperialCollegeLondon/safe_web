@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 ## ----------------------------------------------------------------------------
-## This scaffolding model makes your app work on Google App Engine too
 ## File is released under public domain and you can use without limitations
 ## ----------------------------------------------------------------------------
 
@@ -18,55 +17,27 @@ from gluon.tools import Recaptcha
 ## once in production, remove reload=True to gain full speed
 myconf = AppConfig(reload=True)
 
+## ----------------------------------------------------------------------------
+## DB connection definitions
+## -- both connections (local/remote) need to have a created database in order
+##    to create and populate tables
+## ----------------------------------------------------------------------------
 
-if not request.env.web2py_runtime_gae:
-    ## if NOT running on Google App Engine use SQLite or other DB
-    
-    # ### postgres External
-    # postgres_connection = 'postgres://safe_admin:Safe2016@earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com/safe16'
-    # db = DAL(postgres_connection, migrate_enabled=False) #, lazy_tables=True)
-    #
-    # ### MSSQL EXTERNAL
-    # external_db_config = dict(usr = 'earthcape',
-    #                           pwd = 'Apollo1978',
-    #                           srv = 'dgby1qwd2n.database.windows.net',
-    #                           db  = 'SAFE15',
-    #                           knd = 'mssql',
-    #                           drv = 'FreeTDS',
-    #                           prt = 1433,
-    #                           dsn = 'earthcape')
-    # mssql_str = '{knd}://{usr}:{pwd}@{srv}/{db}?DRIVER={{{drv}}}'
-    # # alternative connection strings found on web, none of which work
-    # # mssql_str = '{knd}://{usr}:{pwd}@{srv}/{db}'
-    # # mssql_str = '{knd}://DRIVER={{{drv}};SERVER={srv}\{db},{prt};UID={usr};PWD={pwd}'
-    # db = DAL(mssql_str.format(**external_db_config), migrate_enabled=False)
-    
-    # PG LOCAL setup
-    # NOTE - needs to have a created database: 'createdb dbname'
-    connection = "postgres://test:test@localhost/safe_web2py"
-    
-    # PG REMOTE setup
-    # - this is a link to an AWS RDS instance, which could then be shared by Earthcape
-    # connection = "postgres://safe_admin:Safe2016@earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com/safe_web2py"
-    
-    # # MYSQL database on python_anywhere testing environment
-    # connection = "mysql://DavidOrme:MonteCarloOrBust@DavidOrme.mysql.pythonanywhere-services.com/DavidOrme$safe_web2py"
-    
-    db = DAL(connection, lazy_tables=False, pool_size=5)
-    
-    
-    # TODO - look at the myconf.take functionality and config file rather than hard coding
-    # db = DAL(myconf.take('db.uri'), pool_size=myconf.take('db.pool_size', cast=int), check_reserved=['all'])
-    
-else:
-    ## connect to Google BigTable (optional 'google:datastore://namespace')
-    db = DAL('google:datastore+ndb')
-    ## store sessions and tickets there
-    session.connect(request, response, db=db)
-    ## or store session in Memcache, Redis, etc.
-    ## from gluon.contrib.memdb import MEMDB
-    ## from google.appengine.api.memcache import Client
-    ## session.connect(request, response, db = MEMDB(Client()))
+# PG LOCAL setup
+connection = "postgres://test:test@localhost/safe_web2py"
+
+# PG REMOTE setup
+# - this is a link to an AWS RDS instance, which could then be shared by Earthcape
+# connection = "postgres://safe_admin:Safe2016@earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com/safe_web2py"
+
+# # MYSQL database on python_anywhere testing environment
+# connection = "mysql://DavidOrme:MonteCarloOrBust@DavidOrme.mysql.pythonanywhere-services.com/DavidOrme$safe_web2py"
+
+db = DAL(connection, lazy_tables=False, pool_size=5)
+
+# TODO - look at the myconf.take functionality and config file rather than hard coding
+# db = DAL(myconf.take('db.uri'), pool_size=myconf.take('db.pool_size', cast=int), check_reserved=['all'])
+
 
 ## by default give a view/generic.extension to all actions from localhost
 ## none otherwise. a pattern can be 'controller/function.extension'
@@ -147,7 +118,7 @@ auth.settings.registration_requires_verification = False
 auth.settings.registration_requires_approval = True
 auth.settings.reset_password_requires_verification = True
 
-# 
+
 #auth.settings.on_failed_authentication = lambda url: redirect(url)
 
 # TODO - turn on captcha for regiastration
@@ -172,13 +143,6 @@ mail.settings.sender = 'info@safeproject.net'
 mail.settings.login = 'info@safeproject.net:info654='
 mail.settings.ssl = True
 
-## -----------------------------------------------------------------------------
-## SAFE TABLE DEFINITIONS
-## -- TODO - look at UUIDs in definitions for integration with EarthCape
-##           UUIDs - enable UUID in postgresql
-##           CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-##           uuid_generate_v4()
-## -----------------------------------------------------------------------------
 
 ## -----------------------------------------------------------------------------
 ## IMPORT the CKEDITOR PLUGIN TO GIVE A WYSIWYG EDITOR FOR BLOGS AND NEWS
@@ -186,6 +150,7 @@ mail.settings.ssl = True
 
 from plugin_ckeditor import CKEditor
 ckeditor = CKEditor(db)
+
 
 ## TODO URGENT - playing around with 
 # ckeditor.settings.table_upload_name = 'ckeditor_news'
@@ -227,6 +192,14 @@ ckeditor.define_tables()
 #
 # print ckeditor.settings
 
+
+## -----------------------------------------------------------------------------
+## SAFE TABLE DEFINITIONS
+## -- TODO - look at UUIDs in definitions for integration with EarthCape
+##           UUIDs - enable UUID in postgresql
+##           CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+##           uuid_generate_v4()
+## -----------------------------------------------------------------------------
 
 ## -----------------------------------------------------------------------------
 ## Define some global items (maybe move these to a separate model)
