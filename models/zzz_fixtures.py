@@ -93,6 +93,10 @@ if db(db.auth_user).count() == 0:
     db.auth_group.insert(role='bloggers',
                          description='People who can add blog posts')
     
+    db.auth_group.insert(role='wiki_user',
+                         description='People who can edit the wiki')
+    
+    
     # insert 'users' from previous website: people associated with projects
     # load definition files
     data_file = os.path.join(request.folder, 'private/db_preload_data/Users_table.csv')

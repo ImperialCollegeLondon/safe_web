@@ -4,7 +4,14 @@ This is the bitbucket repository for the code underlying the SAFE website. The w
 
 ## Deployment recipe ##
 
-The website has been deployed on an AWC EC2 instance running Ubuntu 14.04 LTS . The following steps were used (once the instance was created):
+
+### Creating the AWS virtual machine and web interface ###
+
+The overview is:
+
+  1. Create and Amazon EC2 instance - the free tier options provide a reasonable processing and disk space
+  2. In order to make 
+
 
 ### Connecting to the EC2 instance by SSH ###
 
@@ -129,3 +136,168 @@ CRON JOB
 automated email on project expiry to check it is closed and email members about database.
 
 ### Deploying Dokuwiki ###
+
+First, you will need to ssh into the EC2 instance:
+
+    ssh -i AWS_SAFE_Web.pem ubuntu@ec2-52-50-144-96.eu-west-1.compute.amazonaws.com
+
+Then, broadly following the instructions [here](https://www.dokuwiki.org/install:ubuntu)
+
+ First, update the system and install / update web services:
+
+    sudo apt-get update && sudo apt-get upgrade
+    sudo apt-get install apache2 libapache2-mod-php5
+
+Now enable the Apache Rewrite module in order to get cleaner URLs
+ 
+    sudo a2enmod rewrite
+
+Get and extract the latest dokuwiki tarball
+
+    cd /home/www-data
+    sudo wget http://download.dokuwiki.org/src/dokuwiki/dokuwiki-stable.tgz
+    sudo tar xvf dokuwiki-stable.tgz
+    sudo mv dokuwiki-*/ dokuwiki # rename the root directory
+    sudo rm dokuwiki-stable.tgz
+ 
+Now make all of that belong to the `www-data` user:
+
+    sudo chown -R www-data:www-data /home/www-data/dokuwiki
+
+Now create the following apache2 config file to lead URLs to dokuwiki:
+
+    sudo -U www-data vi /home/www-data/dokuwiki/apache2.conf
+
+With the following contents:
+
+    AliasMatch ^/dokuwiki/sites/[^/]+$      /home/www-data/dokuwiki/
+    AliasMatch ^/dokuwiki/sites/[^/]+/(.*)$ /home/www-data/dokuwiki/$1
+    Alias      /dokuwiki                    /home/www-data/dokuwiki/
+    
+    <Directory /home/www-data/dokuwiki/>
+    Options +FollowSymLinks
+    AllowOverride All
+    Require all granted
+    
+            <IfModule mod_rewrite.c>
+    
+                    # Uncomment to implement server-side URL rewriting
+                    # (cf. <http://www.dokuwiki.org/config:userewrite>).
+                            # Do *not* mix that with multisite!
+                    #RewriteEngine on
+                    #RewriteBase /dokuwiki
+                    #RewriteRule ^lib                      - [L]
+                    #RewriteRule ^doku.php                 - [L]
+                    #RewriteRule ^feed.php                 - [L]
+                    #RewriteRule ^_media/(.*)              lib/exe/fetch.php?media=$1  [QSA,L]
+                    #RewriteRule ^_detail/(.*)             lib/exe/detail.php?media=$1 [QSA,L]
+                    #RewriteRule ^_export/([^/]+)/(.*)     doku.php?do=export_$1&id=$2 [QSA,L]
+                    #RewriteRule ^$                        doku.php  [L]
+                    #RewriteRule (.*)                      doku.php?id=$1  [QSA,L]
+            </IfModule>
+    </Directory>
+    
+    <Directory /home/www-data/dokuwiki/bin>
+            Require all denied
+    </Directory>
+    
+    <Directory /home/www-data/dokuwiki/data>
+            Require all denied
+    </Directory>
+
+Now link that into the list of sites available to apache2 and enable it:
+
+    sudo ln apache2.conf /etc/apache2/sites-available/dokuwiki.conf
+    sudo a2ensite dokuwiki
+    sudo service apache2 restart
+ 
+ That should expose the wiki site here:
+ 
+    http://ec2-52-50-144-96.eu-west-1.compute.amazonaws.com/dokuwiki/install.php
+
+The `install.php` site exposes an initial configuration page:
+
+[https://www.dokuwiki.org/installer](https://www.dokuwiki.org/installer)
+ 
+ It then needs to be deleted as it is an insecure  point of entry. 
+
+    sudo rm /home/www-data/dokuwiki/install.php
+
+The commented out rewrite rules in the apache2.conf file can now be uncommented to provide nicer looking links:
+
+    sudo sed -i -e 's/^#Rewrite/Rewrite/' /home/www-data/dokuwiki/apache2.conf
+    sudo service apache2 restart
+
+Next, install extensions that will be used from the admin extension manager:
+
+move (restrict to @admin in config),
+
+#### Making Dokuwiki work with the Web2Py DB auth tables ####
+
+This is a bit awkward as we need:
+
+1. To get the two systems to agree on a password hashing format so that both can use the same table of hashed passwords.
+2. To then set Dokuwiki up to read the remote PostgreSQL tables for users and to access hashed passwords.
+
+#### Password hashing ####
+
+I've created a new hashing method for Dokuwiki that allows it to authenticate against the default web2py hashing 
+
+#### Remote connection ####
+
+Firstly, in the Dokuwiki extension manager, enable the PostgreSQL Auth plugin and then install the require PHP modules to support it.
+
+    sudo apt-get install php5-pgsql
+
+We now need to configure the Dokuwiki `authpgsql` extension to correctly query the authorisation tables within the web2py database. First, there needs to be a group in the web2py `auth_group` table (`wiki_user`), and then change the default group in the Dokuwiki Configuration Manager to use `wiki_user` as the default group: a user then has to be a member of this group to be let into Dokuwiki.
+
+The config file to map all this up is:
+
+    /**
+     * Example PgSQL Auth Plugin settings
+     * See https://www.dokuwiki.org/plugin:authpgsql for details and explanation
+     */
+     
+    /**
+     * Options
+     */
+    $conf['authtype'] = "authpgsql";
+    $conf['plugin']['authpgsql']['debug'] = 0;
+    $conf['plugin']['authpgsql']['server'] = 'earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com';
+    $conf['plugin']['authpgsql']['user'] = 'safe_admin';
+    $conf['plugin']['authpgsql']['password'] = 'Safe2016';
+    $conf['plugin']['authpgsql']['database'] = 'safe_web2py';
+    $conf['plugin']['authpgsql']['forwardClearPass'] = 0;
+     
+    /**
+     * SQL User Authentication
+     */
+     
+    $conf['plugin']['authpgsql']['checkPass'] = "SELECT password
+                                                 FROM auth_membership AS ug
+                                                 JOIN auth_user AS u ON u.id = ug.user_id
+                                                 JOIN auth_group AS g ON g.id = ug.group_id
+                                                 WHERE u.email='%{user}'
+                                                 AND g.role='%{dgroup}'";
+    $conf['plugin']['authpgsql']['FilterLogin'] = "u.email LIKE '%{user}'";
+    $conf['plugin']['authpgsql']['getUserInfo'] = "SELECT password, first_name || ' ' || last_name AS name, email AS mail
+                                                   FROM auth_user
+                                                   WHERE email='%{user}'";
+    $conf['plugin']['authpgsql']['getGroups'] = "SELECT g.role as group
+                                                 FROM auth_group g, auth_user u, auth_membership ug
+                                                 WHERE u.id = ug.user_id
+                                                   AND g.id = ug.group_id
+                                                   AND u.email='%{user}'";
+    					       
+    $conf['plugin']['authpgsql']['getUsers'] = "SELECT DISTINCT u.email AS user
+                                                FROM auth_user AS u 
+                                                LEFT JOIN auth_membership AS ug ON u.id = ug.user_id
+                                                LEFT JOIN auth_group AS g ON ug.group_id = g.id";
+    
+    $conf['plugin']['authpgsql']['FilterName']  = "u.fullname || '' || u.last_name LIKE '%{name}'";
+    $conf['plugin']['authpgsql']['FilterEmail'] = "u.email LIKE '%{email}'";
+    $conf['plugin']['authpgsql']['FilterGroup'] = "g.role LIKE '%{group}'";
+    $conf['plugin']['authpgsql']['SortOrder']   = "ORDER BY u.email";
+
+
+Once this has been set up, in the access control section of the Configuration Manager on Dokuwiki, change the `authtype` to  `authpgsql`. You'll be kicked out and need to log back in as a web2py admin user to make further changes.
