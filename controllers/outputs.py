@@ -141,6 +141,7 @@ def new_output():
     # - find the acceptable project ID numbers
     valid_ids = db(db.project_members.user_id == auth.user.id)._select(db.project_members.project_id)
     query = db(db.project.id.belongs(valid_ids))
+    
     # - modify the outputs project_id requirements within this controller
     db.project.id.requires = IS_EMPTY_OR(IS_IN_DB(query, db.project.id, '%(title)s'))
     
@@ -157,7 +158,7 @@ def new_output():
     fields = [Field('project_id', 'reference project', 
                          requires = IS_EMPTY_OR(IS_IN_DB(query, db.project.id, '%(title)s')),
                          comment = project_comment)]
-    hidden_fields = ['creator_id', 'submission_date', 'admin_status',
+    hidden_fields = ['user_id', 'submission_date', 'admin_status',
                      'admin_id', 'admin_notes', 'admin_decision_date']
     output_fields = [f for f in db.outputs if f.name not in hidden_fields]
     fields.extend(output_fields)
@@ -180,10 +181,6 @@ def new_output():
                                       output_id = new_output_id,
                                       added_by = auth.user.id,
                                       date_added = datetime.date.today().isoformat())
-        
-        # load the creator into the output members table
-        db.output_members.insert(output_id = new_output_id,
-                                 user_id = auth.user.id)
         
         # Signal success and email the proposer
         mail.send(to=auth.user.email,
@@ -210,7 +207,7 @@ def validate_new_output(form):
             block it here.
     """
     
-    form.vars.creator_id = auth.user_id
+    form.vars.user_id = auth.user_id
     form.vars.submission_date =  datetime.date.today().isoformat()
 
 
@@ -282,7 +279,7 @@ def administer_outputs():
     db.outputs.description.readable = False
     db.outputs.citation.writable = False
     db.outputs.format.writable = False
-    db.outputs.creator_id.writable = False
+    db.outputs.user_id.writable = False
     db.outputs.submission_date.writable = False
     db.outputs.description.writable = False
     # hide the background admin fields
@@ -322,7 +319,7 @@ def update_administer_outputs(form):
     # TODO - create and link to a Google Calendar for volunteer periods
     
     # retrieve the whole form record to get at the creator details
-    creator = form.record.creator_id
+    creator = form.record.user_id
     
     # set a flash message
     flash_message  = CENTER(B('Decision emailed to project member at {}.'.format(creator.email)), _style='color: green')

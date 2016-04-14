@@ -5,7 +5,6 @@ import datetime
 ## create a links object that associates a row with the image link set for it
 ## TODO - ugly forcing of aspect ratio, but most pretty much 3:4
 ## TODO - some of the linked images for existing profiles are All rights reserved. Need to replace.
-## TODO - form to create new species profiles
 ## -----------------------------------------------------------------------------
 
 def species():
@@ -35,8 +34,6 @@ def species():
     # - creates a mini function (lambda) that acts on a row object to
     #   alter the value passed to the grid
     db.species_profile.binomial.represent = lambda binomial, row: I(binomial)
-    # TODO - repeat this for the links
-    
     
     form = SQLFORM.grid(db.species_profile, csv=False, 
                         fields=[db.species_profile.common_name, 

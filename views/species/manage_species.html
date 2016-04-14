@@ -1,5 +1,7 @@
 {{extend 'layout.html'}}
 
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
 {{=H2('Manage species profiles')}}
 
 <p>The list below shows the current set of species profiles. Follow the links to update existing profiles or add a new species. Do remember that <strong>any content will immediately be seen live on the internet</strong>!</p>
