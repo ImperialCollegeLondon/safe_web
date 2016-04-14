@@ -77,5 +77,7 @@
 
 {{=H4('Administration status and history', _style='background-color: lightgrey; line-height: 40px')}}
 {{=form}}
+{{if record.admin_history is not None:}}
 {{=XML(record.admin_history.replace('\\n', '<br />'),
         sanitize=True, permitted_tags=['br/'])}}
+{{pass}}

@@ -284,7 +284,6 @@ def project_details():
                 
         elif form.errors:
             response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
-            print form.errors
         else:
             pass
         
