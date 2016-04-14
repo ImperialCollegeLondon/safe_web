@@ -82,7 +82,10 @@ user_actions = [(T('Registered users'), True, None, [
 if auth.has_membership('bloggers'):
     user_actions[0][3].append((T('Create a blog post'), True,URL('blog', 'new_blog_post'),[]))
 
-if auth.user_id != None:
+if auth.has_membership('species_profiler'):
+    user_actions[0][3].append((T('Manage species profiles'), True,URL('species', 'manage_species'),[]))
+
+if auth.is_logged_in():
     response.menu += user_actions
 
 ## ----------------------------------------------------------------------------
@@ -117,7 +120,6 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (T('Manage bed reservations'), True, URL('bed_reservations', 'manage_bed_reservations'), []),
                         (T('Manage news'), True, URL('news', 'manage_news'), []),
                         (T('Manage blogs'), True, URL('blog', 'manage_blogs'), []),
-                        (T('Add species'), True, URL('species', 'new_species'), []),
                         LI(_class="divider"),
                         (B('Approvals'), False, None, None),
                         (T('> New users') + n_dict['new_users'], True, URL('people', 'administer_new_users'), []),

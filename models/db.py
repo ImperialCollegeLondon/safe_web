@@ -454,7 +454,7 @@ db.define_table('outputs',
     Field('url','string', requires=IS_EMPTY_OR(IS_URL())),
     Field('legacy_output_id', 'integer'), 
     # creator id and date
-    Field('creator_id','reference auth_user'),
+    Field('user_id','reference auth_user'),
     Field('submission_date','date'),
     # The fields below are to handle approval of new records
     Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
@@ -639,7 +639,9 @@ db.define_table('species_profile',
                 Field('eol_link', 'string', requires=IS_NULL_OR(IS_URL())),
                 Field('iucn_link', 'string', requires=IS_NULL_OR(IS_URL())),
                 Field('arkive_link', 'string', requires=IS_NULL_OR(IS_URL())),
-                Field('gbif_link', 'string', requires=IS_NULL_OR(IS_URL())))
+                Field('gbif_link', 'string', requires=IS_NULL_OR(IS_URL())),
+                Field('updated_by', 'reference auth_user'),
+                Field('updated_on', 'date'))
 
 
 ## -----------------------------------------------------------------------------

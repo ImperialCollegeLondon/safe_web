@@ -1,3 +1,4 @@
+import datetime
 
 ## -----------------------------------------------------------------------------
 ## SPECIES PROFILES
@@ -67,15 +68,33 @@ def species_profile():
     return dict(species = species)
 
 
-@auth.requires_membership('bloggers')
-def new_species():
+@auth.requires_membership('species_profiler')
+def manage_species():
     
-    form = SQLFORM(db.species_profile)
+    db.species_profile.updated_by.readable = False
+    db.species_profile.updated_by.writable = False
+    db.species_profile.updated_on.readable = False
+    db.species_profile.updated_on.writable = False
+
     
-    if form.process().accepted:
-        session.flash = CENTER(B('Species added.'), _style='color: green')
-        redirect(URL('species','species'))
-    else:
-        response.flash = CENTER(B('Problems with the form, check below.'), _style='color: red')
+    form = SQLFORM.grid(db.species_profile, 
+                        fields = [db.species_profile.binomial, db.species_profile.common_name],
+                        formargs = {'showid': False},
+                        deletable = False,
+                        details = False,
+                        onvalidation = validate_species)
+    
+    # if form.process().accepted:
+    #     session.flash = CENTER(B('Species added.'), _style='color: green')
+    #     redirect(URL('species','species'))
+    # else:
+    #     response.flash = CENTER(B('Problems with the form, check below.'), _style='color: red')
     
     return dict(form = form)
+
+
+def validate_species(form):
+    
+    # record who last edited the profile and when
+    form.vars.updated_by = auth.user.id
+    form.vars.updated_on = datetime.date.today().isoformat()
