@@ -63,35 +63,8 @@ def output_details():
                     args=[output_id],
                     ajax=True)
     
-    membership_panel = LOAD(request.controller,
-                            'view_output_membership.html',
-                             args=[output_id],
-                             ajax=True)
-    
-    # if the user is a member of the outout then include a list of users to add
-    output_members = db(db.output_members.output_id == output_id).select()
-    output_member_ids = [r.user_id for r in output_members]
-    
-    if auth.is_logged_in() and auth.user.id in output_member_ids:
-        
-        # lock down the value of the output_id locally
-        db.output_members.output_id.default = output_id
-        
-        addform = SQLFORM(db.output_members, 
-                          fields = ['user_id'])
-        
-        if addform.process().accepted:
-            response.flash = CENTER(B('New output member added.'), _style='color: green')
-            # could email the new member here
-            pass
-    
-    else:
-        addform = None
-    
     return dict(output = output, 
-                projects = projects, 
-                membership_panel = membership_panel, 
-                addform = addform)
+                projects = projects)
 
 
 def view_output_membership():

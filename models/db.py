@@ -463,14 +463,6 @@ db.define_table('outputs',
     Field('admin_decision_date','date'),
     format='%(title)s') # set the way the row is represented in foreign tables
 
-# not sure about this - can fall back to a single owner
-# but want to be able to flag multiple members, perhaps mostly
-# just for the MY_SAFE page
-db.define_table('output_members',
-    Field('output_id', 'reference outputs', notnull=True),
-    Field('user_id', 'reference auth_user', notnull=True))
-
-
 db.define_table('project_outputs',
     Field('project_id', 'reference project', notnull=True),
     Field('output_id', 'reference outputs', notnull=True),

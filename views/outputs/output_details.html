@@ -69,16 +69,6 @@ hr {
         sanitize=True, permitted_tags=['br/'])}}
 <br>
 
-<hr>
-{{=H4("Output contributors")}}
-<hr>
-{{=membership_panel}}
-<br>
-
-{{if addform is not None:}}
-{{=addform}}
-{{pass}}
-
 {{if projects is not None:}}
 {{=HR()}}
 {{=H4('Associated projects')}}
