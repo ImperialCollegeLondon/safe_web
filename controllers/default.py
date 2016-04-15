@@ -63,31 +63,34 @@ def my_safe():
     
     """
     This controller presents a simple set of grids showing projects, outputs
-    visits, reservations that a user is associated with.
+    visits, reservations, blogs that a user is associated with.
     """
     table = request.vars['set']
     
+    # default view
     if table is None:
         table = 'project'
     
-    # do we present a grid
-    if table in db.tables:
-
-        # provide a look up of which tables and columns to query
-        membership_dict = {'project': {'tab':'project_members', 'col':'project_id',
-                                       'fld': ['title'], 'name': 'projects',
-                                       'cntr': 'projects', 'view': 'project_details'},
-                           'outputs': {'tab':'outputs', 'col':'id',
-                                       'fld': ['title'], 'name': 'outputs',
-                                       'cntr': 'outputs', 'view': 'output_details'},
-                           'research_visit': {'tab':'research_visit_member', 'col':'research_visit_id',
-                                       'fld': ['title'], 'name': 'research visits',
-                                       'cntr': 'research_visits', 'view': 'research_visit_details'},
-                           'bed_reservations': {'tab':'bed_reservation_member', 'col':'bed_reservation_id',
-                                       'fld': ['purpose'], 'name': 'bed reservations',
-                                       'cntr': 'bed_reservations', 'view': 'bed_reservation_details'}}
-
-
+    # provide a look up of which tables and columns to query
+    membership_dict = {'project': {'tab':'project_members', 'col':'project_id',
+                                   'fld': ['title'], 'name': 'projects',
+                                   'cntr': 'projects', 'view': 'project_details'},
+                       'outputs': {'tab':'outputs', 'col':'id',
+                                   'fld': ['title'], 'name': 'outputs',
+                                   'cntr': 'outputs', 'view': 'output_details'},
+                       'research_visit': {'tab':'research_visit_member', 'col':'research_visit_id',
+                                   'fld': ['title'], 'name': 'research visits',
+                                   'cntr': 'research_visits', 'view': 'research_visit_details'},
+                       'bed_reservations': {'tab':'bed_reservation_member', 'col':'bed_reservation_id',
+                                   'fld': ['purpose'], 'name': 'bed reservations',
+                                   'cntr': 'bed_reservations', 'view': 'bed_reservation_details'},
+                       'blog_posts': {'tab':'blog_posts', 'col':'id',
+                                   'fld': ['title'], 'name': 'blog posts',
+                                   'cntr': 'blog', 'view': 'blog_details'}}
+    
+    # Is the requested set in the defined set
+    if table in membership_dict.keys():
+        
         m = membership_dict[table]
         
         # get the set of item ids that the user is a member of 

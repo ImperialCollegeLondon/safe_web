@@ -399,7 +399,7 @@ if db(db.blog_posts).count() == 0:
                               content = row['content'],
                               date_posted = row['date_posted'],
                               admin_status = 'Approved',
-                              poster_id = 1, # DO assuming ownership
+                              user_id = 1, # DO assuming ownership
                               admin_id = 1
                               )
             db.commit()

@@ -81,7 +81,7 @@ user_actions = [(T('Registered users'), True, None, [
 
 
 if auth.has_membership('bloggers'):
-    user_actions[0][3].append((T('Create a blog post'), True,URL('blog', 'new_blog_post'),[]))
+    user_actions[0][3].append((T('Create a blog post'), True,URL('blog', 'blog_details'),[]))
 
 if auth.has_membership('species_profiler'):
     user_actions[0][3].append((T('Manage species profiles'), True,URL('species', 'manage_species'),[]))

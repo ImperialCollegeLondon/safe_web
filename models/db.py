@@ -146,51 +146,31 @@ mail.settings.ssl = True
 
 ## -----------------------------------------------------------------------------
 ## IMPORT the CKEDITOR PLUGIN TO GIVE A WYSIWYG EDITOR FOR BLOGS AND NEWS
+## -- OK, so this editor is neat but one issue is that it dumps files into the 
+##    root of uploads, which is messy
+## -- Ordinarily, this would be controlled by the upload_folder setting but
+##    this is hardcoded in the module. Could edit it there but you can also use
+##    a fs object to provide a folder
+## -- You'd think it might be possible to have multiple upload folders but
+##    it turns out to be quite hard to switch the settings
 ## -----------------------------------------------------------------------------
 
 from plugin_ckeditor import CKEditor
 ckeditor = CKEditor(db)
 
+from fs.osfs import OSFS
+app_root = request.folder
+app_root_fs = OSFS(app_root)
 
-## TODO URGENT - playing around with 
-# ckeditor.settings.table_upload_name = 'ckeditor_news'
-#
-#
-# from fs.osfs import OSFS
-# app_root = request.folder
-# app_root_fs = OSFS(app_root)
-# ckeditor.settings.uploadfs = app_root_fs.opendir('uploads/news/')
+if not app_root_fs.exists('uploads/news_and_blogs/'):
+    blog_fs = app_root_fs.makeopendir('uploads/news_and_blogs/')
+else:
+    blog_fs = app_root_fs.opendir('uploads/news_and_blogs/')
 
-# Following up on this, I think the complexity is that plugin_ckeditor uses a single table to store all uploads, and the upload folder is a fixed property of the upload field for that table. That isn't something you'd want to mess around with because the web2py internals use the upload name (which includes the table.field) to retrieve the upload folder from the table definition.
-#
-# So, my guess is that the cleanest way to implement this might be to have multiple ckeditor upload tables:
-# - you can change
-#
-#
-# - you'd then need to be manipulate the settings within controllers to point to the correct table for a post.
-#
-# I think this would need minimal changes to the plugin:  just adding  uploadfolder to the CKEditor settings
-#
-#
-#
-# On Friday, 18 March 2016 12:02:20 UTC, David Orme wrote:
-# Hi,
-#
-# I've installed the web2py_ckeditor plugin from:
-# https://github.com/timrichardson/web2py_ckeditor4/releases
-#
-# I think this will working really nicely for providing a table of simple blog posts, but I'd like to control where uploaded files get stored. I had a look at the source and it seemed like ckeditor.settings.uploadfs might be the answer, but I can't get it to work. Everything just gets stores in the root of app/uploads.
-#
-# In an ideal world, I'd like to able to modify this in different controllers so that uploads for 'blog' posts go to one folder and uploads for 'news' posts go to another.
-
-
-
+ckeditor.settings.uploadfs = blog_fs
+ckeditor.settings.table_upload_name = 'ckeditor_uploads'
 ckeditor.define_tables()
 
-# ckeditor.settings.table_upload_name = 'ckeditor_blog'
-# ckeditor.define_tables()
-#
-# print ckeditor.settings
 
 
 ## -----------------------------------------------------------------------------
@@ -312,7 +292,10 @@ spatial_scales_set = ['First order', 'Second order', 'Third order', 'Fourth orde
 
 data_use_set = ['Undergraduate Project','Masters Project', 'PhD Thesis','Research Grant','Other']
 
-admin_status_set = ['Pending', 'Rejected', 'In Review', 'Approved', 'Resubmit']
+project_status_set = ['Pending', 'Rejected', 'In Review', 'Approved', 'Resubmit']
+
+admin_status_set = ['Pending', 'Rejected', 'Approved']
+
 
 animal_groups = ['Oligochaetes (earthworms)', 'Hirudinea (leeches)', 
                  'Chelicerata (spiders, scorpions, and kin)', 
@@ -373,7 +356,7 @@ db.define_table('project',
     Field('proposal_date','date'),
     # The fields below are to handle approval of new records
     # - admin_history is used internally to maintain a record of admin notes
-    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
+    Field('admin_status','string', requires=IS_IN_SET(project_status_set), default='Pending'), 
     Field('admin_id','reference auth_user'),
     Field('admin_notes','text'),
     Field('admin_history','text', writable=False), 
@@ -648,13 +631,12 @@ db.define_table('blog_posts',
                 Field('title', 'string'),
                 Field('content', 'text', widget=ckeditor.widget),
                 # who posted it and when
-                Field('poster_id', 'reference auth_user'),
+                Field('user_id', 'reference auth_user'),
                 Field('date_posted', 'date'),
                 # The fields below are to handle approval of new records
                 Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
-                Field('admin_id','reference auth_user'),
                 Field('admin_notes','text'),
-                Field('admin_decision_date','date'),
+                Field('admin_history','text'),
                 Field('expired','boolean', default=False))
 
 
@@ -689,7 +671,7 @@ db.define_table('group_request',
                 Field('justification', 'string'),
                 # The fields below are to handle approval of new records
                 Field('admin_status','string', 
-                      requires=IS_IN_SET(['Approved',"Pending","Rejected"]),
+                      requires=IS_IN_SET(admin_status_set),
                       default='Pending'), 
                 Field('admin_id','reference auth_user'),
                 Field('admin_decision_date','date'))

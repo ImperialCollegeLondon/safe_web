@@ -15,6 +15,11 @@ hr {
 
 <div class="flash">{{=response.flash or session.flash or ' '}}</div>
 
+{{=H2('Make decision on blog post')}}
+
+<p>The blog is displayed below and you can approve or reject it using the form at the bottom. Please provide information to the poster about your decision.</p>
+
+
 <!--Insert a consistently styled back button to return to the grid view-->
 {{= A(SPAN(_class="glyphicon glyphicon-arrow-left"),
       SPAN(' Back', _class="buttontext button"),
@@ -22,23 +27,30 @@ hr {
       _href=URL("blog","administer_blogs", user_signature=True),
       _style='padding: 3px 5px 3px 5px;')}}
 <br>
-<p>The blog is displayed below and you can approve or reject it using the form at the bottom. Please provide information to the poster about your decision.</p>
 
 
-
-<hr>
 {{=TABLE(TR(TD(H3(blog_post.title)), 
-	    TD(IMG(_src = URL('default','download', args = blog_post.thumbnail_figure), _height = 100),  _style='text-align:right')), 	_width='100%')}}
-<hr>
-{{=TABLE(TR(TD(CAT('', I(blog_post.authors))), TD(blog_post.date_posted, _style='text-align:right')), _width='100%')}}
-<hr>
+	    TD(IMG(_src = URL('default','download', args = blog_post.thumbnail_figure), _height = 100),  _style='text-align:right')),	_width='100%')}}
+
+{{=BR()}}
+{{=DIV(TABLE(TR(TD(CAT('', I(blog_post.authors))), TD(blog_post.date_posted, _style='text-align:right')), _width='100%'),_style='background-color: lightgrey; line-height: 40px')}}
+
+{{=P('Posted by: ', blog_post.user_id.first_name, ' ', blog_post.user_id.last_name, 
+     _style='text-align:right; color=grey; font-size:smaller')}}
+
 <br>
 {{=XML(blog_post.content)}}
 <br>
-<hr>
-{{=P('Posted by: ', blog_post.poster_id.first_name, ' ', blog_post.poster_id.last_name, 
-     _style='text-align:right; color=grey; font-size:smaller')}}
+
+
+{{=H4('Admin decision', _style='background-color: lightgrey; line-height: 40px')}}
 
 {{=blog_form}}
 
+{{=H4('Admin history', _style='background-color: lightgrey; line-height: 40px')}}
+
+{{if blog_post.admin_history is not None:}}
+{{=XML(blog_post.admin_history.replace('\\n', '<br />'),
+        sanitize=True, permitted_tags=['br/'])}}
+{{pass}}
 <br>	

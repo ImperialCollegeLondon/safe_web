@@ -1,0 +1,22 @@
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+{{=H2('Create and edit a blog post')}}
+
+<p>Use the form below to submit a new blog post or edit your existing post! The thumbnail figure is used to illustrate the project in the list of blog posts but you can also add images and files into the post itself through the content editor.</p>
+
+News posts and edits to existing posts will be held until approved by an administrator before it being made publically visible. You can see all comments made by the admin team below.</p>
+<br>
+
+{{=form}}
+
+<br>
+
+{{=H4('Admin comments', _style='background-color: lightgrey; line-height: 40px')}}
+
+{{if record.admin_history is not None:}}
+{{=XML(record.admin_history.replace('\\n', '<br />'),
+        sanitize=True, permitted_tags=['br/'])}}
+{{pass}}
+<br><br>
