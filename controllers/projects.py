@@ -181,7 +181,7 @@ def view_project_outputs():
                        args=[project_id],
                        searchable=False,
                        deletable=False,
-                       details=True,
+                       details=False,
                        editable=False,
                        create=False,
                        selectable=False,

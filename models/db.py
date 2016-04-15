@@ -309,13 +309,12 @@ animal_groups = ['Oligochaetes (earthworms)', 'Hirudinea (leeches)',
                  'Tardigrada (tardigrades)']
 
 # define table
-# - TODO - think how best to link to project pages from title.
 
 db.define_table('project',
     Field('uuid', length=64, default=uuid.uuid4),
     Field('picture','upload', uploadfolder= request.folder+'/uploads/images/projects'),
     Field('title','string', notnull=True,
-          # represent = lambda value, row: A(row.title, _href='www.google.co.uk')
+          represent = lambda value, row: A(row.title, _href=URL('projects', 'project_view', args=row.id))
           ),
     # Field('project_home_country','string', notnull=True,
     #       requires=IS_IN_SET(['Malaysian', 'International']),
@@ -402,7 +401,9 @@ formats = ["Book Chapter", "Journal Paper", "Other", "Poster", "Presentation", "
 db.define_table('outputs',
     Field('picture','upload', uploadfolder= request.folder+'/uploads/images/outputs'),
     Field('file','upload', uploadfolder= request.folder+'/uploads/files/outputs'),
-    Field('title','string', notnull=True),
+    Field('title','string', notnull=True,
+          represent = lambda value, row: A(row.title, _href=URL('outputs', 'view_output', args=row.id))
+    ),
     Field('description','text', notnull=True),
     Field('format','string', requires=IS_IN_SET(formats), notnull=True),
     Field('citation','string', length=1024),

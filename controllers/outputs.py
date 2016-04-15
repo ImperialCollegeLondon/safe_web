@@ -16,12 +16,13 @@ def outputs():
     # and adds in a link button to the standalone view controller
     links = [dict(header = '', body = lambda row: IMG(_src = URL('default', 
                   'download', args = row.picture), _width = 100, _height = 100)),
-             dict(header = '', 
-                  body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
-                                       SPAN('View', _class="buttontext button"),
-                                       _class="button btn btn-default", 
-                                       _href=URL("outputs","output_details", args=[row.id], user_signature=True),
-                                       _style='padding: 3px 5px 3px 5px;'))]
+            # dict(header = '', 
+            #      body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
+            #                           SPAN('View', _class="buttontext button"),
+            #                           _class="button btn btn-default", 
+            #                           _href=URL("outputs","view_output", args=[row.id], user_signature=True),
+            #                           _style='padding: 3px 5px 3px 5px;'))
+            ]
     
     
     # we need the picture field in the fields fetched, in order to look up
@@ -48,7 +49,7 @@ def outputs():
     return dict(form=form)
 
 
-def output_details():
+def view_output():
     
     # retrieve the output id from the page arguments passed by the button
     # and then get the row and send it to the view
