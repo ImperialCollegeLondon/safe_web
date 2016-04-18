@@ -26,11 +26,11 @@ response.google_analytics_id = None
 
 response.menu = [
     (T('About'), True, None, [
-        (T('Concept'), True, URL('default', 'concept'), []),
-        (T('Ecological Monitoring'), True, URL('default', 'ecological_monitoring'), []),
+        (T('Concept'), True, URL('info', 'concept'), []),
+        (T('Ecological Monitoring'), True, URL('info', 'ecological_monitoring'), []),
         (T('Contacts'), True, URL('people', 'contacts'), []),
-        (T('The Project design'), True, URL('default', 'todo'), []),
-        (T('Funding and support'), True, URL('default', 'funders'), [])
+        (T('The Project design'), True, URL('info', 'design'), []),
+        (T('Funding and support'), True, URL('info', 'funders'), [])
     ]),
     (T('From the field'), True, None, [
         (T('Research Projects'), True, URL('projects', 'projects'), []),
@@ -38,14 +38,19 @@ response.menu = [
         (T('Blog'), True, URL('blog', 'blogs'), []),
         (T('Species profiles'), True, URL('species', 'species'), []),
         (T('Outputs'), True, URL('outputs', 'outputs'), []),
+        (T('SAFE Newsletter'), True, URL('info', 'newsletter'), []),
+        (T('SAFE Mailing list'), True, URL('info', 'mailing_list'), []),
     ]),
-    (T('Research planning information'), True, None, [
-        (T('FAQs and SAFE wiki'), True, 'http://forestecology.net/dokuwiki/safe/start', []),
-        (T('Research Requirements'), True, URL('default', 'todo'), []),
-        (T('Health and Safety'), True, URL('default', 'todo'), []),
-        (T('SAFE Calendars'), True, URL('default', 'calendars'), []),
-        (T('Permits'), True, URL('default', 'todo'), []),
+    (T('Working at SAFE'), True, None, [
+        (T('Overview'), True, URL('info', 'steps_to_follow'), []),
+        (T('Research Requirements'), True, URL('info', 'requirements'), []),
+        (T('Submitting proposals'), True, URL('info', 'submitting_proposals'), []),
+        (T('Biosecurity'), True, URL('info', 'biosecurity'), []),
+        (T('Health and Safety'), True, URL('info', 'health_and_safety'), []),
+        (T('Data policy'), True, URL('info', 'data_policy'), []),
+        (T('SAFE Calendars'), True, URL('info', 'calendars'), []),
         (T('Costs'), True, URL('default', 'todo'), []),
+        (T('FAQs and SAFE wiki'), True, 'http://forestecology.net/dokuwiki/safe/start', []),
         (T('Bed availability'), True, URL('bed_reservations', 'bed_availability'), []),
         LI(_class="divider"),
         (T('Volunteers available'), True, URL('marketplace', 'volunteers'), []),
@@ -66,7 +71,6 @@ user_actions = [(T('Registered users'), True, None, [
                 (T('View research visits'), True, URL('research_visits', 'research_visits'), []),
                 (T('My SAFE'), True, URL('default', 'my_safe'), []),
                 (T('My health and safety info'), True, URL('health_safety', 'health_and_safety'), []),
-                (T('SAFE Mailing list'), True, URL('default', 'mailing_list'), []),
                 LI(_class="divider"),
                 (T('Request to join web group'), True, URL('groups', 'group_request'), []),
                 (T('Propose a project'), True, URL('projects', 'project_details'), []),

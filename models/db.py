@@ -107,11 +107,15 @@ db.auth_user.legacy_user_id.writable = False
 db.auth_user.h_and_s_id.readable = False
 db.auth_user.h_and_s_id.writable = False
 
+# turn user emails into email links
+db.auth_user.email.represent = lambda value, row: A(value, _href='mailto:{}'.format(value))
+
+# provide links to user directory for logged in users
 # set a string formatting for representing user ID
 db.auth_user._format = '%(last_name)s, %(first_name)s'
 
-# turn user emails into email links
-db.auth_user.email.represent = lambda value, row: A(value, _href='mailto:{}'.format(value))
+
+
 
 ## configure auth policies
 auth.settings.registration_requires_verification = False
@@ -422,6 +426,8 @@ db.define_table('outputs',
 
 # Set up a default display for the admin_history field
 # that turns any carriage returns into HTML breaks and returns XML
+# - TODO figure out how to use Rows.render() to use this throughout project
+#        because it doesn't work from a record (which is a Row not Rows) 
 db.outputs.admin_history.represent = lambda admin_history, row: XML(row.admin_history.replace('\\n', '<br />'),
             sanitize=True, permitted_tags=['br/'])
     

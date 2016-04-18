@@ -2,6 +2,8 @@
 # this file is released under public domain and you can use without limitations
 
 import datetime
+import dateutil.parser
+import requests
 # from collections import Counter
 
 
@@ -25,38 +27,14 @@ def index():
     
     return dict(message=T('Welcome to web2py!'))
 
+def todo():
+    
+    return response.render()
 
 # def wiki():
 #
 #     return auth.wiki()
 
-def concept():
-    
-    return response.render()
-
-def mailing_list():
-    
-    return response.render()
-
-
-def funders():
-    
-    return response.render()
-
-
-def calendars():
-    
-    return response.render()
-
-
-def ecological_monitoring():
-    
-    return response.render()
-
-
-def todo():
-    
-    return response.render()
 
 @auth.requires_login()
 def my_safe():

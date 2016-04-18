@@ -185,11 +185,14 @@ the form is readonly so need to be wrapped in a test to avoid errors.-->
 {{=H4('Administration status and history', _style='background-color: lightgrey; line-height: 40px')}}
 {{=P(B('Admin status: '), approval_icons[record.admin_status], XML('&nbsp;') *2, record.admin_status)}}
 {{pass}}
-{{if record.admin_history is not None:}}
+
+{{if record is not None and record.admin_history is not None:}}
 {{=P(B('Admin history: '))}}
 {{=XML(record.admin_history.replace('\\n', '<br />'),
         sanitize=True, permitted_tags=['br/'])}}
 {{pass}}
+
+<br>
 
 <!-- {{if auth.has_membership('admin'):}}
 {{=form.custom.widget.admin_status}}
