@@ -2,8 +2,7 @@ import datetime
 
 ## -----------------------------------------------------------------------------
 ## OUTPUTS
-## - controllers to view outputs and get a nicely formatted output details view
-## - controllers to create new outputs and associate them with projects (or not)
+## - public controllers to view outputs and get a nicely formatted output details view
 ## -----------------------------------------------------------------------------
 
 def outputs():
@@ -68,31 +67,6 @@ def view_output():
                 projects = projects)
 
 
-def view_output_membership():
-    
-    """
-    Present a members of a given output
-    """
-    
-    # retrieve the user id from the page arguments passed by the button
-    output_id = request.args(0)
-    
-    form = SQLFORM.grid((db.output_members.output_id == output_id),
-                       args=[output_id],
-                       fields = [db.output_members.user_id],
-                       maxtextlength=250,
-                       searchable=False,
-                       deletable=False,
-                       details=False,
-                       selectable=False,
-                       create=False,
-                       editable=False,
-                       csv=False,
-                       user_signature=False
-                       )  # change to True in production
-    return form
-
-
 def get_output_projects():
     
     """
@@ -121,88 +95,128 @@ def get_output_projects():
     
     return form
 
+## -----------------------------------------------------------------------------
+## OUTPUT CREATION AND EDITING
+## - user controllers create new outputs, edit existing ones and pair to projects
+## -----------------------------------------------------------------------------
+
 
 @auth.requires_login()
-def new_output():
+def output_details():
     
     """
-    This controller shows a SQLFORM to submit an upload. 
+    This controller provides an interface to create a new output 
+    (when no request arguments are passed)
     
-    It also allows a user to tag that upload to a project and only
+    shows a SQLFORM to submit an upload and it also exposes a form
+    for existing e     a user to tag that upload to a project and only
     projects for which the logged in user is a member are available.
-    
-    Because this involves two tables (outputs for details and 
-    projects for mapping to projects), we'll use SQLFORM.factory
     
     The controller then passes the response through validation before 
     sending a confirmation email out.
     """
     
-    # Restrict the project choices available from projects
-    # - find the acceptable project ID numbers
-    valid_ids = db(db.project_members.user_id == auth.user.id)._select(db.project_members.project_id)
-    query = db(db.project.id.belongs(valid_ids))
+    # do we have a request for an existing blog post
+    output_id = request.args(0)
     
-    # - modify the outputs project_id requirements within this controller
-    db.project.id.requires = IS_EMPTY_OR(IS_IN_DB(query, db.project.id, '%(title)s'))
-    
-    # Help the user by explaining why project ID might be blank
-    if query.count() == 0:
-        project_comment = ('You are not registered as a member of any projects'
-                           ' but can upload non-project outputs')
+    if output_id is not None:
+        record = db.outputs(output_id)
     else:
-        project_comment = ('Choose from the projects you are a member of or leave blank'
-                           ' for non-project outputs')
-    
-    # create a set of fields to choose from: a list containing a single field with
-    # constrained set of project titles, to which we append fields from outputs
-    fields = [Field('project_id', 'reference project', 
-                         requires = IS_EMPTY_OR(IS_IN_DB(query, db.project.id, '%(title)s')),
-                         comment = project_comment)]
-    hidden_fields = ['user_id', 'submission_date', 'admin_status',
-                     'admin_id', 'admin_notes', 'admin_decision_date']
-    output_fields = [f for f in db.outputs if f.name not in hidden_fields]
-    fields.extend(output_fields)
-    
-    # continue with form - this has to be defined on the fly
-    # in order to bring in the project id choices, which are intercepted in accept()
-    form = SQLFORM.factory(*fields,
-                           submit_button = 'Submit and add output members')
-    
-    # now intercept and parse the various inputs
-    if form.process(onvalidation=validate_new_output).accepted:
+        record = None
         
-        # add the content to the database, first filtering out the output fields
-        # and getting the row id of the new entry
-        new_output_id = db.outputs.insert(**db.outputs._filter_fields(form.vars))
+    if output_id is not None and record is None:
         
-        # pair it with a project if requested
-        if form.vars.project_id is not None:
-            db.project_outputs.insert(project_id = form.vars.project_id,
-                                      output_id = new_output_id,
-                                      added_by = auth.user.id,
-                                      date_added = datetime.date.today().isoformat())
+        # avoid unknown blogs
+        session.flash = B(CENTER('Invalid output id'), _style='color:red;')
+        redirect(URL('outputs','outputs'))
         
-        # Signal success and email the proposer
-        mail.send(to=auth.user.email,
-           subject='SAFE project output uploaded',
-           message='Many thanks for uploading your output')
-        session.flash = CENTER(B('SAFE project output successfully submitted.'), _style='color: green')
+    elif output_id is not None and record.user_id <> auth.user.id:
+        # security check to stop people editing other users outputs
+        session.flash = CENTER(B('You do not have permission to edit these output details.'), _style='color: red')
+        redirect(URL('outputs','outputs', args=output_id))
         
-        # send back to the outputs page
-        redirect(URL('outputs', 'outputs'))
-    elif form.errors:
-        response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
     else:
-        pass
+        
+        # create the form
+        form = SQLFORM(db.outputs, record = output_id,
+                       fields = ['picture','file','title','description',
+                                 'format', 'citation', 'doi','url'],
+                       showid=False,
+                       submit_button = 'Submit output')
+    
+        # now intercept and parse the various inputs
+        if form.process(onvalidation=validate_output_details).accepted:
+            
+            # Signal success and email the proposer
+            mail.send(to=auth.user.email,
+               subject='SAFE project output created/edited',
+               message='Many thanks for uploading your output')
+            session.flash = CENTER(B('SAFE project output created/edited.'), _style='color: green')
+            
+            # add a comment to the history
+            new_history = '[{} {}, {}, {}]\\n'.format(auth.user.first_name,
+                           auth.user.last_name, datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                           'Output created' if output_id is None else "Output edited")
+            
+            # reload the record
+            output_record = db.outputs(form.vars.id)
+            
+            if output_record.admin_history is None or output_record.admin_history == '':
+                output_record.update_record(admin_history = new_history)
+            else:
+                output_record.update_record(admin_history = output_record.admin_history + '\\n' + new_history)
+            
+            # now send to the output_details page for the form we've just created
+            redirect(URL('outputs', 'output_details', args=form.vars.id))
+            
+        elif form.errors:
+            response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
+        else:
+            pass
 
-    return dict(form=form)
+        # Now handle adding projects:
+        # - provide records of the projects already added and a restricted set
+        #   of projects that the user can chose
+        if output_id is not None:
+            
+            # current projects
+            current_projects = db(db.project_outputs.output_id == output_id).select()
+            
+            # restrict the SQLFORM to:
+            # a) projects the user is a member of, and which
+            # b) are not already linked to this output
+            valid_ids = db(db.project_members.user_id == auth.user.id)._select(db.project_members.project_id)
+            already_selected = db(db.project_outputs.output_id == output_id)._select(db.project_outputs.project_id)
+            query = db(db.project.id.belongs(valid_ids) & ~ db.project.id.belongs(already_selected))
+            db.project_outputs.project_id.requires = IS_IN_DB(query, db.project.id, '%(title)s')
+            
+            # and can only add records to this id
+            db.project_outputs.output_id.default = output_id
+            
+            # create the form
+            add_project = SQLFORM(db.project_outputs, fields=['project_id'])
+        else:
+            current_projects = None
+            add_project = None
+        
+        # - and the processor to add_projects to existing outputs
+        # TODO - does adding removing projects add to the admin hisyory
+        if add_project is not None:
+            if add_project.process(onvalidation=validate_add_project).accepted:
+                session.flash = CENTER(B('Output added to new project.'), _style='color: green')
+                redirect(URL('outputs', 'output_details', args=output_id))
+            elif add_project.errors:
+                response.flash = CENTER(B('Problem adding project.'), _style='color: red')
+            else:
+                pass
+    
+    return dict(form=form, current_projects=current_projects, add_project=add_project, record=record)
 
 
-def validate_new_output(form):
+def validate_output_details(form):
     
     """
-    Add uploader id and date
+    Add uploader id and date and (re)set the approval status
     TODO -  could check the file isn't ridiculously big but once it is at this 
             point, in this controller, it has already been uploaded. So dim to 
             block it here.
@@ -210,56 +224,49 @@ def validate_new_output(form):
     
     form.vars.user_id = auth.user_id
     form.vars.submission_date =  datetime.date.today().isoformat()
+    
+    # update the record admin status to make it Pending
+    form.vars.admin_status='Pending'
 
 
+def validate_add_project(form):
+    
+    
+    pass
 
 @auth.requires_login()
-def add_output_to_project():
-    
+def remove_project():
+
     """
-    Function to allow a user to add an output to a project.
-    Restrictions here are tricky - only one person 'owns' an output
-    so could restrict to them adding an output to a project they belong to
-    but that is a bit restrictive. So, currently any project member can claim
-    any output (currently with no approval mechanism)
+    Removes a row from the project_outputs table and as such needs careful safeguarding
+    against use by non-authorised people - must be a logged in as the owner of the output
     """
     
-    # Restrict the project choices available from projects
-    # - find the acceptable project ID numbers
-    valid_ids = db(db.project_members.user_id == auth.user.id)._select(db.project_members.project_id)
-    query = db.project.id.belongs(valid_ids)
+    # get the row id and look up the owner of the related output
+    row_id = request.args(0)
+    record = db.project_outputs(row_id)
+    owner = db.outputs(record.output_id).user_id
     
-    # - modify the outputs project_id requirements within this controller
-    db.project_outputs.project_id.requires = IS_IN_DB(db(query), db.project.id, '%(title)s')
-    
-    form = SQLFORM(db.project_outputs, 
-                   fields = ['project_id', 'output_id'],
-                   show_id=False,
-                   )
-    
-    # now intercept and parse the various inputs
-    if form.process(onvalidation=validate_add_output_to_project).accepted:
-        session.flash = CENTER(B('Output successfully added to project.'), _style='color: green')
-        redirect(URL('outputs', 'outputs'))
-    elif form.errors:
-        response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
+    print owner
+    if record is not None:
+        # if the user is the output owner then ok
+        if  auth.user.id == owner:
+                session.flash =  CENTER(B('Project association removed from output.'), _style='color: green')
+                db(db.project_outputs.id == row_id).delete()
+                redirect(URL('outputs','output_details', args=record.output_id))
+        else:
+            session.flash =  CENTER(B('Unauthorised use of outputs/remove_project'), _style='color: red')
+            redirect(URL('outputs','outputs'))
     else:
-        pass
-    
-    
-    return dict(form=form)
+        session.flash = CENTER(B('Unknown row ID in outputs/remove_project'), _style='color: red')
+        redirect(URL('outputs','outputs'))
 
 
 
-def validate_add_output_to_project(form):
-    
-    """
-    Add the id and date added to the project
-    """
-    
-    form.vars.added_by = auth.user_id
-    form.vars.date_added =  datetime.date.today().isoformat()
-
+## -----------------------------------------------------------------------------
+## OUTPUTS ADMINISTRATION
+## - admin controllers to approve submitted outputs.
+## -----------------------------------------------------------------------------
 
 
 @auth.requires_membership('admin')
@@ -277,17 +284,19 @@ def administer_outputs():
     db.outputs.url.writable = False
     db.outputs.doi.writable = False
     db.outputs.title.writable = False
-    db.outputs.description.readable = False
+    db.outputs.description.writable = False
     db.outputs.citation.writable = False
     db.outputs.format.writable = False
     db.outputs.user_id.writable = False
     db.outputs.submission_date.writable = False
     db.outputs.description.writable = False
-    # hide the background admin fields
-    db.outputs.admin_id.readable = False
-    db.outputs.admin_id.writable = False
-    db.outputs.admin_decision_date.readable = False
-    db.outputs.admin_decision_date.writable = False
+    # hide legacy field and lock history
+    db.outputs.legacy_output_id.readable = False
+    db.outputs.legacy_output_id.writable = False
+    db.outputs.admin_history.writable = False
+    
+    # make the administrator choose rejected or approved
+    db.outputs.admin_status.requires = IS_IN_SET(['Rejected', 'Approved'])
     
     # get a query of pending requests 
     form = SQLFORM.grid(query=(db.outputs.admin_status == 'Pending'), csv=False,
@@ -299,19 +308,10 @@ def administer_outputs():
                          create=False,
                          details=False,
                          editargs = {'showid': False},
-                         onvalidation = validate_administer_outputs,
                          onupdate = update_administer_outputs,
                          )
     
     return dict(form=form)
-
-
-def validate_administer_outputs(form):
-    
-    # validation handles any checking (none here) and also any 
-    # amendments to the form variable  - adding user and date of admin
-    form.vars.admin_id = auth.user_id
-    form.vars.admin_decision_date =  datetime.date.today().isoformat()
 
 
 def update_administer_outputs(form):
@@ -319,21 +319,32 @@ def update_administer_outputs(form):
     # Email the decision to the proposer
     # TODO - create and link to a Google Calendar for volunteer periods
     
-    # retrieve the whole form record to get at the creator details
-    creator = form.record.user_id
+    # reload the record
+    output_record = db.outputs(form.vars.id)
+    
+    # update the admin history
+    # add a comment to the history
+    new_history = '[{} {}, {}, {}]\\n{}\\n'.format(auth.user.first_name,
+                   auth.user.last_name, datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                   form.vars.admin_status, form.vars.admin_notes)
+    
+    if output_record.admin_history is None or output_record.admin_history == '':
+        output_record.update_record(admin_history = new_history)
+    else:
+        output_record.update_record(admin_history = output_record.admin_history + '\\n' + new_history)
     
     # set a flash message
-    flash_message  = CENTER(B('Decision emailed to project member at {}.'.format(creator.email)), _style='color: green')
+    flash_message  = CENTER(B('Decision emailed to project member at {}.'.format(output_record.user_id.email)), _style='color: green')
     
     if form.vars.admin_status == 'Approved':
-        mail.send(to=creator.email,
+        mail.send(to=output_record.user_id.email,
                   subject='SAFE output submission',
-                  message='Dear {},\n\nLucky template\n\n {}'.format(creator.first_name, form.vars.admin_notes))
+                  message='Dear {},\n\nLucky template\n\n {}'.format(output_record.user_id.first_name, form.vars.admin_notes))
         session.flash = flash_message
     elif form.vars.admin_status == 'Rejected':
-        mail.send(to=creator.email,
+        mail.send(to=output_record.user_id.email,
                   subject='SAFE output submission',
-                  message='Dear {},\n\nUnlucky template\n\n {}'.format(creator.first_name, form.vars.admin_notes))
+                  message='Dear {},\n\nUnlucky template\n\n {}'.format(output_record.user_id.first_name, form.vars.admin_notes))
         session.flash = flash_message
     else:
         pass

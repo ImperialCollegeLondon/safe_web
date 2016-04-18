@@ -68,7 +68,10 @@ hr {
 
 {{=XML(output.description.replace('\n', '<br />'),
         sanitize=True, permitted_tags=['br/'])}}
-<br>
+
+
+{{=P('Uploaded by: ', output.user_id.first_name, ' ', output.user_id.last_name, 
+     _style='text-align:right; color=grey; font-size:smaller')}}
 
 {{if projects is not None:}}
 {{=H4('Associated projects', _style='background-color: lightgrey; line-height: 40px')}}

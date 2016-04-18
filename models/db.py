@@ -415,16 +415,20 @@ db.define_table('outputs',
     Field('submission_date','date'),
     # The fields below are to handle approval of new records
     Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
-    Field('admin_id','reference auth_user'),
     Field('admin_notes','text'),
-    Field('admin_decision_date','date'),
+    Field('admin_history','text'),
     format='%(title)s') # set the way the row is represented in foreign tables
+
+
+# Set up a default display for the admin_history field
+# that turns any carriage returns into HTML breaks and returns XML
+db.outputs.admin_history.represent = lambda admin_history, row: XML(row.admin_history.replace('\\n', '<br />'),
+            sanitize=True, permitted_tags=['br/'])
+    
 
 db.define_table('project_outputs',
     Field('project_id', 'reference project', notnull=True),
-    Field('output_id', 'reference outputs', notnull=True),
-    Field('added_by', 'reference auth_user', notnull=True),
-    Field('date_added', 'date', notnull=True))
+    Field('output_id', 'reference outputs', notnull=True))
 
 
 ## -----------------------------------------------------------------------------

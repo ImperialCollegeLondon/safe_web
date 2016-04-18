@@ -89,7 +89,7 @@ def blog_details():
     else:
         record = None
         
-    if blog_id is not None and db.blog_posts(blog_id) is None:
+    if blog_id is not None and record is None:
         
         # avoid unknown blogs
         session.flash = B(CENTER('Invalid blog id'), _style='color:red;')

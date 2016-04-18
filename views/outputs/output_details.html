@@ -1,0 +1,56 @@
+{{extend 'layout.html'}}
+
+<!-- This page is complex as it serves a single URL with two different views 
+     1) An editing view for new projects (record is None) or for project coordinators
+        to change details (readonly is False)
+     2) A static view for seeing the details of proposed projects.
+
+The form details are assembled on the fly using a custom form layout:
+    http://web2py.com/books/default/chapter/29/07/forms-and-validators#Custom-forms
+-->
+
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+
+<!--Page header, depending on the readonly state and whether it is a new project-->
+
+{{if record is None:}}
+{{=H2('New Output Submission')}}
+{{=P('Please use the form below to submit a new research output to the SAFE project. Your submitted output will first be screened by an administrator. You will get an email to confirm that you have submitted an output and then another email to confirm whether the output has been accepted or not.')}}
+{{else:}}
+{{=H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)}}
+{{pass}}
+
+
+{{=form}}
+
+<!-- This section of code handles providing a list of project and a
+     custom form interface to manage adding projects -->
+
+{{if record is not None:}}
+{{=H4('Associated projects', _style='background-color: lightgrey; line-height: 40px')}}
+{{=add_project.custom.begin}}
+{{member_rows = [TR(TD(r.project_id.title),
+	            TD(A(remove_member_icon, _href=URL('outputs', 'remove_project', args=r.id)))) for r in current_projects]}}
+{{=TABLE(member_rows,
+	 TR(TD(add_project.custom.widget.project_id),
+	    TD(TAG.BUTTON(add_member_icon, _style='background:none; border:none;padding:0px 10px;font-size: 100%;',
+	       _type="submit") + add_project.custom.end),
+	    _style="vertical-align:top"),
+	_width='100%')}}
+
+{{pass}}
+{{=BR()}}
+
+
+
+{{=H4('Admin history', _style='background-color: lightgrey; line-height: 40px')}}
+
+{{if record is not None and record.admin_history is not None:}}
+{{=XML(record.admin_history.replace('\\n', '<br />'),
+        sanitize=True, permitted_tags=['br/'])}}
+{{pass}}
+<br><br>
+
+{{=test.render(0, fields=[db.outputs.admin_history])}}
