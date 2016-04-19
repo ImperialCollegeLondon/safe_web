@@ -20,6 +20,10 @@ def submitting_proposals():
     
     return response.render()
 
+def logistics():
+    
+    return response.render()
+
 def data_policy():
     
     return response.render()

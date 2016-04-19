@@ -49,7 +49,7 @@ response.menu = [
         (T('Health and Safety'), True, URL('info', 'health_and_safety'), []),
         (T('Data policy'), True, URL('info', 'data_policy'), []),
         (T('SAFE Calendars'), True, URL('info', 'calendars'), []),
-        (T('Costs'), True, URL('default', 'todo'), []),
+        (T('Logistics and costs'), True, URL('info', 'logistics'), []),
         (T('FAQs and SAFE wiki'), True, 'http://forestecology.net/dokuwiki/safe/start', []),
         (T('Bed availability'), True, URL('bed_reservations', 'bed_availability'), []),
         LI(_class="divider"),
