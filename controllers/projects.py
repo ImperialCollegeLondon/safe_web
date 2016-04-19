@@ -430,7 +430,6 @@ def administer_projects():
                          create=False,
                          details=False,
                          links = links,
-                         editargs = {'showid': False},
                          )
     
     return dict(form=form)

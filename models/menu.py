@@ -130,7 +130,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (T('> New group requests') + n_dict['grp'], True, URL('groups', 'administer_group_requests'), []),
                         (T('> Project proposals') + n_dict['proj'], True, URL('projects', 'administer_projects'), []),
                         (T('> New outputs') + n_dict['output'], True, URL('outputs', 'administer_outputs'), []),
-                        (T('> Research visits') + n_dict['vis'], True, URL('research_visits', 'administer_new_research_visits'), []),
+                        (T('> Research visits') + n_dict['vis'], True, URL('research_visits', 'administer_research_visits'), []),
                         (T('> Bed reservations') + n_dict['bed'], True, URL('bed_reservations', 'administer_reserve_beds'), []),
                         (T('> Blog posts') + n_dict['blog'], True, URL('blog', 'administer_blogs'), []),
                         (T('> Volunteers') + n_dict['vol'], True, URL('marketplace', 'administer_volunteers'), []),

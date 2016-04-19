@@ -215,6 +215,13 @@ not_coordinator_icon = SPAN('',_class="glyphicon glyphicon-remove",
                                       _style="color:grey;font-size: 1.3em;", 
                                       _title='Not a Project Coordinator')
 
+hs_ok =SPAN('',_class="glyphicon glyphicon-tasks", 
+                                 _style="color:green;font-size: 1em;", 
+                                 _title='H&S completed')
+
+hs_no = SPAN('',_class="glyphicon glyphicon-tasks", 
+                                 _style="color:red;font-size: 1em;", 
+                                 _title='H&S not completed')
 
 remove_member_icon = SPAN('',_class="glyphicon glyphicon-minus-sign",
                                       _style="color:red;font-size: 1.6em;padding: 0px 10px;", 
@@ -489,14 +496,14 @@ db.define_table('research_visit',
     Field('proposal_date', 'date'),
     # The fields below are to handle approval of new records
     Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
-    Field('admin_id','reference auth_user'),
     Field('admin_notes','text'),
-    Field('admin_decision_date','date'))
+    Field('admin_history','text'))
 
 
 db.define_table('research_visit_member',
     Field('research_visit_id', 'reference research_visit', notnull=True),
     Field('user_id', 'reference auth_user', notnull=True))
+
 
 # project and visit ID _can_ be null for look-see visits, so don't make them 
 # a fixed 'reference' and let the controllers handle validation

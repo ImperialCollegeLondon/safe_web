@@ -1,0 +1,51 @@
+{{extend 'layout.html'}}
+
+<div class="flash">{{=response.flash}}</div>
+
+{{=STYLE('td {padding: 5px 20px;}')}}
+
+
+{{=H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)}}
+
+{{=P('This page shows the current details for the research visit proposal. All visit members should have filled in their health and safety forms before coming to the field - you can check the details of existing H&S records by following the green links' )}}
+
+<!-- Provide links/indicators for H&S for any existing members-->
+
+
+{{hs_icon = [hs_no if r.h_and_s_id is None else A(hs_ok, _href=URL('health_safety', 'admin_view_health_and_safety', args=r.h_and_s_id)) for r in members]}}
+
+<!-- Print the member info-->
+{{=H4('Research visit members', _style='background-color: lightgrey; line-height: 40px')}}
+<!-- and expose the user editing mechanism if readonly is False-->
+
+{{member_rows = [TR(TD(hs), 
+                    TD(r.last_name +  ', ' +  r.first_name)) 
+                 for r, hs in zip(members, hs_icon) ]}}
+{{=TABLE(TR(TH('H&S'),TH('Name'), TH('')), 
+         member_rows,
+         _width='100%')}}
+
+<br>
+{{=H4('Research visit details', _style='background-color: lightgrey; line-height: 40px')}}
+{{=P(B('Title: ') + record.title)}}
+{{=P(B('Project: ') + record.project_id)}}
+{{=P(B('Dates: ') + record.arrival_date.isoformat() + ' to ' + record.departure_date.isoformat())}}
+{{=P(B('Purpose: ') + record.purpose)}}
+{{=P(B('Licence details: ') + record.licence_details)}}
+{{=P(B('Proposer: ') + record.proposer_id)}}
+{{=P(B('Proposal date: ') + record.proposal_date.isoformat())}}
+
+<br>
+
+{{=H4('Admin decision', _style='background-color: lightgrey; line-height: 40px')}}
+{{=form}}
+<br>
+
+{{=H4('Admin history', _style='background-color: lightgrey; line-height: 40px')}}
+
+{{if record.admin_history is not None:}}
+{{=XML(record.admin_history.replace('\\n', '<br />'),
+        sanitize=True, permitted_tags=['br/'])}}
+{{pass}}
+<br><br>
+
