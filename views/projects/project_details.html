@@ -20,7 +20,14 @@ The form details are assembled on the fly using a custom form layout:
 {{=P('Please use the form below to submit a new research proposal to the SAFE project or to update your proposal. Your proposal will first be screened by an administrator and then sent out to the research community at SAFE for comments. This process usually takes about 14 days. You will get an email to confirm that you have submitted a project and then another email to confirm whether the project has been accepted or not.') + P('You will be added as the main contact for the new project and you will be able to add new project members once you have submitted the project description.')}}
 {{elif readonly is False:}}
 {{=H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)}}
-{{=P('This page allows you to edit your project details.')}}
+{{=P('You are a coordinator for this project and this page allows you to edit your project details. Note that an administrator will have to approve any edits: if you have substantially changed the science case, it will probably be sent out for re-reviewing.')}}
+{{=TABLE(TR(TD(A(SPAN('Create research visit', _class="buttontext button"),
+	      _class="button btn btn-default", 
+	      _href=URL("research_visits","research_visit_from_project", args=record.id, user_signature=True),
+	      _style='padding: 3px 3px 3px 3px;')),
+	TD('If you want to propose a new research visit for this project, click on the button to create the proposal and add all the project members. You will be forwarded to the new proposal to complete the details.')),
+	_width='100%',
+	_class="table table-striped")}}
 {{else:}}
 {{=H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)}}
 {{pass}}

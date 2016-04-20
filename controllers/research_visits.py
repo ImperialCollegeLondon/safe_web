@@ -52,7 +52,6 @@ def research_visits():
     return dict(form=form)
 
 
-
 @auth.requires_login()
 def research_visit_details():
     
@@ -237,6 +236,62 @@ def remove_member():
     else:
         session.flash = CENTER(B('Unknown row ID in research_visits/remove_member'), _style='color: red')
         redirect(URL('research_visits','research_visits'))
+
+
+@auth.requires_login()
+def research_visit_from_project():
+
+    """
+    This controller creates a new research visit record from a project record,
+    porting the title and project members into the new visit automatically. This
+    means that users don't have to continually reselect groups.
+    
+    Exposing this controller requires authorization checking that the user is
+    a coordinator for the project.
+    """
+    
+    # get the project id
+    project_id = request.args(0)
+    
+    # establish we've got an actual real project ID
+    if project_id is not None:
+        record = db.project(project_id)
+        
+        if record is None:
+            session.flash = CENTER(B('Unknown project id in research_visits/research_visit_from_project'), _style='color: red')
+            redirect(URL('projects','projects'))
+    else:
+        session.flash = CENTER(B('No project id in research_visits/research_visit_from_project'), _style='color: red')
+        redirect(URL('projects','projects'))
+    
+    # check coordinator privileges
+    coord_query = db((db.project_members.project_id == record.id) &
+                     (db.project_members.is_coordinator == 'True') &
+                     (db.project_members.user_id == auth.user.id)).select()
+    
+    if len(coord_query) == 0:
+        session.flash = CENTER(B('Cannot create a visit for this project: you are not a project coordinator'), _style='color: red')
+        redirect(URL('projects','project_details', args=record.id))
+    
+    # populate the visit record
+    new_visit = db.research_visit.insert(project_id = record.id,
+                                         title = 'Insert visit title',
+                                         arrival_date = '0001-01-01',
+                                         departure_date = '0001-01-01',
+                                         purpose = 'Insert research visit title',
+                                         proposer_id = auth.user.id,
+                                         proposal_date = datetime.datetime.utcnow().isoformat())
+    
+    # populate the members
+    project_members = db(db.project_members.project_id == record.id).select()
+    for r in project_members:
+        member_added = db.research_visit_member.insert(research_visit_id = new_visit,
+                                                       user_id = r.user_id)
+    
+    # send to the new record
+    session.flash = CENTER(B('Visit created - please edit the dates, title and purpose.'), _style='color: green')
+    redirect(URL('research_visits','research_visit_details', args=new_visit))
+
 
 ## -----------------------------------------------------------------------------
 ## ADMINISTER NEW VISITS
