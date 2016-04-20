@@ -8,4 +8,5 @@
 
 {{=TABLE(TR(TH('Date sent'), TH('Newsletter link')),
          *[TR(TD(r[2].date().isoformat()), TD(A(r[1], _href=r[0]))) for r in table],
-         _width='100%')}}
+         _width='100%',
+         _class="table table-striped")}}

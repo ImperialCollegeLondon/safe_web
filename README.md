@@ -21,6 +21,15 @@ You'll get a PEM file from Amazon when you create the EC2 instance. This is a ke
     chmod 400 AWS_SAFE_Web.pem
     ssh -i AWS_SAFE_Web.pem ubuntu@ec2-52-50-144-96.eu-west-1.compute.amazonaws.com
 
+
+### Enabling HTTPS ###
+
+I'm playing around with using the LetsEncrypt open source certification:
+
+    git clone https://github.com/letsencrypt/letsencrypt
+    cd letsencrypt
+    ./letsencrypt-auto --help
+
 ### Installing web2py ###
 
 This downloads and runs a web2py script that sets sets up web2py, postgres, postfix and a bunch of other stuff and restarts Apache. This installation therefore sets up a machine that could run its own internal DB and mailserver, although AWS try to get you to use their RDS service, which isn't available for free.

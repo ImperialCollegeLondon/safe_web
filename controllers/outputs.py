@@ -247,7 +247,6 @@ def remove_project():
     record = db.project_outputs(row_id)
     owner = db.outputs(record.output_id).user_id
     
-    print owner
     if record is not None:
         # if the user is the output owner then ok
         if  auth.user.id == owner:
