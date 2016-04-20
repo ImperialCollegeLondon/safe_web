@@ -28,9 +28,10 @@ def research_visits():
     # 1) displays a thumbnail of the  project image
     # 2) creates a custom button to pass the row id to a custom view 
 
-    links = [dict(header = 'status', body = lambda row: approval_icons[row.admin_status]),
-             dict(header = '', body = lambda row: A('View',_class='button btn btn-default'
-                  ,_href=URL("research_visits","research_visit_details", args=[row.id])))
+    links = [dict(header = 'Admin Status', body = lambda row: approval_icons[row.admin_status]),
+             dict(header = '', body = lambda row: A('View',_class='button btn btn-default',
+                  _href=URL("research_visits","research_visit_details", args=[row.id]),
+                  _style='padding: 3px 10px 3px 10px;'))
             ]
     
     # suppress status in  SQLFORM grid whilst making it available for links

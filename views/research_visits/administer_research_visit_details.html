@@ -21,7 +21,7 @@
 {{member_rows = [TR(TD(hs), 
                     TD(r.last_name +  ', ' +  r.first_name)) 
                  for r, hs in zip(members, hs_icon) ]}}
-{{=TABLE(TR(TH('H&S'),TH('Name'), TH('')), 
+{{=TABLE(TR(TH('H & S form status'),TH('Name'), TH('')), 
          member_rows,
          _width='100%')}}
 
