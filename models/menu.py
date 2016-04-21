@@ -67,18 +67,19 @@ response.menu = [
 ## ----------------------------------------------------------------------------
 
 user_actions = [(T('Registered users'), True, None, [
+                (T('My SAFE Project'), True, URL('default', 'my_safe'), []),
+                (T('My health and safety info'), True, URL('health_safety', 'health_and_safety'), []),
                 (T('User directory'), True, URL('people', 'users'), []),
                 (T('View research visits'), True, URL('research_visits', 'research_visits'), []),
-                (T('My SAFE'), True, URL('default', 'my_safe'), []),
-                (T('My health and safety info'), True, URL('health_safety', 'health_and_safety'), []),
                 LI(_class="divider"),
-                (T('Request to join web group'), True, URL('groups', 'group_request'), []),
                 (T('Propose a project'), True, URL('projects', 'project_details'), []),
                 (T('Submit a new output'), True, URL('outputs', 'output_details'), []),
                 (T('Propose a research visit'), True, URL('research_visits', 'research_visit_details'), []),
-                (T('Reserve bed space'), True, URL('bed_reservations', 'reserve_beds'), []),
+                (T('Make reservation at SAFE'), True, URL('bed_reservations', 'reserve_beds'), []),
                 (T('Volunteer at SAFE'), True, URL('marketplace', 'new_volunteer'), []),
                 (T('Request project help'), True, URL('marketplace', 'new_help_request'), []),
+                LI(_class="divider"),
+                (T('Request to join web group'), True, URL('groups', 'group_request'), []),
                ])]
 
 
