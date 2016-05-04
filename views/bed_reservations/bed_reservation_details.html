@@ -4,58 +4,51 @@
 
 {{=STYLE('td {padding: 5px 20px;}')}}
 
-{{=H3("Bed reservation details")}}
+{{=H2("Bed reservation details")}}
 
+<p> There are {{=n_beds_available}} beds available to book at SAFE. Please check {{=A('the bed availability calendar', _href=URL('bed_reservations','bed_availability'))}} for the period you want to visit and then book available beds using the form below. Note that:</p>
 
+<ul>
+<li>Your reservation must be confirmed by an administrator before you are definitely booked in.</li>
+<li>You must give at least 14 days notice to book a visit.</li>
+</ul>
 
-<!-- Compile a header depending on whether this a look see or project reservation-->
-{{if visit_record is not None:}}
-{{=H4('This reservation is associated with a project visit')}}
-{{hdr = [TR(TD(B('Project')), TD(visit_record.project_id.title)),
-        TR(TD(B('Research visit')), TD(visit_record.title))]}}
+<!-- Look for any members -->
+{{if reservation_members is not None:}}
+{{hs_icon = [hs_no if r.auth_user.h_and_s_id is None else hs_ok for r in reservation_members]}}
+<!-- Print the member info-->
+{{=BR()}}
+{{=H4('Reservation members', _style='background-color: lightgrey; line-height: 40px')}}
+<!-- and expose the user editing mechanism if readonly is False-->
+{{if readonly is True:}}
+{{member_rows = [TR(TD(hs), 
+                    TD(r.auth_user.last_name +  ', ' +  r.auth_user.first_name),
+                    TD()) 
+                 for r, hs in zip(reservation_members, hs_icon) ]}}
+{{=TABLE(TR(TH('H & S form status'),TH('Name'), TH('')), 
+         member_rows,
+         _width='100%')}}
 {{else:}}
-{{=H4("This reservation is for an evaluation visit")}}
-{{hdr=''}}
+{{=add_member.custom.begin}}
+{{member_rows = [TR(TD(hs), 
+                    TD(r.auth_user.last_name +  ', ' +  r.auth_user.first_name),
+                    TD(A(remove_member_icon, _href=URL('bed_reservations', 
+                         'remove_member', args=r.bed_reservation_member.id))))  
+                 for r, hs in zip(reservation_members, hs_icon) ]}}
+{{=TABLE(TR(TH('H & S form status'),TH('Name'), TH('')), 
+         member_rows,
+         TR(TD(),
+            TD(add_member.custom.widget.user_id),
+            TD(TAG.BUTTON(add_member_icon, 
+                          _style='background:none; border:none;padding:0px 10px;font-size: 100%;',
+           _type="submit") + add_member.custom.end),
+           _style="vertical-align:top"),
+         _width='100%')}}
+{{=BR()}}
+{{pass}}
 {{pass}}
 
-
-<!-- Compile a set of rows for current members and insert a title-->
-{{hs_ok =SPAN('',_class="glyphicon glyphicon-plus-sign", 
-                                 _style="color:green;font-size: 1em;", 
-                                 _title='H&S completed')}}
-{{hs_no = SPAN('',_class="glyphicon glyphicon-plus-sign", 
-                                 _style="color:red;font-size: 1em;", 
-                                 _title='H&S not completed')}}
-
-{{if(auth.has_membership('admin')):}}
-{{hs_icon = [hs_no if r.h_and_s_id is None else A(hs_ok, _href=URL('health_safety', 'admin_view_health_and_safety', args=r.h_and_s_id)) for r in reservation_members]}}
-{{else:}}
-{{hs_icon = [hs_no if r.h_and_s_id is None else hs_ok for r in reservation_members]}}
-{{pass}}
-
-{{names = [r.last_name +  ', ' +  r.first_name for r in reservation_members]}}
-{{memb_rows = [TR(TD(),TD(hs, XML('&nbsp;')*3, n)) for n, hs in zip(names, hs_icon) ]}}
-{{memb_rows[0][0] = TD(B('Beds reserved for'))}}
+{{=H4('Reservation Details', _style='background-color: lightgrey; line-height: 40px')}}
 
 
-
-{{=TABLE(hdr,
-         TR(TD(B('Reservation dates')),TD(reservation_record.arrival_date, ' to ', reservation_record.departure_date)),
-         TR(TD(B('Purpose')),TD(reservation_record.purpose)),
-         TR(TD(B('Approval status')),TD(reservation_record.admin_status)),
-         TR(TD(B('Number of beds')),TD(reservation_record.number_of_visitors)),
-	 memb_rows
-	 )}}
-
-<br>
-{{if form is not None:}}
-{{if visit_record is not None:}}
-{{=P('You are a member of this project and have permission to add project members to this reservation')}}
 {{=form}}
-{{else:}}
-{{=P('You are a member of evaluation visit and have permission to add other users to this reservation')}}
-{{=form}}
-{{pass}}
-{{pass}}
-
-<br>

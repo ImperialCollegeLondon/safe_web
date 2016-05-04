@@ -11,7 +11,7 @@ from collections import Counter
 ## -- TODO Named beds - registered users only or just names?
 ## -----------------------------------------------------------------------------
 
-def bed_availability():
+def safe_availability():
 
     """
     This controller:
@@ -21,8 +21,7 @@ def bed_availability():
 
     # get the dates when beds are booked
     # and select as an iterable of rows
-    bed_data = db(db.bed_data)
-    rows = bed_data.select()
+    bed_data = db(db.bed_reservations.site =='safe').select()
     
     # Pass a list of events to the view for the javascript calendar
     # - need to handle null values from db
@@ -166,80 +165,239 @@ def day_range(start, end):
     return(days)
 
 
+
 @auth.requires_login()
 def bed_reservation_details():
     
     """
-    Controller to show the details of a bed reservatoin
+    Controller to show the details of a bed reservation
+     - can be called without an argument to create a new reservation
+       or with one to expose the reservation details and maybe edit
      - collects a bunch of information and passes it to the view for processing
-     - allows members to be added
     """
     
     # get the reservation_id from the call
     reservation_id = request.args(0)
     
-    # get the reservation information
-    reservation_record = db.bed_reservations(reservation_id)
-    
-    if reservation_record is None:
-        redirect(URL('default','index'))
-    
-    # get the current reservation members and their auth_user rows
-    reservation_members_query = db.bed_reservation_member.bed_reservation_id == reservation_id
-    reservation_members_select = db(reservation_members_query)._select(db.bed_reservation_member.user_id)
-    reservation_members_rows = db(db.auth_user.id.belongs(reservation_members_select)).select()
-    
-    # need to handle project reservations and look see reservations
-    if reservation_record.look_see_visit is False:
-        # get the visit record to give to the view
-        visit_record = db.research_visit(reservation_record.research_visit_id)
-        # get project members for that visit (who have the right to add themselves or others)
-        project_members_query = db.project_members.project_id == visit_record.project_id
-        project_members_rows = db(project_members_query).select(db.project_members.user_id)
-        authorised_users = [r.user_id for r in project_members_rows]
+    # establish we've got an actual real project ID if one is provided
+    if reservation_id is not None:
+        reservation_record = db.bed_reservations(reservation_id)
+        if reservation_record is None:
+            session.flash = CENTER(B('Unknown SAFE reservation id in bed_reservations/bed_reservation_details'), _style='color: red')
+            redirect(URL('bed_reservations','bed_reservations'))
     else:
-        # otherwise get current visit members and give them the right to add
-        already_reserved = authorised_users = [r.id for r in reservation_members_rows]
-        # return an empty visit record
-        visit_record = None
+        reservation_record = None
     
-    if auth.user.id in authorised_users:
-        
-        # lock down the possible entry fields to project members if this
-        # is a project reservation, otherwise can select any registered user
-        if reservation_record.look_see_visit is False:
-            
-            # who is already in the project but not visiting
-            already_reserved = [r.id for r in reservation_members_rows]
-            not_reserved = list(set(authorised_users) - set(already_reserved))
-            query = db(db.auth_user.id.belongs(not_reserved))
-            # - require the visit members to be in that set
-            db.bed_reservation_member.user_id.requires = IS_IN_DB(query, db.auth_user.id, '%(last_name)s, %(first_name)s')
-    
-        # lock down the possible value of research_visit_id
-        db.bed_reservation_member.bed_reservation_id.default = reservation_id
-        db.bed_reservation_member.bed_reservation_id.readable = False
-        
-        # set the labels
-        if reservation_record.look_see_visit is False:
-            labels = {'user_id':'Project member to add'}
-        else:
-            labels = {'user_id':'SAFE registered member to add'}
-        
-        if len(already_reserved) < reservation_record.number_of_visitors:
-            form = SQLFORM(db.bed_reservation_member,
-                           fields = ['user_id'],
-                           labels = labels)
-            
-            # process and reload the page
-            if form.process().accepted:
-                redirect(URL('bed_reservations', 'bed_reservation_details', args=reservation_id))
-        else:
-            form = B(CENTER("The requested number of beds has been filled. No more members can be added."), _style='color:red;')
+    # setup whether editing is allowed for various possibilities
+    if reservation_record is not None and reservation_record.look_see_visit is False:
+        # Existing project related reservations
+        # - Is the user is a coordinator of the project associated with this record?
+        editor_set = db((db.project_members.project_id == reservation_record.project_id) &
+                        (db.project_members.is_coordinator == 'True') &
+                        (db.project_members.user_id == auth.user.id)).select()
+        readonly = False if  len(editor_set) > 0 else True
+        button_text = 'Update SAFE reservation'
+    elif reservation_record is not None and reservation_record.look_see_visit is True:
+        # Existing look see reservations
+        # Is the user a member of the group?
+        editor_set = db((db.bed_reservation_member.bed_reservation_id == reservation_record.id) &
+                        (db.bed_reservation_member.user_id == auth.user.id)).select()
+        readonly = False if  len(editor_set) > 0 else True
+        button_text = 'Update SAFE reservation'
     else:
-        form = None
-    return dict(reservation_record = reservation_record, visit_record = visit_record, 
-                form=form, reservation_members = reservation_members_rows)
+        # New record so allow anyone to propose
+        readonly = False
+        button_text = 'Submit SAFE reservation'
+    
+    # check for existing members
+    if reservation_record is not None:
+        # deleting records needs to reference bed_reservation_member.id and showing
+        # H&S records needs auth_user (and these could be None) so need a left full join
+        query = db(db.bed_reservation_member.bed_reservation_id == reservation_record.id)
+        reservation_members = query.select(db.auth_user.id,
+                                           db.auth_user.last_name,
+                                           db.auth_user.first_name,
+                                           db.auth_user.h_and_s_id,
+                                           db.bed_reservation_member.id,
+                                           left=db.bed_reservation_member.on(db.auth_user.id == db.bed_reservation_member.user_id))
+    else:
+        reservation_members = None
+    
+    # expose the booking form
+    form = SQLFORM(db.bed_reservations, 
+                   record = None if reservation_record is None else reservation_record.id,
+                   readonly = readonly,
+                   fields = ['research_visit_id', 'arrival_date',
+                           'departure_date', 'number_of_visitors',
+                           'purpose', 'look_see_visit'],
+                   labels = {'research_visit_id':'Approved research visit',
+                             'look_see_visit':'These bed bookings are just to explore '
+                             'the facilities and research opportunties at SAFE and are '
+                             'not associated with an ongoing research project.'},
+                   submit_button = button_text,
+                   showid=False)
+    
+    # handle form submission
+    if form.process(onvalidation=validate_reserve_beds).accepted:
+        
+        # # Mechanism for sending email to logged in user
+        # mail.send(to=auth.user.email,
+        #           subject='hello',
+        #           message='hi there')
+        
+        # update the bed bookings table
+        # - get a list of days to book
+        days_occupied = day_range(form.vars.arrival_date, form.vars.departure_date)
+        # - check those days are in the bed bookings table
+        for d in days_occupied:
+            row = db.bed_data(day=d)
+            if row is None:
+                db.bed_data.insert(day=d, pending=form.vars.number_of_visitors)
+            else:
+                row.update_record(pending=row.pending + form.vars.number_of_visitors)
+        
+        # add the proposer to the reservation names list table
+        db.bed_reservation_member.insert(bed_reservation_id = form.vars.id,
+                                         user_id = auth.user.id)
+
+        session.flash = CENTER(B('Bed reservation request submitted.'), _style='color: green')
+        redirect(URL('bed_reservations','bed_reservation_details', args=form.vars.id))
+    
+    elif form.errors:
+        response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red') 
+    else:
+        pass
+    
+    # Now handle members:
+    if readonly is False and reservation_record is not None:
+        # check who can be added
+        # - project members for research visits and anyone for look see visits
+        # - and not already a member in either case
+        if reservation_record.look_see_visit is False:
+            # - project members for research visits and not already a member
+            valid_ids = db(db.project_members.project_id == reservation_record.project_id)._select(db.project_members.user_id)
+            already_selected = db(db.bed_reservation_member.bed_reservation_id == reservation_record.id)._select(db.bed_reservation_member.user_id)
+            query = db(db.auth_user.id.belongs(valid_ids) & ~ db.auth_user.id.belongs(already_selected))
+        else:
+            # - anyone who is not already a member for look see visits
+            already_selected = db(db.bed_reservation_member.bed_reservation_id == reservation_record.id)._select(db.bed_reservation_member.user_id)
+            query = db( ~ db.auth_user.id.belongs(already_selected))
+        
+        db.bed_reservation_member.user_id.requires = IS_IN_DB(query, db.auth_user.id, '%(last_name)s, %(first_name)s')
+        db.bed_reservation_member.bed_reservation_id.default = reservation_record.id
+        add_member = SQLFORM(db.bed_reservation_member,  fields=['user_id'])
+    else:
+        members = None
+        add_member = None
+    
+    if add_member is not None:
+        if add_member.process(onvalidation=validate_bed_reservation_add_member).accepted:
+            session.flash = CENTER(B('New member added to reservation.'), _style='color: green')
+            redirect(URL('bed_reservations','bed_reservation_details', args=reservation_record.id))
+        elif add_member.errors:
+            print add_member.errors
+            response.flash = CENTER(B('Problem with adding member to reservation.'), _style='color: red')
+        else:
+            pass
+    
+    # # need to handle project reservations and look see reservations
+    # if reservation_record.look_see_visit is False:
+    #     # get the visit record to give to the view
+    #     visit_record = db.research_visit(reservation_record.research_visit_id)
+    #     # get project members for that visit (who have the right to add themselves or others)
+    #     project_members_query = db.project_members.project_id == visit_record.project_id
+    #     project_members_rows = db(project_members_query).select(db.project_members.user_id)
+    #     authorised_users = [r.user_id for r in project_members_rows]
+    # else:
+    #     # otherwise get current visit members and give them the right to add
+    #     already_reserved = authorised_users = [r.id for r in reservation_members_rows]
+    #     # return an empty visit record
+    #     visit_record = None
+    #
+    # if auth.user.id in authorised_users:
+    #
+    #     # lock down the possible entry fields to project members if this
+    #     # is a project reservation, otherwise can select any registered user
+    #     if reservation_record.look_see_visit is False:
+    #
+    #         # who is already in the project but not visiting
+    #         already_reserved = [r.id for r in reservation_members_rows]
+    #         not_reserved = list(set(authorised_users) - set(already_reserved))
+    #         query = db(db.auth_user.id.belongs(not_reserved))
+    #         # - require the visit members to be in that set
+    #         db.bed_reservation_member.user_id.requires = IS_IN_DB(query, db.auth_user.id, '%(last_name)s, %(first_name)s')
+    #
+    #     # lock down the possible value of research_visit_id
+    #     db.bed_reservation_member.bed_reservation_id.default = reservation_id
+    #     db.bed_reservation_member.bed_reservation_id.readable = False
+    #
+    #     # set the labels
+    #     if reservation_record.look_see_visit is False:
+    #         labels = {'user_id':'Project member to add'}
+    #     else:
+    #         labels = {'user_id':'SAFE registered member to add'}
+    #
+    #     if len(already_reserved) < reservation_record.number_of_visitors:
+    #         form = SQLFORM(db.bed_reservation_member,
+    #                        fields = ['user_id'],
+    #                        labels = labels)
+    #
+    #         # process and reload the page
+    #         if form.process().accepted:
+    #             redirect(URL('bed_reservations', 'bed_reservation_details', args=reservation_id))
+    #     else:
+    #         form = B(CENTER("The requested number of beds has been filled. No more members can be added."), _style='color:red;')
+    # else:
+    #     form = None
+    
+    return dict(reservation_record = reservation_record, reservation_members = reservation_members, 
+                add_member=add_member, form=form, readonly=readonly)
+
+
+def validate_bed_reservation_add_member(form):
+    
+    # get the reservation record and check that the booking is for enough people
+    # TODO - extend this add another space if possible
+    
+    print form.vars.id
+    pass
+
+@auth.requires_login()
+def remove_member():
+
+    """
+    Removes a row from the bed_reservation_member table and as such needs careful safeguarding
+    against use by non-authorised people - must be a logged in user who is a coordinator
+    for the project or a member of a visit 
+    """
+
+    # get the row id
+    row_id = request.args(0)
+    
+    if row_id is not None:
+        member_record = db.bed_reservation_member(row_id)
+        visit_record = db.bed_reservations(member_record.bed_reservation_id)
+    else:
+        session.flash = CENTER(B('Unknown row ID in bed_reservations/remove_member'), _style='color: red')
+        redirect(URL('bed_reservations','bed_reservations'))
+    
+    if member_record is not None:
+    
+        # # get a set of users who have the right to access this interface for the row
+        # project_coords = db((db.project_members.project_id == visit_record.project_id) &
+        #                     (db.project_members.is_coordinator == 'True')).select()
+        # project_coord_id = [r.user_id for r in project_coords]
+    
+        # if the user is a member then check it makes sense to delete and do so.
+        if  auth.user.id > 0:
+            
+            # TODO - notify the member that they're being removed?
+            session.flash =  CENTER(B('Project member removed'), _style='color: green')
+            member_record.delete_record()
+            redirect(URL('bed_reservations','bed_reservation_details', args=member_record.bed_reservation_id))
+        else:
+            session.flash =  CENTER(B('Unauthorised use of research_visits/remove_member'), _style='color: red')
+            redirect(URL('bed_reservations','bed_reservation_details', args=member_record.bed_reservation_id))
 
 
 

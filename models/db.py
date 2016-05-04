@@ -115,8 +115,6 @@ db.auth_user.email.represent = lambda value, row: A(value, _href='mailto:{}'.for
 db.auth_user._format = '%(last_name)s, %(first_name)s'
 
 
-
-
 ## configure auth policies
 auth.settings.registration_requires_verification = False
 auth.settings.registration_requires_approval = True
@@ -212,24 +210,24 @@ coordinator_icon = SPAN('',_class="glyphicon glyphicon-ok",
                                       _title='Project Coordinator')
 
 not_coordinator_icon = SPAN('',_class="glyphicon glyphicon-remove",
-                                      _style="color:grey;font-size: 1.3em;", 
-                                      _title='Not a Project Coordinator')
+                               _style="color:grey;font-size: 1.3em;", 
+                               _title='Not a Project Coordinator')
 
-hs_ok =SPAN('',_class="glyphicon glyphicon-tasks", 
-                                 _style="color:green;font-size: 1em;", 
-                                 _title='H&S completed')
+hs_ok =SPAN('',_class="glyphicon glyphicon-ok", 
+               _style="color:green;font-size: 1em;", 
+               _title='H&S completed')
 
-hs_no = SPAN('',_class="glyphicon glyphicon-tasks", 
-                                 _style="color:red;font-size: 1em;", 
-                                 _title='H&S not completed')
+hs_no = SPAN('',_class="glyphicon glyphicon-remove", 
+                _style="color:red;font-size: 1em;", 
+                _title='H&S not completed')
 
 remove_member_icon = SPAN('',_class="glyphicon glyphicon-minus-sign",
-                                      _style="color:red;font-size: 1.6em;padding: 0px 10px;", 
-                                      _title='Remove member')
+                             _style="color:red;font-size: 1.6em;padding: 0px 10px;", 
+                             _title='Remove member')
 
 add_member_icon = SPAN('',_class="glyphicon glyphicon-plus-sign",
-                                      _style="color:green;font-size: 1.6em;", 
-                                      _title='Add member')
+                          _style="color:green;font-size: 1.6em;", 
+                          _title='Add member')
 
 
 approval_icons_big = {'Approved': SPAN('',_class="glyphicon glyphicon-ok-sign", 
@@ -278,8 +276,8 @@ n_beds_available = 25
 
 research_tags = ['Water resources', 'Biodiversity conservation', 'Plant sciences', 
                  'Zoology', 'Ecology', 'Freshwater biology', 'Agriculture', 
-                 'Forestry', 'Infectious diseases', 'Soil science', 
-                 'Meteorology and atmospheric sciences', 'Geochemistry and geophysics']
+                 'Infectious diseases', 'Soil science', 
+                 'Meteorology and atmospheric sciences', 'Biogeochemistry']
 
 ## -----------------------------------------------------------------------------
 ## PROJECTS:
@@ -318,6 +316,9 @@ animal_groups = ['Oligochaetes (earthworms)', 'Hirudinea (leeches)',
                  'Gastropoda (snails and slugs)', 'Nematoda', 'Nematomorpha ', 
                  'Platyhelminthes (flatworms)', 'Rotifera (rotifers)', 
                  'Tardigrada (tardigrades)']
+
+transfer_set = ['Tawau to SAFE', 'SAFE to Tawau', 'SAFE to Maliau', 'Maliau to SAFE', 
+                'Maliau to Tawau', 'Tawau to Maliau', 'SAFE to Danum Valley', 'Danum Valley to SAFE']
 
 # define table
 
@@ -431,14 +432,6 @@ db.define_table('outputs',
     format='%(title)s') # set the way the row is represented in foreign tables
 
 
-# Set up a default display for the admin_history field
-# that turns any carriage returns into HTML breaks and returns XML
-# - TODO figure out how to use Rows.render() to use this throughout project
-#        because it doesn't work from a record (which is a Row not Rows) 
-db.outputs.admin_history.represent = lambda admin_history, row: XML(row.admin_history.replace('\\n', '<br />'),
-            sanitize=True, permitted_tags=['br/'])
-    
-
 db.define_table('project_outputs',
     Field('project_id', 'reference project', notnull=True),
     Field('output_id', 'reference outputs', notnull=True))
@@ -485,7 +478,8 @@ db.define_table('help_request',
 ## -----------------------------------------------------------------------------
 
 db.define_table('research_visit',
-    Field('project_id', 'reference project', notnull=True),
+    Field('look_see_visit', 'boolean', default=False, notnull=True),
+    Field('project_id', 'reference project'),
     Field('title', 'string', notnull=True),
     Field('arrival_date','date', notnull=True),
     Field('departure_date','date', notnull=True),
@@ -502,40 +496,54 @@ db.define_table('research_visit',
 
 db.define_table('research_visit_member',
     Field('research_visit_id', 'reference research_visit', notnull=True),
-    Field('user_id', 'reference auth_user', notnull=True))
+    Field('user_id', 'reference auth_user'))
 
+# this table links back to the row in research visit member, to allow
+# anonymous bookings to be updated with user ID. Could only link row id
+# and not provide user ID to avoid having to update two tables?
 
-# project and visit ID _can_ be null for look-see visits, so don't make them 
-# a fixed 'reference' and let the controllers handle validation
-# could limit number_of_visitors using  requires=IS_INT_IN_RANGE(1,n_beds_available)
-# but let the controllers handle that, so we don't restrict admin bookings
 db.define_table('bed_reservations',
-    Field('research_visit_id', 'integer', requires=IS_EMPTY_OR(IS_IN_DB(db, db.research_visit.id, '%(title)s'))),
+    Field('site', 'string', requires=IS_IN_SET(['SAFE','Maliau']), default='SAFE'),
+    Field('research_visit_id', 'reference research_visit'),
+    Field('research_visit_member_id', 'reference research_visit_member'), # 
     Field('arrival_date','date', notnull=True),
     Field('departure_date','date', notnull=True),
-    Field('number_of_visitors','integer', notnull=True),
-    Field('purpose','text', notnull=True),
-    Field('look_see_visit','boolean', notnull=True, default=False),
+    Field('user_id','reference auth_user'), # needs to handle anonymous bookings
     # The fields below identify who made the reservation and when
     Field('reserver_id', 'reference auth_user'),
     Field('reservation_date', 'date'),
-    # The fields below are to handle approval of new records
-    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
-    Field('admin_id','reference auth_user'),
-    Field('admin_notes','text'),
-    Field('admin_decision_date','date'))
+    # The fields below are to handle confirmation of booking
+    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'))
 
 
-db.define_table('bed_reservation_member',
-    Field('bed_reservation_id', 'reference bed_reservations', notnull=True),
-    Field('user_id', 'reference auth_user', notnull=True))
+db.define_table('transfers',
+    Field('transfer', 'string', requires=IS_IN_SET(transfer_set)),
+    Field('research_visit_id', 'reference research_visit'),
+    Field('research_visit_member_id', 'reference research_visit_member'), # 
+    Field('transfer_date','date', notnull=True),
+    Field('user_id','reference auth_user'), # needs to handle anonymous bookings
+    # The fields below identify who made the reservation and when
+    Field('reserver_id', 'reference auth_user'),
+    Field('reservation_date', 'date'),
+    # The fields below are to handle confirmation of booking
+    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'))
 
 
-# this table is used internally to keep track of available beds
-db.define_table('bed_data',
-    Field('day','date'),
-    Field('approved', 'integer'),
-    Field('pending', 'integer'))
+db.define_table('research_assistant_bookings',
+    Field('research_visit_id', 'reference research_visit'),
+    Field('start_date','date', notnull=True),
+    Field('finish_date','date', notnull=True),
+    Field('site_time','string', requires=IS_IN_SET(['All day at SAFE', 'Morning only at SAFE', 
+                                                    'Afternoon only at SAFE', 'All day at Maliau', 
+                                                    'Morning only at Maliau', 'Afternoon only at Maliau'])),
+    Field('ropework', 'boolean', default=False),
+    Field('nightwork', 'boolean', default=False),
+    # The fields below identify who made the reservation and when
+    Field('reserver_id', 'reference auth_user'),
+    Field('reservation_date', 'date'),
+    # The fields below are to handle confirmation of booking
+    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'))
+
 
 
 ## -----------------------------------------------------------------------------

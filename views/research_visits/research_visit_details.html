@@ -1,69 +1,99 @@
 {{extend 'layout.html'}}
 
-<div class="flash">{{=response.flash}}</div>
 
-{{=STYLE('td {padding: 5px 20px;}')}}
-
-<!--Page header, depending on the readonly state and whether it is a new project-->
-
-{{if record is None:}}
-{{=H2('New Research Visit submission')}}
-{{=P('Please use the form below to submit a new research visit proposal to the SAFE project or to update your proposal. Your proposal will first be screened by an administrator. You will get an email to confirm that you have submitted a visit request and then another email to confirm whether the request has been accepted or not.') + P('You will be added as a member for the new research visit and you will be able to add new members once you have submitted the main visit details description.')+P(B('You will only be able to propose research visits for a project of which you are a coordinator.'), ' Only available projects will be listed in the project menu below')}}
-{{elif readonly is False:}}
-{{=H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)}}
-{{=P('These are the current details for your proposed research visit. This page allows you to edit the details but any changes will need to be approved by an administrator.')}}
-{{else:}}
-{{=H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)}}
-{{pass}}
+<style>
+.panel-heading a:after {
+    font-family:'Glyphicons Halflings';
+    content:"\e114";
+    float: right;
+    color: grey;
+}
+.panel-heading a.collapsed:after {
+    content:"\e080";
+}
+</style>
 
 
-<!-- Look for any members -->
-{{if members is not None:}}
-{{hs_icon = [hs_no if r.auth_user.h_and_s_id is None else hs_ok for r in members]}}
-<!-- Print the member info-->
+{{=session.flash or response.flash}}
+
+
+{{=H2('Research visit planning')}}
+
+{{= TAG.BUTTON('Estimate costs', 
+                          _style='border:none;padding:0px 10px;font-size: 100%;',
+           _type="submit")}}
+{{=P('In order to work in the field, you will need to provide details about the work to be done and your field team. We will need health and safety information for all named researchers and you should make sure that your team update these details if needed.')}}
+
+
+{{=H4('Research Visit Details', _style='background-color: lightgrey; line-height: 40px')}}
+
+{{=visit}}
+
+
+
+
+{{=console}}
+
+
+
+
+<!-- <div class="panel panel-default" id="panel1">
+    <div class="panel-heading">
+         <h3 class="panel-title">
+           <a data-toggle="collapse" data-target="#maliau_table" href="#maliau_table" class="collapsed">
+             Maliau Reservations
+           </a>
+         </h3>
+    </div>
+    <div id="maliau_table" class="panel-collapse collapse">
+        Content
+    </div>
+</div> -->
+
+
+
+
+
+
+
+
+
 {{=BR()}}
-{{=H4('Research visit members', _style='background-color: lightgrey; line-height: 40px')}}
-<!-- and expose the user editing mechanism if readonly is False-->
-{{if readonly is True:}}
-{{member_rows = [TR(TD(hs), 
-                    TD(r.auth_user.last_name +  ', ' +  r.auth_user.first_name),
-                    TD()) 
-                 for r, hs in zip(members, hs_icon) ]}}
-{{=TABLE(TR(TH('H & S form status'),TH('Name'), TH('')), 
-         member_rows,
-         _width='100%')}}
-{{else:}}
-{{=add_member.custom.begin}}
-{{member_rows = [TR(TD(hs), 
-                    TD(r.auth_user.last_name +  ', ' +  r.auth_user.first_name),
-                    TD(A(remove_member_icon, _href=URL('research_visits', 
-                         'remove_member', args=r.research_visit_member.id))))  
-                 for r, hs in zip(members, hs_icon) ]}}
-{{=TABLE(TR(TH('H & S form status'),TH('Name'), TH('')), 
-         member_rows,
-         TR(TD(),
-            TD(add_member.custom.widget.user_id),
-            TD(TAG.BUTTON(add_member_icon, 
-                          _style='background:none; border:none;padding:0px 10px;font-size: 100%;',
-           _type="submit") + add_member.custom.end),
-           _style="vertical-align:top"),
-         _width='100%')}}
-{{=BR()}}
-{{pass}}
-{{pass}}
+
+<!-- Scripts to select all for sets of checkboxes by name -->
+<script>
+$("#checkAll").change(function () {
+    $("[name='records']").prop('checked', $(this).prop("checked"));
+});
+</script>
 
 
-{{=H4('Research visit details', _style='background-color: lightgrey; line-height: 40px')}}
-{{=form}}
-<br>
+<!-- Script to act as a safety catch on removing visitors, since that
+     can swallow the button name on the request, add a hidden field -->
+
+<script>
+function show_alert() {
+  if(confirm("Removing users from a research visit will remove all accomodation and transfer bookings. Are you sure?"))
+       $("#console").append('<input type="hidden" name="delete_visitor" value="True" />');
+       $("#console").submit();
+  else
+    return false;
+}
+</script>
 
 
-{{if record is not None:}}
-{{=H4('Admin history', _style='background-color: lightgrey; line-height: 40px')}}
-{{if record.admin_history is not None:}}
-{{=XML(record.admin_history.replace('\\n', '<br />'),
-        sanitize=True, permitted_tags=['br/'])}}
-{{pass}}
-{{pass}}
-<br><br>
+<!-- Script to trigger availability check when both dates are set.
+     This allows the scripting to always check what is being booked
+     and ensure that date restrictions are met -->
+
+<script>
+function date_change() {
+    var a = $("#arr_date").val();
+    var d = $("#dep_date").val();
+    if (a != '' && d != '' ) {
+       $("#console").append('<input type="hidden" name="datechange" value="True" />');
+       $("#console").submit();
+    }
+}
+</script>
 
