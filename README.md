@@ -24,11 +24,28 @@ You'll get a PEM file from Amazon when you create the EC2 instance. This is a ke
 
 ### Enabling HTTPS ###
 
-I'm playing around with using the LetsEncrypt open source certification:
+We're the LetsEncrypt open source certification. These commands install LetsEncrypt and load any required packages.
 
     git clone https://github.com/letsencrypt/letsencrypt
     cd letsencrypt
     ./letsencrypt-auto --help
+
+This command then requests the certificate request, which will look up the IP address registered for the machine against the DN registrar and create the certificate:
+
+    ./letsencrypt-auto --apache -d beta.safeproject.net
+
+During the installation, choose to forcibly remap `http` to `https`. The installation creates an Apache site config file and enables it:
+
+    /etc/apache2/sites-available/000-default-le-ssl.conf
+
+This also point to a config include that turns on the SSL remapping of `http` to `https`:
+
+    /etc/letsencrypt/options-ssl-apache.conf
+
+The installation suggests checking the resulting domain name using:
+
+    https://www.ssllabs.com/ssltest/analyze.html?d=beta.safeproject.net
+
 
 ### Installing web2py ###
 
@@ -43,11 +60,59 @@ You then need to set the password for the admin web2py app to enable admin acces
     cd /home/www-data/web2py
     sudo -u www-data python -c "from gluon.main import save_password; save_password(raw_input('admin password: '),443)"
 
+#### Apache configuration ####
+
+The installer creates and enables an apache2 configuration (`default.conf`) that sets a bunch of stuff. However, it tries to create a self signed certificate and create the VirtualHost entries, which have already been handled by LetsEncrypt. You therefore need a new configuration file that points apache2 to the correct directories to serve the website. All the information is in `default.conf` but wrapped in VirtualHost declarations. We're interested in the following, which tells Apache2 to map `www.servername.net/anything` to the web2py WSGI handler and allows the handler access to the content.
+
+    WSGIDaemonProcess web2py user=www-data group=www-data processes=1 threads=1
+    WSGIProcessGroup web2py
+    WSGIScriptAlias / /home/www-data/web2py/wsgihandler.py
+    WSGIPassAuthorization On
+    
+    <Directory /home/www-data/web2py>
+      AllowOverride None
+      Require all denied
+      <Files wsgihandler.py>
+        Require all granted
+      </Files>
+    </Directory>
+    
+    AliasMatch ^/([^/]+)/static/(?:_[\d]+.[\d]+.[\d]+/)?(.*) \ /home/www-data/web2py/applications/$1/static/$2
+    
+    <Directory /home/www-data/web2py/applications/*/static/>
+      Options -Indexes
+      ExpiresActive On
+      ExpiresDefault "access plus 1 hour"
+      Require all granted
+    </Directory>
+
+It all needs to go into `/etc/apache2/sites-available/web2py.conf` and then we need to switch out the old one. We also need to turn off the default `DocumentRoot` created by LetsEncrypt, so open up `/etc/apache2/sites-available/000-default-le-ssl.conf` and comment that line out and the reload apache2.
+
+    sudo vi /etc/apache2/sites-available/000-default-le-ssl.conf
+    # comment out the line: DocumentRoot /var/www/html
+    sudo a2dissite default.conf
+    sudo a2ensite web2py.conf 
+    sudo service apache2 reload
+
 After this the web2py interface should available at (e.g.)
 
     https://ec2-52-50-144-96.eu-west-1.compute.amazonaws.com/admin
 
-There are some issues here with the SSL certificate, so there may be warnings about https certificates. These need to be resolved by getting a trusted certificate for the site, which I haven't done yet.
+
+### Setting the default application ###
+
+To set the application at the root of the domain name, create a file called `routes.py` in the base of the web2py installation (_outside_ of the git repo) with the contents:
+
+    routers = dict(
+        BASE = dict(
+            default_application='safe_web',
+        )
+    )
+
+Then restart apache:
+
+    sudo service apache2 restart
+
 #### Python package management ####
 
 For any extra python packages, you'll then need:
@@ -59,6 +124,7 @@ I didn't muck around with virtualenv for packages as these ones should probably 
     sudo pip install gitpython 
     sudo pip install --upgrade google-api-python-client
     sudo pip install openpyxl
+    sudo pip install fs
 
 #### Deploying the web2py application from a bitbucket repo ####
 
@@ -70,6 +136,11 @@ Now clone the repo into the web2py applications folder. You could set up SSH, wh
 
     cd /home/www-data/web2py/applications
     sudo -u www-data git clone https://davidorme@bitbucket.org/davidorme/safe_web.git
+
+Updating from the repo requires the following:
+
+    sudo git remote update
+    sudo git pull
 
 #### web2py Plugins ####
 
@@ -307,6 +378,23 @@ The config file to map all this up is:
     $conf['plugin']['authpgsql']['FilterEmail'] = "u.email LIKE '%{email}'";
     $conf['plugin']['authpgsql']['FilterGroup'] = "g.role LIKE '%{group}'";
     $conf['plugin']['authpgsql']['SortOrder']   = "ORDER BY u.email";
-
+    
+    /**
+     * SQL Support for Add User
+     */
+    
+    $conf['plugin']['authpgsql']['addUser']     = "INSERT INTO auth_user
+                                                     (email, password, first_name)
+                                                   VALUES 
+                                                     ('%{email}', '%{pass}', '%{name}')";
+    $conf['plugin']['authpgsql']['addGroup']    = "INSERT INTO auth_group (role)
+                                                   VALUES ('%{group}')";
+    $conf['plugin']['authpgsql']['addUserGroup']= "INSERT INTO auth_membership (user_id, group_id)
+                                                   VALUES ('%{uid}', '%{gid}')";
+    $conf['plugin']['authpgsql']['delGroup']    = "DELETE FROM auth_group
+                                                   WHERE group_id='%{gid}'";
+    $conf['plugin']['authpgsql']['getUserID']   = "SELECT id AS id FROM auth_user WHERE email='%{user}'";
+    $conf['plugin']['authpgsql']['getGroupID']  = "SELECT group_id AS id FROM auth_group WHERE role='%{group}'";
+    
 
 Once this has been set up, in the access control section of the Configuration Manager on Dokuwiki, change the `authtype` to  `authpgsql`. You'll be kicked out and need to log back in as a web2py admin user to make further changes.
