@@ -502,32 +502,32 @@ db.define_table('research_visit_member',
 # anonymous bookings to be updated with user ID. Could only link row id
 # and not provide user ID to avoid having to update two tables?
 
-db.define_table('bed_reservations',
-    Field('site', 'string', requires=IS_IN_SET(['SAFE','Maliau']), default='SAFE'),
+# all bookings are reviewed and approved at the level of research visit
+
+db.define_table('bed_reservations_safe',
+    Field('research_visit_id', 'reference research_visit'),
+    Field('research_visit_member_id', 'reference research_visit_member'), # 
+    Field('arrival_date','date', notnull=True),
+    Field('departure_date','date', notnull=True),
+    Field('user_id','reference auth_user'))
+
+db.define_table('bed_reservations_maliau',
     Field('research_visit_id', 'reference research_visit'),
     Field('research_visit_member_id', 'reference research_visit_member'), # 
     Field('arrival_date','date', notnull=True),
     Field('departure_date','date', notnull=True),
     Field('user_id','reference auth_user'), # needs to handle anonymous bookings
-    # The fields below identify who made the reservation and when
-    Field('reserver_id', 'reference auth_user'),
-    Field('reservation_date', 'date'),
-    # The fields below are to handle confirmation of booking
-    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'))
-
+    Field('type', 'string', requires=IS_IN_SET(['Hostel','Annex']), default='Annex'),
+    Field('breakfast', 'boolean', default=False),
+    Field('lunch', 'boolean', default=False),
+    Field('dinner', 'boolean', default=False))
 
 db.define_table('transfers',
     Field('transfer', 'string', requires=IS_IN_SET(transfer_set)),
     Field('research_visit_id', 'reference research_visit'),
     Field('research_visit_member_id', 'reference research_visit_member'), # 
     Field('transfer_date','date', notnull=True),
-    Field('user_id','reference auth_user'), # needs to handle anonymous bookings
-    # The fields below identify who made the reservation and when
-    Field('reserver_id', 'reference auth_user'),
-    Field('reservation_date', 'date'),
-    # The fields below are to handle confirmation of booking
-    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'))
-
+    Field('user_id','reference auth_user')) # needs to handle anonymous bookings
 
 db.define_table('research_assistant_bookings',
     Field('research_visit_id', 'reference research_visit'),
@@ -537,33 +537,27 @@ db.define_table('research_assistant_bookings',
                                                     'Afternoon only at SAFE', 'All day at Maliau', 
                                                     'Morning only at Maliau', 'Afternoon only at Maliau'])),
     Field('ropework', 'boolean', default=False),
-    Field('nightwork', 'boolean', default=False),
-    # The fields below identify who made the reservation and when
-    Field('reserver_id', 'reference auth_user'),
-    Field('reservation_date', 'date'),
-    # The fields below are to handle confirmation of booking
-    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'))
-
-
+    Field('nightwork', 'boolean', default=False))
 
 ## -----------------------------------------------------------------------------
 ## H & S
 ## -- visitor details and health and safety at user level
 ## -- full H&S for all named users for now.
+## -- putting notnull means that you can only update everything in a oner
 ## -----------------------------------------------------------------------------
 
 db.define_table('health_and_safety',
     Field('user_id', 'reference auth_user'),
     # Field('project_id', 'reference project'),
     # Field('visit_id', 'reference visit'),
-    Field('passport_number', 'string', notnull=True),
-    Field('emergency_contact_name', 'string', notnull=True),
-    Field('emergency_contact_address', 'text', notnull=True),
-    Field('emergency_contact_phone', 'string', notnull=True),
-    Field('emergency_contact_email', 'string', requires=IS_EMAIL()),
-    Field('insurance_company', 'string', notnull=True),
-    Field('insurance_emergency_phone', 'string', notnull=True),
-    Field('insurance_policy_number', 'string', notnull=True),
+    Field('passport_number', 'string'),
+    Field('emergency_contact_name', 'string'),
+    Field('emergency_contact_address', 'text'),
+    Field('emergency_contact_phone', 'string'),
+    Field('emergency_contact_email', 'string', requires=IS_NULL_OR(IS_EMAIL())),
+    Field('insurance_company', 'string'),
+    Field('insurance_emergency_phone', 'string'),
+    Field('insurance_policy_number', 'string'),
     Field('medical_conditions', 'text'),
     Field('date_last_edited', 'date'),
     #Field('sbc_access_licence', 'string'),
