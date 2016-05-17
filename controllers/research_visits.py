@@ -26,17 +26,18 @@ def research_visits():
     db.research_visit.admin_notes.readable = False 
     
     # create a links list that:
-    # 1) displays a thumbnail of the  project image
-    # 2) creates a custom button to pass the row id to a custom view 
-
-    links = [dict(header = 'Admin Status', body = lambda row: approval_icons[row.admin_status]),
+    # 1) creates a custom button to pass the row id to a custom view 
+    # Commented out code here allows the form to show a pretty icon for status, BUT
+    # blocks it from being used in searches. So don't do that.
+    
+    links = [#dict(header = 'Admin Status', body = lambda row: approval_icons[row.admin_status]),
              dict(header = '', body = lambda row: A('View',_class='button btn btn-default',
                   _href=URL("research_visits","research_visit_details", args=[row.id]),
                   _style='padding: 3px 10px 3px 10px;'))
             ]
     
     # suppress status in  SQLFORM grid whilst making it available for links
-    db.research_visit.admin_status.readable = False 
+    # db.research_visit.admin_status.readable = True 
     
     form = SQLFORM.grid(db.research_visit, csv=False, 
                         fields=[db.research_visit.project_id, db.research_visit.title, 

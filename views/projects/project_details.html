@@ -21,13 +21,6 @@ The form details are assembled on the fly using a custom form layout:
 {{elif readonly is False:}}
 {{=H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)}}
 {{=P('You are a coordinator for this project and this page allows you to edit your project details. Note that an administrator will have to approve any edits: if you have substantially changed the science case, it will probably be sent out for re-reviewing.')}}
-{{=TABLE(TR(TD(A(SPAN('Create research visit', _class="buttontext button"),
-	      _class="button btn btn-default", 
-	      _href=URL("research_visits","research_visit_from_project", args=record.id, user_signature=True),
-	      _style='padding: 3px 3px 3px 3px;')),
-	TD('If you want to propose a new research visit for this project, click on the button to create the proposal and add all the project members. You will be forwarded to the new proposal to complete the details.')),
-	_width='100%',
-	_class="table table-striped")}}
 {{else:}}
 {{=H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)}}
 {{pass}}

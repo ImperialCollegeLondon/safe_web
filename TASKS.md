@@ -10,7 +10,8 @@
 * Existing project member roles and assign coordinators
 * Species photos - replace with ones we have any right to
 * Tag existing projects with new tags and revamp 'Ecological monitoring' page to 'Research areas'
- * Get Liv to input existing H&S data. Key info folder on info@safeproject.net
+ * Outputs - create an Abstract and Twitter description.
+                 - update existing output descriptions to match.
  
 
 
@@ -19,68 +20,33 @@
 * Data structure sketch.
 * Passwords, match SALT/HASH to Earthcape
 * Project, project\_members, auth\_users all need UID
-
 * Lock down removal of project members and visit members in existing visits and reservations
-
 * Fix wiki path to Wiki (apache config, I think, maybe change dir name)
-
 * Diagrams of processes
-* Preload UUIDs on relevant tables
-* Maliau booking request
-* RA booking form
 * Email templates - centralise and log
-
-* Apply consistent zero= values for IS_IN_DB() to make it look nice.
-
-* reaserach visit from project
-
-Think about whether we can use 
-form.custom.widget.test.update(_placeholder="Anonymous")
-form.custom.widget.tm_home["_placeholder"] = "Home Team Name"
-
-to get a nicer feel
-
+* Apply consistent zero= values for IS_IN_DB() to make it look nice
+* Think about whether we can use placeholder text in forms to get a nicer feel
+     form.custom.widget.test.update(_placeholder="Anonymous")
+     form.custom.widget.tm_home["_placeholder"] = "Home Team Name"
 * Project versioning
 Check out:
 http://web2py.com/books/default/chapter/29/07/forms-and-validators#Record-versioning
 
 * Project carousel
-
 * Add workplace pages to MySAFE
-
 * Add discussion board
 
 ### Tasks to classify from meeting with Rob
 
- * Check http to https
-
  * Home page.
- 
  * Replace maps with new versions
- 
  * Species profiles - make
- 
  * Outputs/Wiki/Data to "Data and results" main menu
- 
- * Wiki opens in new tab
- 
  * Add market to MySAFE
- 
  * Make all project and output links
- 
  * Word restrictions on project case 300, 500.
- 
- * Biogeochemistry in tags and delete forestry.
- 
- * Remove all of the project resource requirements.
- 
- * Outputs - create an Abstract and Twitter description.
-           - update existing output descriptions to match.
-	   
-* Add research topics to Volunteers and remove Masters from options and add vague other. Change to "Statement of interests".
 
 * Add research tags to volunteers sought from project.
-
 * Show group membership on Profile.
 
 ### Passwords

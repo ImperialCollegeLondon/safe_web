@@ -19,8 +19,7 @@ You'll get a PEM file from Amazon when you create the EC2 instance. This is a ke
 
     # EC2 instance connection
     chmod 400 AWS_SAFE_Web.pem
-    ssh -i AWS_SAFE_Web.pem ubuntu@ec2-52-50-144-96.eu-west-1.compute.amazonaws.com
-
+    ssh -i AWS_SAFE_Web.pem ubuntu@ec2-52-51-38-168.eu-west-1.compute.amazonaws.com
 
 ### Enabling HTTPS ###
 
@@ -34,13 +33,30 @@ This command then requests the certificate request, which will look up the IP ad
 
     ./letsencrypt-auto --apache -d beta.safeproject.net
 
-During the installation, choose to forcibly remap `http` to `https`. The installation creates an Apache site config file and enables it:
+The installation creates an Apache site config file and enables it:
 
     /etc/apache2/sites-available/000-default-le-ssl.conf
 
 This also point to a config include that turns on the SSL remapping of `http` to `https`:
 
     /etc/letsencrypt/options-ssl-apache.conf
+
+However, in order to get http:// working, I had to edit the apache configuration to map anything coming  in to port 80 to get rewritten to a https:// request:
+
+    <VirtualHost *:80>
+            ServerAdmin webmaster@localhost
+            ServerName beta.safeproject.net
+    
+            HostnameLookups Off
+            UseCanonicalName On
+            ServerSignature Off
+    
+            RewriteEngine On
+            RewriteCond %{HTTPS} off
+            RewriteRule (.*) https://%{SERVER_NAME}$1 [R,L]
+    </VirtualHost>
+
+So, any http request to this server is now forwarded on to use https, for all sites.
 
 The installation suggests checking the resulting domain name using:
 

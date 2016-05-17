@@ -17,61 +17,43 @@ hr {
 </style>
 
 {{=H3('My SAFE')}}
+<p>This page allows you to quickly see projects, outputs and research visits of which you are a member and any volunteering, project help requests or blog posts you have created. Use the tabs below to switch between options.</p>
 <br>
-<p>This page allows you to quickly see projects, outputs, research visits and bed reservations of which you are a member. Use the buttons below to switch between the four panels.
 
-<hr>
-<!-- Simple table of links to pages of different contents (could make these actual buttons)-->
-<table width=100% style='table-layout: fixed; text-align:center; cellpadding:10;'>
-<tr><td>{{= A(SPAN('',_class="glyphicon glyphicon-zoom-in"),
-              SPAN('Projects', _class="buttontext button"),
-              _class="button btn btn-default btn-block", 
-              _href=URL('default','my_safe', vars=dict(set='project'), user_signature=True),
-              _style='padding: 3px 5px 3px 5px;')}}</td>
-    <td>{{= A(SPAN('',_class="glyphicon zoom-in"),
-              SPAN('Outputs', _class="buttontext button"),
-              _class="button btn btn-default btn-block", 
-              _href=URL('default','my_safe', vars=dict(set='outputs'), user_signature=True),
-              _style='padding: 3px 5px 3px 5px;')}}</td>
-    <td>{{= A(SPAN('',_class="glyphicon zoom-in"),
-              SPAN('Research visits', _class="buttontext button"),
-              _class="button btn btn-default btn-block", 
-              _href=URL('default','my_safe', vars=dict(set='research_visit'), user_signature=True),
-              _style='padding: 3px 5px 3px 5px;')}}</td>
-    <td>{{= A(SPAN('',_class="glyphicon zoom-in"),
-              SPAN('Reservations', _class="buttontext button"),
-              _class="button btn btn-default btn-block", 
-              _href=URL('default','my_safe', vars=dict(set='bed_reservations'), user_signature=True),
-              _style='padding: 3px 5px 3px 5px;')}}</td>
-    <td>{{= A(SPAN('',_class="glyphicon zoom-in"),
-              SPAN('Blog posts', _class="buttontext button"),
-              _class="button btn btn-default btn-block", 
-              _href=URL('default','my_safe', vars=dict(set='blog_posts'), user_signature=True),
-              _style='padding: 3px 5px 3px 5px;')}}</td>
-</tr></table>
+<ul class="nav nav-tabs nav-justified" data-tabs="tabs">
+  <li role='presentation' class="active">
+    <a data-toggle="tab" href='#project'>Projects</a></li>
+  <li role='presentation' >
+    <a data-toggle="tab" href='#outputs'>Outputs</a></li>
+  <li role='presentation'>
+    <a data-toggle="tab" href='#research_visit'>Research visits</a></li>
+  <li role='presentation' >
+    <a data-toggle="tab" href='#help_offered'>Volunteering</a></li>
+  <li role='presentation' >
+    <a data-toggle="tab" href='#help_request'>Project help</a></li>
+  <li role='presentation' >
+    <a data-toggle="tab" href='#blog_posts'>Blog posts</a></li>
+</ul>
 
-<hr>
-
-
-<!-- <ul class="nav nav-tabs nav-justified">
-  <li role="presentation" class="active">
-{{= A(SPAN('',_class="icon glyphicon zoom-in"),'Projects',
-              _href=URL('default','my_safe', vars=dict(set='project'), user_signature=True))}}
-  </li>
-  <li role="presentation">
-{{= A(SPAN('',_class="icon glyphicon zoom-in"),'Outputs',
-              _href=URL('default','my_safe', vars=dict(set='outputs'), user_signature=True))}}
-  </li>
-  <li role="presentation">
-{{= A(SPAN('',_class="icon glyphicon zoom-in"),'Research visits',
-              _href=URL('default','my_safe', vars=dict(set='research_visit'), user_signature=True))}}
-  </li>
-  <li role="presentation">
-{{= A(SPAN('',_class="icon glyphicon zoom-in"),'Bed Reservations',
-              _href=URL('default','my_safe', vars=dict(set='bed_reservations'), user_signature=True))}}
-  </li>
-</ul> -->
-
-{{=grid}}
+<div class="tab-content">
+    <div class="tab-pane active" id="project">
+        {{=grids['project']}}
+    </div>
+    <div class="tab-pane" id="outputs">
+        {{=grids['outputs']}}
+    </div>
+    <div class="tab-pane" id="research_visit">
+        {{=grids['research_visit']}}
+    </div>
+    <div class="tab-pane" id="help_offered">
+        {{=grids['help_offered']}}
+    </div>
+    <div class="tab-pane" id="help_request">
+        {{=grids['help_request']}}
+    </div>
+    <div class="tab-pane" id="blog_posts">
+        {{=grids['blog_posts']}}
+    </div>
+</div>
 
 <br>

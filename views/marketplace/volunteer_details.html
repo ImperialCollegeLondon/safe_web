@@ -1,0 +1,10 @@
+{{left_sidebar_enabled,right_sidebar_enabled=False,('message' in globals())}}
+{{extend 'layout.html'}}
+
+
+<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
+Availability and research interests for this volunteer offer are shown below. 
+{{=BR()*2}}
+<!-- Show the volunteers form created by the controller -->
+{{=vol}}

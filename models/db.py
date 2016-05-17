@@ -379,15 +379,6 @@ db.define_table('project',
 ## TODO - do we need to build an index on the UUID
 # db.executesql('CREATE INDEX IF NOT EXISTS myidx ON person (name);')
 
-
-## -----------------------------------------------------------------------------
-## PROJECT RESEARCH TAGS
-## -----------------------------------------------------------------------------
-
-# db.define_table('project',
-#     Field('project_id', 'reference project'),
-#     Field('tag_id', 'reference rcuk_tags'))
-
 ## -----------------------------------------------------------------------------
 ## PROJECT MEMBERS AND THEIR ROLES
 ## -- populated from fixtures file
@@ -441,15 +432,18 @@ db.define_table('project_outputs',
 ## MARKET PLACE
 ## -----------------------------------------------------------------------------
 #
-volunteer_type = ['Voluntary experience', 'Undergraduate Honours project', 'Masters project']
+volunteer_type = ['Voluntary experience', 'Undergraduate Honours project', 'Other']
 
 db.define_table('help_offered',
-    Field('volunteer_id', 'reference auth_user'),
+    Field('user_id', 'reference auth_user'),
     Field('submission_date','date'),
     Field('volunteer_type', requires=IS_IN_SET(volunteer_type), notnull=True),
     Field('available_from','date', notnull=True),
     Field('available_to','date', notnull=True),
-    Field('research_statement','text', notnull=True),
+    Field('research_areas', type='list:string',
+          requires=IS_IN_SET(research_tags, multiple=True), 
+          widget=SQLFORM.widgets.multiple.widget),
+    Field('statement_of_interests','text', notnull=True),
     # The fields below are to handle approval of new records
     Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
     Field('admin_id','reference auth_user'),
@@ -457,7 +451,7 @@ db.define_table('help_offered',
     Field('admin_decision_date','date'))
 
 db.define_table('help_request',
-    Field('contact_id', 'reference auth_user', notnull=True),
+    Field('user_id', 'reference auth_user', notnull=True),
     Field('project_id', 'reference project', notnull=True),
     Field('submission_date','date'),
     Field('start_date','date', notnull=True),

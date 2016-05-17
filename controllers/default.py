@@ -41,13 +41,8 @@ def my_safe():
     
     """
     This controller presents a simple set of grids showing projects, outputs
-    visits, reservations, blogs that a user is associated with.
+    visits, blogs, volunteer positions, work offers that a user is associated with.
     """
-    table = request.vars['set']
-    
-    # default view
-    if table is None:
-        table = 'project'
     
     # provide a look up of which tables and columns to query
     membership_dict = {'project': {'tab':'project_members', 'col':'project_id',
@@ -59,15 +54,20 @@ def my_safe():
                        'research_visit': {'tab':'research_visit_member', 'col':'research_visit_id',
                                    'fld': ['title'], 'name': 'research visits',
                                    'cntr': 'research_visits', 'view': 'research_visit_details'},
-                       'bed_reservations': {'tab':'bed_reservation_member', 'col':'bed_reservation_id',
-                                   'fld': ['purpose'], 'name': 'bed reservations',
-                                   'cntr': 'bed_reservations', 'view': 'bed_reservation_details'},
                        'blog_posts': {'tab':'blog_posts', 'col':'id',
                                    'fld': ['title'], 'name': 'blog posts',
-                                   'cntr': 'blog', 'view': 'blog_details'}}
+                                   'cntr': 'blog', 'view': 'blog_details'},
+                       'help_offered': {'tab':'help_offered', 'col':'id',
+                                   'fld': ['statement_of_interests'], 'name': 'help offered',
+                                   'cntr': 'marketplace', 'view': 'volunteer_details'},
+                       'help_request': {'tab':'help_request', 'col':'id',
+                                   'fld': ['work_description'], 'name': 'help request',
+                                   'cntr': 'marketplace', 'view': 'help_request_details'}}
+    
+    grids = {}
     
     # Is the requested set in the defined set
-    if table in membership_dict.keys():
+    for table in membership_dict.keys():
         
         m = membership_dict[table]
         
@@ -98,17 +98,25 @@ def my_safe():
             grid = SQLFORM.grid(query, fields=flds,
                                 csv=False, create=False, 
                                 editable=False, deletable=False,
-                                details = False, maxtextlength=200,
+                                details = False, 
+                                maxtextlength=500,
                                 searchable=False,
                                 # links_placement='left',
                                 links=links)
+            
+            # hard wire the width of the first column so that the buttons 
+            # stay horizontally aligned
+            grid.elements('th')[0]['_style'] = 'width:80%;'
+            
         else:
             grid = B(CENTER('You are not a member of any {}'.format(m['name'])))
-    else:
-            grid = XML('Invalid table id')
+        
+        grids[table] = grid
     
-    return dict(grid = grid )
+    return dict(grids = grids)
     
+
+
 
 def lang_switch():
     
