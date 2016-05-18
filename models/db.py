@@ -114,12 +114,16 @@ db.auth_user.email.represent = lambda value, row: A(value, _href='mailto:{}'.for
 # set a string formatting for representing user ID
 db.auth_user._format = '%(last_name)s, %(first_name)s'
 
+# make the choice of supervisor a dropdown.
+db.auth_user.supervisor_id.requires = IS_EMPTY_OR(IS_IN_DB(db, 'auth_user.id', db.auth_user._format))
+
 
 ## configure auth policies
 auth.settings.registration_requires_verification = False
 auth.settings.registration_requires_approval = True
 auth.settings.reset_password_requires_verification = True
-
+# we don't want a group for each user
+auth.settings.create_user_groups = False
 
 #auth.settings.on_failed_authentication = lambda url: redirect(url)
 

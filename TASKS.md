@@ -17,6 +17,11 @@
 
 ### Programming tasks
 
+* Project versioning
+Check out:
+http://web2py.com/books/default/chapter/29/07/forms-and-validators#Record-versioning
+
+
 * Data structure sketch.
 * Passwords, match SALT/HASH to Earthcape
 * Project, project\_members, auth\_users all need UID
@@ -28,12 +33,8 @@
 * Think about whether we can use placeholder text in forms to get a nicer feel
      form.custom.widget.test.update(_placeholder="Anonymous")
      form.custom.widget.tm_home["_placeholder"] = "Home Team Name"
-* Project versioning
-Check out:
-http://web2py.com/books/default/chapter/29/07/forms-and-validators#Record-versioning
 
 * Project carousel
-* Add workplace pages to MySAFE
 * Add discussion board
 
 ### Tasks to classify from meeting with Rob
@@ -42,12 +43,9 @@ http://web2py.com/books/default/chapter/29/07/forms-and-validators#Record-versio
  * Replace maps with new versions
  * Species profiles - make
  * Outputs/Wiki/Data to "Data and results" main menu
- * Add market to MySAFE
  * Make all project and output links
  * Word restrictions on project case 300, 500.
 
-* Add research tags to volunteers sought from project.
-* Show group membership on Profile.
 
 ### Passwords
 
