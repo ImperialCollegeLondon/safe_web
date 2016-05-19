@@ -147,35 +147,36 @@ def vcard():
     
     if record is not None:
         
-        # and now poke the workbook object out to the browser
-        attachment = 'attachment;filename=test.vcf'
-        
-        # replace None with '' in record
-        content_keys = ['last_name', 'first_name', 'title','institution','institution_address',
-                        'email', 'alternative_email', 'phone', 'mobile_phone','institution_phone', 
-                        'academic_status']
-        rec_dict = dict([(k, record[k]) for k in content_keys])
+        # and now poke a VCF object out to the browser
+
+        # # replace None with '' in record
+        # content_keys = ['last_name', 'first_name', 'title','institution','institution_address',
+        #                 'email', 'alternative_email', 'phone', 'mobile_phone','institution_phone',
+        #                 'academic_status']
+        # rec_dict = dict([(k, record[k]) for k in content_keys])
         
         # get the components of the vCard - we don't try and map address to fields
         # and just put it in as the Label property
         n = "N:{last_name};{first_name};;{title};\n"
-        org = "" if rec_dict['institution'] is None else "ORG:{institution}\n"
-        p1  = "" if rec_dict['phone'] is None else "TEL;type=MAIN;type=VOICE;type=pref:{phone}\n"
-        p2  = "" if rec_dict['mobile_phone'] is None else "TEL;type=CELL;type=VOICE:{mobile_phone}\n"
-        p3  = "" if rec_dict['institution_phone'] is None else "TEL;type=WORK;type=VOICE:{institution_phone}\n"
+        org = "" if record['institution'] is None else "ORG:{institution}\n"
+        p1  = "" if record['phone'] is None else "TEL;type=MAIN;type=VOICE;type=pref:{phone}\n"
+        p2  = "" if record['mobile_phone'] is None else "TEL;type=CELL;type=VOICE:{mobile_phone}\n"
+        p3  = "" if record['institution_phone'] is None else "TEL;type=WORK;type=VOICE:{institution_phone}\n"
         em  = "EMAIL;type=WORK;type=pref:{email}\n"
-        em2 = "" if rec_dict['alternative_email'] is None else "EMAIL;type=WORK:{alternative_email}\n"
+        em2 = "" if record['alternative_email'] is None else "EMAIL;type=WORK:{alternative_email}\n"
         
-        if rec_dict['institution_address'] is not None:
-            adr = rec_dict['institution_address']
+        if record['institution_address'] is not None:
+            adr = record['institution_address']
             adr = '\\n'.join(adr.split(','))
             adr = 'ADR;LABEL="'+ adr + '":;;;;;;\n'
         else:
             adr = ''
         
-        content = "BEGIN:VCARD\nVERSION:3.0\n" + n + org + p1 + p2 + p3 + em + em2 + adr + "END:VCARD\n"
-        content =content.format(**rec_dict)
         
+        content = "BEGIN:VCARD\nVERSION:3.0\n" + n + org + p1 + p2 + p3 + em + em2 + adr + "END:VCARD\n"
+        content =content.format(**record)
+        attachment = 'attachment;filename={first_name} {last_name}.vcf'
+        attachment = attachment.format(**record)
         raise HTTP(200, content,
                    **{'Content-Type':'text/vcard',
                       'Content-Disposition':attachment + ';'})
