@@ -71,6 +71,7 @@ user_actions = [(T('Registered users'), True, None, [
                 (T('My health and safety info'), True, URL('health_safety', 'health_and_safety'), []),
                 (T('User directory'), True, URL('people', 'users'), []),
                 (T('View research visits'), True, URL('research_visits', 'research_visits'), []),
+                (T('Discussion board'), True, URL('discussion', 'discussion_board'), []),
                 LI(_class="divider"),
                 (T('Propose a project'), True, URL('projects', 'project_details'), []),
                 (T('Submit a new output'), True, URL('outputs', 'output_details'), []),

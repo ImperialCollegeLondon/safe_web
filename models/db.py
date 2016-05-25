@@ -694,4 +694,22 @@ db.define_table('group_request',
                 Field('admin_id','reference auth_user'),
                 Field('admin_decision_date','date'))
 
+## -----------------------------------------------------------------------------
+## Discussion board
+## -- Simple, single board discussion group
+## -----------------------------------------------------------------------------
 
+db.define_table('discussion_topics',
+                Field('topic', 'string'),
+                Field('topic_user_id', 'reference auth_user'),
+                Field('topic_date','date'),
+                Field('n_views', 'integer'),
+                Field('n_messages', 'integer'))
+
+db.define_table('discussion_message',
+                Field('parent_id', 'integer', requires=IS_NULL_OR(IS_IN_DB(db, 'discussion_message.id'))),
+                Field('depth', 'integer'),
+                Field('topic_id', 'reference discussion_topics'),
+                Field('message','text'),
+                Field('message_user_id', 'reference auth_user'),
+                Field('message_date','datetime'))
