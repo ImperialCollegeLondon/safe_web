@@ -1,9 +1,6 @@
 import datetime
 
-def test():
-    
-    return response.render()
-
+@auth.requires_login()
 def discussion_board():
     
     # create bespoke view for topics
@@ -100,7 +97,8 @@ def view_topic():
     
     # each message becomes a bootstrap media object
     left_image = SPAN(_class="glyphicon glyphicon-envelope", _style="font-size: 2em;")
-    reply = SPAN(_class="glyphicon glyphicon-pencil", _style="font-size: 1.4em;color:gray", _title='Reply') # SPAN('REPLY', _class="label label-default") 
+    reply = SPAN(_class="glyphicon glyphicon-pencil", _style="font-size: 1.4em;color:gray", _title='Reply')
+     # SPAN('REPLY', _class="label label-default") 
     
     message_div = []
     
