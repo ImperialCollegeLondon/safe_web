@@ -52,48 +52,88 @@ def view_output():
     
     # retrieve the output id from the page arguments passed by the button
     # and then get the row and send it to the view
+    
     output_id = request.args(0)
-    output = db(db.outputs.id == output_id).select()[0]
-     
-    # set up a membership and projects panel 
-    # - note that these view don't exist, they're just a mechanism to load controllers
-    #   and get the contents of sub tables
-    projects = LOAD(request.controller,
-                    'get_output_projects.html',
-                    args=[output_id],
-                    ajax=True)
+    output = db(db.outputs.id == output_id).select().first()
     
-    return dict(output = output, 
-                projects = projects)
+    # build the view in controller and pass over to the view as a single object
+    if output.picture is None:
+        pic = URL('static', 'images/default_thumbnails/missing_output.png')
+    else:
+        pic = URL('default','download', args = output.picture)
+    
+    if output.url is not None and output.url <> 'NA':
+        url = DIV(DIV(B('Output URL:'), _class='col-sm-2'), 
+                  DIV(A(output.url, _href=output.url), _class='col-sm-10'),
+                  _class='row')
+    else:
+        url = ""
+    
+    if output.doi is not None and output.doi <> 'NA':
+        doi = DIV(DIV(B('Output DOI:'), _class='col-sm-2'), 
+                  DIV(A(output.doi, _href=output.doi), _class='col-sm-10'),
+                  _class='row')
+    else:
+        doi = ""
+    
+    if output.file is not None and output.file <> 'NA':
+        # need to retrieve the file to get the original file name
+        fn, stream = db.outputs.file.retrieve(output.file)
+        stream.close()
+        
+        dfile = DIV(DIV(B('Download file:'), _class='col-sm-2'), 
+                  DIV(A(fn, _href=URL('default','download', args = output.file)),  _class='col-sm-10'),
+                  _class='row')
+    else:
+        dfile = ""
 
-
-def get_output_projects():
     
-    """
-    Internal controller, gathering a form requested by LOAD
-    """
+    # output details panel
+    output_panel = CAT(DIV(DIV(H4(output.title), _class='col-sm-10'),
+                        DIV(DIV(IMG(_src=pic, _width='100px'), _class= 'pull-right'), _class='col-sm-2'),
+                                _class='row', _style='margin:10px 10px;'), 
+                            DIV(DIV('Description', 
+                                    A(SPAN('',_class="icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left"),
+                                        SPAN(' Back to outputs'),
+                                        _href=URL("outputs","outputs", user_signature=True),
+                                        _class='pull-right', _style='color:white'),
+                                    _class="panel-heading"),
+                                DIV(url, doi, dfile, 
+                                    local_hr,
+                                    DIV(DIV(XML(output.description.replace('\n', '<br />'),
+                                            sanitize=True, permitted_tags=['br/']),
+                                            _class='col-sm-12'),
+                                        _class='row'),
+                                    _class='panel-body',
+                                    _style='margin:10px 10px'),
+                            DIV(DIV(DIV('Uploaded by: ', output.user_id.first_name, ' ', output.user_id.last_name,
+                                        _style='text-align:right; color=grey; font-size:smaller')),
+                                _class='panel-footer'),
+                            _class="panel panel-primary"))
     
-    # retrieve the output id from the page arguments passed by LOAD
-    # and find the set of associated projects 
-    output_id = request.args(0)
-    associated_projects = db(db.project_outputs.output_id == output_id)._select(db.project_outputs.project_id)
-    query = db.project.id.belongs(associated_projects)
+    # set up the related projects panel
+    project_rows = output.project_outputs.select()
     
-    form = SQLFORM.grid(query,
-                       fields = [db.project.title],
-                       maxtextlength=250,
-                       searchable=False,
-                       args = [output_id],
-                       deletable=False,
-                       details=False,
-                       selectable=False,
-                       create=False,
-                       editable=False,
-                       csv=False,
-                       #user_signature=False
-                       )  # change to True in production
+    if len(project_rows) > 0:
+        
+        # need to look up titles through the project_id and project_details tables, which is clunky
+        rows = []
+        for r in project_rows:
+            details_id = db.project_id(r.project_id).project_details_id
+            title = db.project_details(details_id).title
+            rows.append(TR(TD(A(title, _href=URL('projects','project_view', args=[r.project_id])))))
+            
+        related_projects = TABLE(*rows, _class='table table-striped', _style='width:100%')
+        
+        related_projects = DIV(DIV('Related projects', _class="panel-heading"),
+                                    related_projects,
+                                    DIV(_class='panel-footer'),
+                                _class="panel panel-primary")
+    else:
+        related_projects = ""
     
-    return form
+    return dict(output_panel = output_panel, 
+                related_projects = related_projects)
 
 ## -----------------------------------------------------------------------------
 ## OUTPUT CREATION AND EDITING

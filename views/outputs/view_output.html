@@ -1,80 +1,10 @@
 {{extend 'layout.html'}}
 
-<!-- Yes, yes, I've redefined css locally, I know that is bad but I'm implementing function -->
-<style>
-hr { 
-    display: block;
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
-    margin-left: auto;
-    margin-right: auto;
-    border-style: inset;
-    border-width: 1px;
-} 
-</style>
-
-
 <div class="flash">{{=response.flash or session.flash or ' '}}</div>
 
-<!--Insert a consistently styled back button to return to the grid view-->
-{{= A(SPAN('',_class="icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left"),
-      SPAN(' Back to outputs', _class="buttontext button"),
-      _class="button btn btn-default", 
-      _href=URL("outputs","outputs", user_signature=True),
-      _style='padding: 3px 5px 3px 5px;')}}
-      
+{{=output_panel}}
 
-{{=TABLE(TR(TD(H3(output.title)), 
-	    TD(IMG(_src = URL('default','download', args = output.picture), _height = 100),  _style='text-align:right')), _width='100%')}}
+{{=related_projects}}
 
 
-{{=H4('Description', _style='background-color: lightgrey; line-height: 40px')}}
-
-<!-- Create a set of table rows for the summary table, mostly just testing for non-blank 
-     fields but a little more complex for file, where we have to retrieve the original filename-->
-{{type_row = TR(TD(B('Output type'), _width='20%'), TD(output.format))}}
-
-{{if output.url is not None and output.url <> 'NA':}}
-{{url_row = TR(TD(B('Output URL')), TD(A(output.url)))}}
-{{else:}}
-{{url_row = ''}}
-{{pass}}
-
-{{if output.doi is not None and output.doi <> 'NA':}}
-{{doi_row = TR(TD(B('Output DOI')), TD(A(output.doi, _href=output.doi)))}}
-{{else:}}
-{{doi_row = ''}}
-{{pass}}
-
-{{if output.file is not None and output.file <> 'NA':}}
-{{fn, stream = db.outputs.file.retrieve(output.file)}}
-{{file_row = TR(TD(B('Download file')), TD(A(fn, _href=URL('default','download', args = output.file))))}}
-{{stream.close()}}
-{{else:}}
-{{file_row = ''}}
-{{pass}}
-
-{{if output.citation is not None and output.citation <> 'NA':}}
-{{cite_row = TR(TD(B('Citation')), TD(output.citation))}}
-{{else:}}
-{{cite_row = ''}}
-{{pass}}
-
-
-{{=TABLE(cite_row, type_row,url_row, doi_row, file_row, _width='100%', _style='vertical-align: top;')}}
-
-
-<hr>
-
-{{=XML(output.description.replace('\n', '<br />'),
-        sanitize=True, permitted_tags=['br/'])}}
-
-
-{{=P('Uploaded by: ', output.user_id.first_name, ' ', output.user_id.last_name, 
-     _style='text-align:right; color=grey; font-size:smaller')}}
-
-{{if projects is not None:}}
-{{=H4('Associated projects', _style='background-color: lightgrey; line-height: 40px')}}
-{{=projects}}
-{{pass}}
 <br>	
