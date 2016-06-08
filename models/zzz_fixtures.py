@@ -137,8 +137,10 @@ if db(db.project_details).count() == 0:
                                                    requires_vehicle = row['requires_vehicle'],
                                                    resource_notes = row['resource_notes'],
                                                    data_sharing = True,
+                                                   proposal_date = datetime.datetime.now(),
                                                    admin_status = 'Approved',
-                                                   legacy_project_id = row['Code'])
+                                                   legacy_project_id = row['Code'],
+                                                   which_animal_taxa = '||')
             
             # link the project_id to the details
             details = db.project_details(details_id)

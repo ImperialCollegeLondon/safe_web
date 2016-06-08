@@ -1,25 +1,33 @@
 import datetime
 
 ## -----------------------------------------------------------------------------
-## VIEW PROJECT CONTROLLERS
-## -- uses recipe from:
-##    http://www.web2pyslices.com/article/show/1542/manage-users-and-memebership-in-the-same-form
-## -- This setup is moderately complicated: there is a SQLFORM.grid to display all
-##    projects, but then we want the view to include project details, members and
-##    outputs, so:
-##      1) the SQLFORM.grid has a custom button, redirecting to ...
-##      2) a custom view_project_details controller, which also loads
-##      3) a controller returning a SQLFORM.grid of project_members for the project
-##      4) a controller returning a SQLFORM.grid of outputs for the project
-##
-## -- This is all public facing, so the project_view page provides access to
-##    the main areas of public interest and not the underlying resources/ethics/approval
+## PROJECT CONTROLLERS
+## - the project system requires the ability to revise projects both for initial 
+##   approval and for any later edits. The underlying database needs permanent ID
+##   numbers (and paired UUIDs for the Earthcape database), so we have the concept
+##   of a permanent record of authority and a set of revisions. 
+## - These controllers implement that via two tables 
+##   A) A project_details table, which stores all revisions and from which project 
+##      coordinators can submit a proposal.
+## - B) A project_id table, which just holds the permanent ids and a link to the
+##      current version of the project details table.
+## - The two tables are connected by project_details.id = project_id.project_details_id. 
+##   When a project is first created, a row is created in project_id to create the
+##   permanent ID record.
+## -----------------------------------------------------------------------------
+
+
+
+## -----------------------------------------------------------------------------
+## PUBLIC CONTROLLERS
+## - presents a grid view of approved projects and a simple view of the current
+##   details for that project
 ## -----------------------------------------------------------------------------
 
 def projects():
     
     """
-    This controller shows the grid view for projects and allows
+    This public controller shows the grid view for projects and allows
     users to look at project details but creating new ones is handled
     by a standalone form
     
@@ -30,37 +38,39 @@ def projects():
     # For standard users (need a separate admin projects controller)
     # don't show the authorization fields and don't show a few behind 
     # the scenes fields
-    db.project.admin_id.readable = False 
-    db.project.admin_status.readable = False 
-    db.project.admin_notes.readable = False 
-    db.project.admin_decision_date.readable = False 
-    db.project.proposer_id.readable = False 
-    db.project.proposal_date.readable = False 
-    db.project.data_sharing.readable = False 
-    db.project.legacy_project_id.readable = False 
+    db.project_details.admin_id.readable = False 
+    db.project_details.admin_status.readable = False 
+    db.project_details.admin_notes.readable = False 
+    db.project_details.admin_decision_date.readable = False 
+    db.project_details.proposer_id.readable = False 
+    db.project_details.proposal_date.readable = False 
+    db.project_details.data_sharing.readable = False 
+    db.project_details.legacy_project_id.readable = False 
     
     # hide picture link - we need it in the fields, to use it in the links
     # but we don't want to show the field itself
-    db.project.picture.readable = False
-        
+    db.project_details.picture.readable = False
+    
     # create a links list that:
     # 1) displays a thumbnail of the  project image
     # 2) creates a custom button to pass the row id to a custom view 
     
-    links = [dict(header = '', body = lambda row: A(IMG(_src = URL('default', 
-                  'download', args = row.picture), _height = 100))),
+    links = [dict(header = '', body = lambda row: IMG(_src = URL('default', 'download', args = row.project_details.picture) if row.project_details.picture is not None else 
+                                                             URL('static', 'images/default_thumbnails/missing_project.png'),
+                                                        _height = 100)),
              dict(header = '', 
                   body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
                                        SPAN('View', _class="buttontext button"),
                                        _class="button btn btn-default", 
-                                       _href=URL("projects","project_view", args=[row.id], user_signature=True),
+                                       _href=URL("projects","project_view", args=[row.project_id.id], user_signature=True),
                                        _style='padding: 3px 5px 3px 5px;'))]
     
-    form = SQLFORM.grid(db.project, csv=False, 
-                        fields=[db.project.title,
-                                # db.project.start_date, 
-                                # db.project.end_date, 
-                                db.project.picture],
+    # create a grid view on the join between project_id and project_details
+    form = SQLFORM.grid(db.project_id.project_details_id == db.project_details.id, csv=False, 
+                        fields=[db.project_details.title,
+                                # db.project_details.start_date, 
+                                # db.project_details.end_date, 
+                                db.project_details.picture],
                         maxtextlength=250,
                         deletable=False,
                         editable=False,
@@ -68,7 +78,8 @@ def projects():
                         details=False,
                         links=links,
                         links_placement='left',
-                        formargs={'showid': False})
+                        formargs={'showid': False}
+                        )
     
     return dict(form=form)
 
@@ -83,112 +94,95 @@ def project_view():
     project_id = request.args(0)
     
     # control access to records based on status
-    project_record = db.project(project_id)
+    project_record = db.project_id(project_id)
+    # get the linked project details (there is only one)
+    project_details = project_record.project_details.select().first()
     
-    if (project_record is not None) and \
-       (project_record.admin_status == 'Approved'):
+    if (project_record is None) or (project_details.admin_status != 'Approved'):
     
-        # set up the project form
-        # TODO - what new fields to add for public consumption?
-        this_project = SQLFORM(db.project, project_id,
-                       fields = [#'project_home_country', 
-                                 'start_date', 'end_date',
-                                 'rationale', 'methods', 'research_areas'],
-                       readonly=True,
-                       showid=False
-                      )
-    
-        # we want the title as a display item not in the SQLFORM
-        # so it is excluded from fields above and retrieved below using the record
-        title = this_project.record.title
-        pic = this_project.record.picture
-    
-        # set up a membership panel - this uses AJAX, which is black box woo to me at the moment
-        # - not that these view don't exist, they're just a mechanism to load controllers
-        #   and get the contents of sub tables
-        membership_panel = LOAD(request.controller,
-                                'view_project_membership.html',
-                                 args=[project_id],
-                                 ajax=True)
-    
-        # set up an outputs panel
-        outputs_panel = LOAD(request.controller,
-                                'view_project_outputs.html',
-                                 args=[project_id],
-                                 ajax=True)
-        
-        # pass components to the view
-        return dict(title=title, pic=pic,
-                    this_project=this_project, 
-                    membership_panel=membership_panel,
-                    outputs_panel=outputs_panel)
-    
-    # now for non-existant records
-    else:
         session.flash = CENTER(B('Invalid project id number.'), _style='color: red')
         redirect(URL('projects','projects'))
+    
+    else:
+        
+        # return a set of panels showing the content of the records links
+        
+        # build the view in controller and pass over to the view as a single object
+        if project_details.picture in [None, '']:
+            pic = URL('static', 'images/default_thumbnails/missing_project.png')
+        else:
+            pic = URL('default','download', args = project_details.picture)
+        
+        rationale = XML(project_details.rationale.replace('\n', '<br />'), sanitize=True, permitted_tags=['br/'])
+        methods = XML(project_details.methods.replace('\n', '<br />'), sanitize=True, permitted_tags=['br/'])
+        
+        # project details panel
+        project_details =   CAT(DIV(DIV(H4(project_details.title), _class='col-sm-10'),
+                                    DIV(DIV(IMG(_src=pic, _width='100px'), _class= 'pull-right'), _class='col-sm-2'),
+                                    _class='row', _style='margin:10px 10px;'), 
+                                DIV(DIV('Project details', 
+                                        A(SPAN('',_class="icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left"),
+                                            SPAN(' Back to projects'),
+                                            _href=URL("projects","projects", user_signature=True),
+                                            _class='pull-right', _style='color:white'),
+                                        _class="panel-heading"),
+                                    DIV(DIV(DIV(H4('Start date') + project_details.start_date, _class='col-sm-3', 
+                                                _style='padding-right:0; padding-left:0;'),
+                                            DIV(H4('End date') + project_details.end_date, _class='col-sm-3',
+                                                _style='padding-right:0; padding-left:0;'),
+                                            DIV(H4('Research areas') + XML(('<br>').join(project_details.research_areas)), _class='col-sm-3',
+                                                _style='padding-right:0; padding-left:0;'),
+                                            DIV(H4('Data use') + XML(('<br>').join(project_details.data_use)), _class='col-sm-3',
+                                                _style='padding-right:0; padding-left:0;'),
+                                            _class='row'),
+                                        DIV(H4('Rationale') + rationale, _class='row'),
+                                        DIV(H4('Methods') + methods, _class='row'),
+                                    _class='panel-body', _style='margin:10px 10px'),
+                                DIV(_class='panel-footer'),
+                                _class="panel panel-primary"))
+        
+        # members panel
+        members_table = TABLE(TR(TH('Researcher'), TH('Project role'), TH('Project contact')),
+                              *[TR(TD(A(r.user_id.first_name + " " + r.user_id.last_name, 
+                                        _href=URL('people','user_details', args=[r.user_id]))),
+                                   TD(r.project_role),
+                                   TD(coordinator_icon if r.is_coordinator else not_coordinator_icon)) 
+                                   for r in project_record.project_members.select()],
+                              _class='table table-striped', _style='width:100%')
 
-def view_project_membership():
-    
-    """
-    Present a subset of project_members, showing users for a given project
-    TODO - allow links to auth_user records? Only for login?
-    """
-    
-    # retrieve the user id from the page arguments passed by the button
-    project_id = request.args(0)
-    
-    form = SQLFORM.grid((db.project_members.project_id == project_id),
-                       args=[project_id],
-                       fields = [db.project_members.user_id,
-                                 db.project_members.project_role],
-                       maxtextlength=250,
-                       searchable=False,
-                       deletable=False,
-                       details=False,
-                       selectable=False,
-                       create=False,
-                       editable=False,
-                       csv=False,
-                       #user_signature=False
-                       )  # change to True in production
-    return form
+        members = DIV(DIV('Project members', _class="panel-heading"),
+                      members_table,
+                      DIV(_class='panel-footer'),
+                      _class="panel panel-primary")
 
+        # outputs panel
+        outputs = project_record.project_outputs.select()
+        
+        if len(outputs) > 0:
+            outputs_table = TABLE(TR(TH('Output title'), TH('Output type')),
+                                  *[TR(TD(A(r.output_id.title, 
+                                            _href=URL('outputs','view_output', args=[r.output_id]))),
+                                       TD(r.output_id.format))
+                                       for r in outputs],
+                                  _class='table table-striped', _style='width:100%')
 
-def view_project_outputs():
-    
-    """
-    Present a subset of outputs to the user as a grid. This is almost
-    identical to view_projects, except for the built in subset to a project_id
-    -- TODO - may be possible to merge these two controllers?
-    -- TODO - redirect view buttons page to the already defined output view?
-              output_view/view/outputs/output_id
-              At the moment it pops up a subpage, but we'd want the controller back
-              button to go back to the project_details.
-    """
-    
-    # retrieve the project id from the page arguments 
-    # and grab the associated projects
-    project_id = request.args(0)
-    associated_outputs = db(db.project_outputs.project_id == project_id)._select(db.project_outputs.output_id)
-    query = db.outputs.id.belongs(associated_outputs)
+            outputs = DIV(DIV('Project outputs', _class="panel-heading"),
+                          outputs_table,
+                          DIV(_class='panel-footer'),
+                          _class="panel panel-primary")
+        else:
+            outputs = DIV()
+        
+        # project links
+        # STILL TO BE DONE
+        project_links = project_record.project_links.select()
+        
     
     
-    form = SQLFORM.grid(query,
-                       fields=[db.outputs.title,
-                               db.outputs.format],
-                       maxtextlength=250,
-                       args=[project_id],
-                       searchable=False,
-                       deletable=False,
-                       details=False,
-                       editable=False,
-                       create=False,
-                       selectable=False,
-                       csv=False,
-                       #user_signature=False
-                       )  # change to True in production
-    return form
+    # pass components to the view
+    return dict(project_id = project_id, project_details = project_details,
+                members = members, outputs=outputs, project_links = project_links)
+
 
 ## -----------------------------------------------------------------------------
 ## PROJECT DETAIL CONTROLLERS
@@ -208,126 +202,666 @@ def view_project_outputs():
 def project_details():
 
     """
-    Controller to handle the managment of project proposals. This needs to be a 
+    Controller to handle the management of project details. This needs to be a 
     form that users can return to to fix problems etc, so this controller accepts project_id
-    as an argument to reload existing records. We therefore also need access control.
+    as an argument to reload existing records and project_details_id to allow access to
+    different versions.
+    
+    The controller also need access control to cover who has write access.
+    
+    The controller contains a lot of formatting code, to return simple units to the view
+    for display, rather than having a lot of logic in {{}} in the view html.
     """
+    
+    # two possible arguments - the project id and the version of that project
+    project_id = request.args(0)
+    version_id = request.args(1)
 
     # look for an existing record, otherwise a fresh start with an empty record
-    project_id = request.args(0)
     if project_id is not None:
-        record = db.project(project_id)
+        # get the row for the project id, which contains the set of all
+        # project_details records through referencing and the link to the current
+        # canonical one
+        project_record = db.project_id(project_id)
     else:
-        record = None
+        # brand new proposal for a new project, so no record
+        project_record = None
     
     # need access control here for existing projects and provide:
     # - default readonly access to all users to allow project oversight.
     # - but give write access to project coordinator members
     
-    if project_id is not None and db.project(project_id) is None:
-        # avoid unknown projects
+    # There are four combinations we want to handle:
+    # - New project: edit mode, save new draft option
+    # - Editing draft: edit mode, save draft and submit draft options 
+    # - New draft: view mode, new draft option
+    # - View mode: view mode, no options.
+    
+    # The SQL readonly option turns off all field writing, but also suppresses buttons used to
+    # provide options, so gives view mode only. The other options could be achieved by
+    # turning off field writable for each field, but we want pretty looking edit and view modes, 
+    # so create two distinct FORM views (edit, view) and use readonly to suppress the buttons.
+    
+    if project_id is not None and project_record is None:
+        
+        # avoid unknown project id
         session.flash = B(CENTER('Invalid project id'), _style='color:red;')
         redirect(URL('projects','projects'))
+        
     else:
         
+        # Now set up for new projects versus existing projects 
         if project_id is not None:
+            
+            # A) need to handle versions of existing project details - multiple records for the same
+            # project id. First get a dictionary of valid version numbers
+            versions = project_record.project_details.select(orderby=db.project_details.version)
+            version_num = [str(v.version) for v in versions]
+            version_date = [v.proposal_date.strftime('%Y-%m-%d %H:%M') for v in versions]
+            version_detail_id = [v.id for v in versions]
+            version_dict = dict(zip(version_num, version_detail_id))
+            
+            # If there isn't a version number provided, then load the record for the
+            # one linked in the projects_id table, which is the most recently approved
+            if version_id is None:
+                linked_version = db.project_details(project_record.project_details_id).version
+                redirect(URL('projects','project_details', args=[project_id, linked_version]))
+            else:
+                # otherwise we load the version referenced by the version number
+                if version_id not in version_num:
+                    # avoid unknown version id
+                    session.flash = B(CENTER('Invalid project version id'), _style='color:red;')
+                    redirect(URL('projects','projects'))
+                else:
+                    # lookup the details row for that version
+                    details = db.project_details(version_dict[version_id])
+        
+            # Create a bootstrap dropdown to allow users to select different versions
+            # - needs a dictionary of arguments to the TAG.button, because of the hyphen
+            #   in data-toggle 
+            version_links = []
+            version_string = []
+            
+            # two icons to show which version is currently being looked at - one is just
+            # a glyphicon class with a minimum width to align the text that follows
+            this_icon = SPAN(_class='glyphicon glyphicon-eye-open', _style='min-width:15px')
+            other_icon = SPAN(_class='glyphicon',_style='min-width:15px')
+            
+            for n, d in zip(version_num, version_date):
+                if n == version_id:
+                    this_version = CAT(this_icon, '  Version ' + n + " (" + d + ")")
+                    version_string.append(this_version)
+                else:
+                    version_string.append(CAT(other_icon, '  Version ' + n + " (" + d + ")"))
+                
+                version_links.append(URL('projects','project_details', args=[project_id, n]))
+            
+            version_list = [LI(A(st, _href=ln)) for st, ln in zip(version_string, version_links)]
+            
+            version_dropdown = DIV(TAG.button(CAT(this_version , ' ', SPAN(_class="caret")),
+                                              **{'_class': "btn btn-default dropdown-toggle", 
+                                                 '_type': "button", 
+                                                 '_id': "dropdownMenu1", 
+                                                 '_data-toggle': "dropdown",
+                                                 '_style': 'padding: 5px 15px 5px 15px;background-color:lightgrey;color:black'}),
+                                              UL(*version_list, _class="dropdown-menu dropdown-menu-right"),
+                                   _class="dropdown")
+            
+            
+            # Get a panel body with status information to include in the html
+            if project_id is None:
+                status_div = DIV(DIV('This is a unsaved new project draft.', _class='col-sm-9'),
+                                 _class='panel_body',
+                                 _style='background-color:lightgrey;height:40px;vertical-align:centre;')
+            else:
+                status_div = DIV(DIV(version_dropdown, _class='col-sm-3'),
+                                 DIV('This version has status ' + details.admin_status, _class='col-sm-9'),
+                                 _class='panel_body',
+                                 _style='background-color:lightgrey;height:40px;vertical-align:centre;')
+            
+            
+            # B) now sort out what the mode and editability is
+            
+            # - get a list of coordinators that can edit this project
             project_coords = db((db.project_members.project_id == project_id) &
                                 (db.project_members.is_coordinator == 'True')).select()
             project_coords = [r.user_id for r in project_coords]
-            readonly = False if  auth.user.id in project_coords else True
-            button_text = 'Submit project edits'
-        else:
-            readonly = False
-            button_text = 'Submit new project'
-        
-        # this passes through admin fields as well and lets the view code
-        # handle what is exposed to users.
-        form = SQLFORM(db.project, record = record, readonly=readonly,
-                       fields = ['picture', 'title', #'project_home_country',
-                                 'research_areas', 'start_date', 'end_date', 'data_use',
-                                 'rationale', 'methods', 'which_animal_taxa',
-                                 'destructive_sampling','destructive_sampling_info',
-                                 'ethics_approval_required','ethics_approval_details',
-                                 'funding', 'requires_ra',
-                                 'requires_vehicle','resource_notes', 'data_sharing',
-                                 #'admin_status', 'admin_notes'
-                                 ],
-                      submit_button = button_text)
-        
-        if form.process(onvalidation=validate_project).accepted:
-        
-            # actions depend on whether this is a new project or an update
-            if record is None:
-                # add the proposer as the Main Contact for the project
-                db.project_members.insert(user_id = auth.user.id, 
-                                          project_id = form.vars.id,
-                                          project_role = 'Main Contact',
-                                          is_coordinator = True)
-        
-                # email the proposer
-                template =  'email_templates/project_submitted.html'
-                message =  response.render(template,
-                                           {'name': auth.user.first_name,
-                                            'url': URL('projects', 'project_details', args=form.vars.id, scheme=True, host=True)})
-        
-                msg_status = mail.send(to=auth.user.email,
-                                       subject='SAFE project proposal submission',
-                                       message=message)
             
-                # signal success and load the newly created record in a details page
-                session.flash = CENTER(B('SAFE project  successfully submitted.'), _style='color: green')
-                redirect(URL('projects', 'project_details', args=form.vars.id))
+            # Is this a version that could launch a new version?
+            # - must be most recent version and could be Approved or Rejected
+            if (auth.user.id in project_coords) & (int(version_id) == max([int(r) for r in version_num])) & (details.admin_status in ['Approved','Rejected']):
+                launch_new_version = True
+            else: 
+                launch_new_version = False
+            
+            if auth.user.id in project_coords and details.admin_status == 'Draft':
+                # an active draft
+                mode = 'edit'
+                buttons = [TAG.button('Save draft',_type="submit", 
+                                      _name='save_draft', _style='padding: 5px 15px 5px 15px;'), 
+                           XML('&nbsp;')*5,
+                           TAG.button('Save and Submit draft',_type="submit", 
+                                      _name='submit_draft', _style='padding: 5px 15px 5px 15px;')]
+                header_text = CAT(H2('Edit Project Draft'), 
+                                   P('Please use the form below to edit your draft project proposal. You can save your changes by ',
+                                     'clicking on the Save Draft button below'),
+                                   P('Once you have completed your proposal, click the Save and Submit Draft button to submit your ',
+                                     ' proposal. It will first be screened by an ',
+                                     'administrator and then sent out to the research community at SAFE for comments. This process ',
+                                     'usually takes about 14 days. You will get an email to confirm that you have submitted a project ',
+                                     'and then another email to confirm whether the project has been accepted or not.'))
+            elif auth.user.id in project_coords and launch_new_version:
+                # able to create a new draft?
+                mode = 'view'
+                header_text = CAT(H2('Project details'), 
+                                   P('The form below shows the most recent version of your project proposal. If you want to update ',
+                                     'the project details or need to re-submit an updated version of a rejected proposal, then ',
+                                     'click on the Edit New Draft button.'))
+
             else:
-                # signal success 
-                session.flash = CENTER(B('SAFE project successfully updated.'), _style='color: green')
-                redirect(URL('projects', 'project_details', args=form.vars.id))
+                # view only
+                mode = 'view'
+                header_text = CAT(H2('Project details'), 
+                                   P('The form below shows the details of a project proposal submitted to SAFE. Note that proposals ',
+                                     'cannot be edited once they have been submitted or are in review - you will have to wait for a', 
+                                     'decision to be made before you can alter a proposal.'))
+
+        else:
+            # otherwise, we're providing a blank form with only a save changes button, 
+            # no pre-existing details and an empty DIV in place of the version dropdown
+            # to create a new proposal
+            mode = 'edit'
+            buttons = [TAG.button('Save new draft',_type="submit", 
+                                  _name='save_new', _style='padding: 5px 15px 5px 15px;')]
+            details = None
+            version_dropdown = DIV()
+            header_text = CAT(H2('New Project Submission'), 
+                               P('Please use the form below to create a new draft research proposal. Once you save the new draft, '
+                                 'you will be added as the main contact for the proposal and you will be able to add new project ',
+                                 'members and identify linked projects.'))
+        
+        # NOW we setup the main form for edit mode
+        if mode == 'edit':
+            
+            form = SQLFORM(db.project_details, 
+                           record = details, 
+                           fields =  ['picture', 'title', 
+                                      'research_areas', 'start_date', 'end_date', 'data_use',
+                                      'rationale', 'methods', 'which_animal_taxa',
+                                      'destructive_sampling','destructive_sampling_info',
+                                      'ethics_approval_required','ethics_approval_details',
+                                      'funding', 'requires_ra',
+                                      'requires_vehicle','resource_notes', 'data_sharing'],
+                           buttons = buttons)
+            
+            # Process the form first to add hidden fields etc or to capture submitted values
+            if form.process(onvalidation=validate_project_details, formname='details', session=session).accepted:
                 
-        elif form.errors:
-            response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
-        else:
-            pass
-        
-        # Now handle members:
-        # - provide a view of the project members if the project exists
-        if project_id is not None:
-            members = db(db.project_members.project_id == project_id).select()
-            if readonly is False:
-                db.project_members.project_id.default = project_id
-                add_member = SQLFORM(db.project_members, fields=['user_id','project_role','is_coordinator'])
+                # actions depend on whether this is a submission, a new project, an update
+                if form.submit:
+                    # if this is a submission
+                    # i) change the status and redirect
+                    details.update_record(admin_status = 'Submitted')
+                    
+                    # ii) email the proposer
+                    template =  'email_templates/project_submitted.html'
+                    message =  response.render(template,
+                                               {'name': auth.user.first_name,
+                                                'url': URL('projects', 'project_details', args=[project_id, version_id], scheme=True, host=True)})
+                    
+                    msg_status = mail.send(to=auth.user.email,
+                                           subject='SAFE project draft submitted',
+                                           message=message)
+                                           
+                    session.flash = CENTER(B('SAFE project proposal submitted.'), _style='color: green')
+                    redirect(URL('projects', 'project_details', args=[project_id, version_id]))
+                
+                elif details is None:
+                    # if a new project (no existing details) then:
+                    # i) link to a new project_id
+                    new_details = db.project_details(form.vars.id)
+                    project_id = db.project_id.insert(project_details_id = new_details.id,
+                                                      project_details_uuid = new_details.uuid)
+                    # ii) set it up as a Draft version
+                    new_details.update_record(project_id = project_id, 
+                                              version=1,
+                                              admin_status='Draft')
+                    
+                    # iii) add the proposer as the Main Contact for the project
+                    db.project_members.insert(user_id = auth.user.id,
+                                              project_id = project_id,
+                                              project_role = 'Lead Researcher',
+                                              is_coordinator = True)
+                    
+                    # iv) email the proposer
+                    template =  'email_templates/project_submitted.html'
+                    message =  response.render(template,
+                                               {'name': auth.user.first_name,
+                                                'url': URL('projects', 'project_details', args=[project_id, version_id], scheme=True, host=True)})
+                    
+                    msg_status = mail.send(to=auth.user.email,
+                                           subject='SAFE project draft proposal draft created',
+                                           message=message)
+                    
+                    # signal success and load the newly created record in a details page
+                    session.flash = CENTER(B('SAFE project draft created.'), _style='color: green')
+                    redirect(URL('projects', 'project_details', args=[project_id, version_id]))
+                else:
+                    # Just edits submitted via the save draft button so send a signal success 
+                    session.flash = CENTER(B('SAFE project proposal updated.'), _style='color: green')
+                    redirect(URL('projects', 'project_details', args=[project_id, version_id]))
+            
+            elif form.errors:
+                response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
             else:
-                add_member = None
-        else:
-            members = None
-            add_member = None
-        
-        if add_member is not None:
-            if add_member.process(onvalidation=validate_new_project_member).accepted:
-                session.flash = CENTER(B('New project member added.'), _style='color: green')
-                redirect(URL('projects', 'project_details', args=project_id))
-            elif add_member.errors:
-                response.flash = CENTER(B('Problem with adding project member.'), _style='color: red')
-            else:
+                # this runs when the form is being set up, so process has added
+                # the formkey and formname now
                 pass
+            
+            # Now create the edit panel
+            # - first edit some of the settings for the widgets
+            form.custom.widget.ethics_approval_details['_rows'] = 4
+            form.custom.widget.destructive_sampling_info['_rows'] = 2
+            form.custom.widget.rationale['_rows'] = 4
+            form.custom.widget.methods['_rows'] = 4
+            form.custom.widget.research_areas['_size'] = 3
+            
+            # picture
+            if (details is None) or (details.picture in [None, '']):
+                pic = URL('static', 'images/default_thumbnails/missing_project.png')
+            else:
+                pic = URL('default','download', args = details.picture)
+            
+            # - now package the widgets
+            form = CAT(form.custom.begin, 
+                            DIV(DIV(H5('Project details', ), _class="panel-heading"),
+                            status_div,
+                            DIV(DIV(DIV(IMG(_src=pic, _height='100px'), _class='col-sm-2'),
+                                    DIV(DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
+                                            DIV(form.custom.widget.title,  _class="col-sm-10"),
+                                            _class='row'),
+                                        DIV(LABEL('Picture:', _class="control-label col-sm-2" ),
+                                            DIV(form.custom.widget.picture,  _class="col-sm-10"),
+                                            _class='row'),
+                                        DIV(LABEL('Start Date:', _class="control-label col-sm-2" ),
+                                            DIV(form.custom.widget.start_date,  _class="col-sm-4"),
+                                            LABEL('End Date:', _class="control-label col-sm-2" ),
+                                            DIV(form.custom.widget.end_date,  _class="col-sm-4"),
+                                            _class='row'), 
+                                        _class='col-sm-10'),
+                                    _class='row', _style='margin:10px 10px'),
+                              local_hr,
+                                DIV(H4('Science case'), P('These sections set out the case for the research - what is the background ',
+                                    'and the hypotheses - and the research methods to be used. You', B(' must '), 'provide a detailed ',
+                                    'rationale and methods for your project before it can be sent out for comment. You must also choose ',
+                                    'at least one research area classification from the list provided below and select at least one ',
+                                    'data use option, showing what the project data will be used for.'),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(LABEL('Rationale:', _class="control-label col-sm-2" ),
+                                    DIV(form.custom.widget.rationale,  _class="col-sm-10"),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(LABEL('Methods:', _class="control-label col-sm-2" ),
+                                    DIV(form.custom.widget.methods,  _class="col-sm-10"),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(DIV(LABEL('Research areas:'), _class="col-sm-2"),
+                                    DIV(form.custom.widget.research_areas,  _class="col-sm-4"),
+                                    DIV(LABEL('Data use:'),_class="col-sm-2"),
+                                    DIV(form.custom.widget.data_use,  _class="col-sm-4"),
+                                    _class='row', _style='margin:10px 10px'),
+                                local_hr,
+                                DIV(H4('Destructive sampling'), P('Any research that kills or removes animals from the environment ',
+                                        'or causes damage to the habitat by disturbing the soil or damaging vegetation is ',
+                                      B('strictly monitored '), 'at SAFE. If you plan to perform destructive sampling as ',
+                                        'part of your project, then check the box below. In the text box, you  ', B(' must '),
+                                        'then: (1) describe the destructive sampling, (2) explain why it is necessary, and ',
+                                        '(3) describe where you plan to carry out destructive sampling.'),
+                                    _class='row', _style='margin:10px 10px;'),
+                                DIV(DIV(LABEL(form.custom.widget.destructive_sampling, 'Destructive sampling required', _class="control-label"),
+                                        form.custom.widget.destructive_sampling_info,
+                                        _class="col-sm-12"),
+                                    _class='row', _style='margin:10px 10px'),
+                                local_hr,
+                                DIV(H4('Animal research and ethics'), P('If your project involves working with animals you will need to check if ',
+                                     'ethical approval is needed and provide details  of how you are obtaining approval. You must also indicate '
+                                     'all animal groups you plan to work with from the list below:'),
+                                    _class='row', _style='margin:10px 10px;'),
+                                DIV(DIV(LABEL(form.custom.widget.ethics_approval_required, 'Ethics Approval required', _class="control-label"),
+                                        DIV(form.custom.widget.ethics_approval_details),
+                                        _class="col-sm-8" ),
+                                    DIV(B('Animal taxa'), form.custom.widget.which_animal_taxa ,_class="col-sm-4"),
+                                    _class='row', _style='margin:10px 10px'),
+                                local_hr,
+                                DIV(H4('Project resource requirements'), P('Please indicate if your project will need research assistant support',
+                                     ' or the use of vehicles to access sites by checking the boxes and provide a brief description of RA, vehicle'
+                                     ' and any other resources that the project will require.'),
+                                    _class='row', _style='margin:10px 10px;'),
+                                DIV(DIV(LABEL(form.custom.widget.requires_ra, 'Research Assistant time required', _class="control-label"),
+                                        LABEL(form.custom.widget.requires_vehicle, 'Vehicle transport required', _class="control-label"),
+                                        _class="col-sm-4"),
+                                    DIV(LABEL('Resource notes'), form.custom.widget.resource_notes,_class="col-sm-8"),
+                                    _class='row', _style='margin:10px 10px'),
+                                local_hr,
+                                DIV(H4('Funding and data sharing'), P('The SAFE Project requires that you deposit a copy of any primary '
+                                      'field data you collect in the SAFE central database, and to provide metadata for that data.'),
+                                    _class='row', _style='margin:10px 10px;'),
+                                DIV(DIV(LABEL(form.custom.widget.data_sharing, 'Check this box to confirm you agree to provide',
+                                              ' your data to the SAFE project', _class="control-label"),
+                                        _class="col-sm-12"),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(P('It is very important for us to show our funders the extent to which their investment has been leveraged ',
+                                      'to support work beyond their central donation. If you have a grant to support this work or applying for ',
+                                      'one, please give details of the grant title, funder, year of award and amount below:'),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(DIV(form.custom.widget.funding, _class="col-sm-12"),
+                                    _class='row', _style='margin:10px 10px'),
+                                local_hr,
+                                DIV(form.custom.submit, _class='panel-footer'),
+                                _class='panel_body'),
+                            _class="panel panel-primary"),
+                        form.custom.end)
         
-        # pass the form and record, for info look up on admin status
-        # - this could be implemented by setting writable = FALSE and getting fields
-        #   contents through the widget
+        elif mode == 'view':
+            
+            # We just provide a panel of information populated from details
+            # but also include a form with a single submit button to allow coordinators
+            # to launch new drafts
+            
+            # package destuctive sampling if present
+            if details.destructive_sampling:
+                destruct =   DIV('This project ',B('involves destructive sampling'), '. The provided description is :', 
+                                 DIV(details.destructive_sampling_info, _class='well'),
+                                 _class='row', _style='margin:10px 10px;')
+            else:
+                destruct =   DIV('This project has not declared any destructive sampling.', 
+                                 _class='row', _style='margin:10px 10px;')
+            
+            # package ethics
+            if len(details.which_animal_taxa) > 0:
+                animals =   P('This project will work with the following animal taxa: ' + ','.join(details.which_animal_taxa))
+            else:
+                animals = ''
+            
+            if details.ethics_approval_required:
+                ethics = DIV('Ethical approval ',B('is required for this work'), ' and the following details have ',
+                             'been provided:', DIV(details.ethics_approval_details, _class='well'), animals,
+                              _class='row', _style='margin:10px 10px;')
+            else:
+                ethics = DIV(P('Ethical approval is not required for this work'), animals,
+                             _class='row', _style='margin:10px 10px;')
+            
+            # package resource use notes
+            ra_time = P('This project will require research assistant support.') if details.requires_ra else ''
+            vehicle_use = P('This project will require vehicle transport to sites.') if details.requires_vehicle else ''
+            resource_notes = CAT(P('The following resource notes have been provided:'), DIV(details.resource_notes, _class='well')) if details.resource_notes != '' else ''
+            
+            resources = CAT(ra_time, vehicle_use, resource_notes)
+            
+            if resources.components == ['', '', '']:
+                resources = 'No resource requests have been recorded for this project'
+            
+            resources = DIV(resources, _class='row', _style='margin:10px 10px;')
+            
+            # picture
+            if details.picture in [None, '']:
+                pic = URL('static', 'images/default_thumbnails/missing_project.png')
+            else:
+                pic = URL('default','download', args = details.picture)
+            
+            # funding
+            if details.funding in [None, '']:
+                funds = P('This project has not provided any funding information.')
+            else:
+                funds = CAT(P('This project has provided the following funding information.'), DIV(details.funding, _class='well'))
+            
+            # build the form to look pretty in  view mode
+            form =  FORM(DIV(DIV(H5('Project details'), _class="panel-heading"),
+                            status_div,
+                            DIV(DIV(DIV(IMG(_src=pic, _height='100px'), _class='col-sm-2'),
+                                    DIV(DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
+                                            DIV(details.title,  _class="col-sm-10"),
+                                            _class='row'),
+                                        DIV(LABEL('Start Date:', _class="control-label col-sm-2" ),
+                                            DIV(details.start_date,  _class="col-sm-10"),
+                                            _class='row'),
+                                        DIV(LABEL('End Date:', _class="control-label col-sm-2" ),
+                                            DIV(details.end_date,  _class="col-sm-10"),
+                                            _class='row'), 
+                                        _class='col-sm-10'),
+                                    _class='row', _style='margin:10px 10px'),
+                                local_hr,
+                                DIV(H4('Science case'),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(LABEL('Rationale:', _class="control-label col-sm-2" ),
+                                    DIV(details.rationale,  _class="col-sm-10"),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(LABEL('Methods:', _class="control-label col-sm-2" ),
+                                    DIV(details.methods,  _class="col-sm-10"),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(DIV(LABEL('Research areas:'), _class="col-sm-2"),
+                                    DIV(XML(('<br>').join(details.research_areas)), _class="col-sm-4"),
+                                    DIV(LABEL('Data use:'),_class="col-sm-2"),
+                                    DIV(XML(('<br>').join(details.data_use)),  _class="col-sm-4"),
+                                    _class='row', _style='margin:10px 10px'),
+                                local_hr,
+                                DIV(H4('Destructive sampling'), _class='row', _style='margin:10px 10px;'),
+                                destruct,
+                                local_hr,
+                                DIV(H4('Animal research and ethics'), _class='row', _style='margin:10px 10px;'),
+                                ethics,
+                                local_hr,
+                                DIV(H4('Project resource requirements'), _class='row', _style='margin:10px 10px'),
+                                resources,
+                                local_hr,
+                                DIV(H4('Funding and data sharing'), 
+                                    P('The project coordinators ',B('have confirmed '), 'that this project will provide primary field data and metadata to the SAFE project.'),
+                                    _class='row', _style='margin:10px 10px;'),
+                                DIV(funds, _class='row', _style='margin:10px 10px'),
+                                _class='panel_body'),
+                            DIV(_class='panel-footer'),
+                            _class="panel panel-primary"))
+            
+            # if the user has permission to relaunch a new draft insert a button and make it a form
+            if launch_new_version:
+                buttons = TAG.button('Edit new draft', _type="submit", _name='new_draft', _style='padding: 5px 15px 5px 15px;')
+                form.elements('div.panel-footer')[0].insert(0,buttons)
+            
+            # very simple process for the view form (which can only do anything when the button is revealed)
+            # Process the form first to add hidden fields etc or to capture submitted values
+            if form.process(formname='launch_new_draft', session=session).accepted:
+                
+                # duplicate the details record into a new record
+                new_draft_id = db.project_details.insert(**db.project_details._filter_fields(details))
+                db.project_details(new_draft_id).update_record(admin_status='Draft',
+                                                               version=details.version + 1)
+                redirect(URL('projects', 'project_details', args=[project_id, details.version + 1]))
+        
+        # NOW PROVIDE FORMS TO ADD MEMBERS AND LINKS:
+        
+        # 1) PROVIDE A VIEW OF THE PROJECT MEMBERS if the project exists
+        
+        if project_id is not None:
+            
+            # get current members
+            members = db(db.project_members.project_id == project_id).select()
+            members_rows = [TR(TD(coordinator_icon if r.is_coordinator else not_coordinator_icon, _style='text-align:center'),
+                               TD(A(r.user_id.last_name + ', ' + r.user_id.first_name, _href = URL('people','user_details', args=r.user_id))),
+                               TD(r.project_role), TD()) for r in members]
+            
+            if auth.user.id in project_coords:
+                
+                # allow members to be added by coordinators from any version (don't need to have a draft)
+                # - set the project id value for the member
+                db.project_members.project_id.default = project_id
+                
+                # - create the form ...
+                members = SQLFORM(db.project_members, fields=['user_id','project_role','is_coordinator', 'project_id'])
+                
+                # set the processing in order to setup hidden fields
+                if members.process(onvalidation=validate_new_project_member, formname='members').accepted:
+                    session.flash = CENTER(B('Project members updated.'), _style='color: green')
+                    redirect(URL('projects', 'project_details', args=[project_id, version_id]))
+                elif members.errors:
+                    response.flash = CENTER(B('Problem with adding project member.'), _style='color: red')
+                    print members.errors
+                else:
+                    pass
+                
+                # - ... and repackage it as a FORM around a panel
+                # a) add the customform elements into a new row at the end
+                #    We need to pass the project id value to the validation, but it can't be edited
+                #    so hide it and bundle it in later
+                members.custom.widget.project_id.attributes['_type'] = 'hidden'
+                members_rows.append(TR(TD(members.custom.widget.is_coordinator, _style='text-align:center'),
+                                      TD(members.custom.widget.user_id),
+                                      TD(members.custom.widget.project_role),
+                                      TD(TAG.BUTTON(add_member_icon,
+                                                    _style='background:none; border:none;padding:0px 10px;font-size: 100%;',
+                                                    _type="submit")),
+                                         _style="vertical-align:centre"))
+                
+                # b) wrap everything up in the form
+                members = CAT(members.custom.begin,
+                              DIV(DIV(H5('Project members'), _class='panel-heading'),
+                                   DIV('As you are a coordinator for this project, you can add new project members. You ',
+                                       'can add members again to change their role and coordinator status. You cannot remove ',
+                                       'your own coordinator status!', _class = 'panel-body'),
+                                   TABLE(TR(TH('Coordinator', _style='text-align:center'),TH('Name'), TH('Project Role'), TH()),
+                                         *members_rows,
+                                         _width='100%', _class='table table-striped'),
+                                   DIV(_class='panel-footer'),
+                                   _class="panel panel-primary"),
+                              members.custom.widget.project_id, # hidden field to pass over the information to the validation
+                              members.custom.end)
+            
+            else:
+                members = DIV(DIV(H5('Project members'), _class='panel-heading'),
+                              TABLE(TR(TH('Coordinator', _style='text-align:center'),TH('Name'), TH('Project Role'), TH()),
+                                    *members_rows,
+                                    _width='100%', _class='table table-striped'),
+                              DIV(_class='panel-footer'),
+                              _class="panel panel-primary")
+        else:
+            # blank placeholder
+            members = DIV()
+        
+        # 2) PROVIDE A VIEW OF THE PROJECT LINKS if the project exists
+        
+        if project_id is not None:
+            
+            # get current links joined all the way through to project_details - big complex join!
+            link_ids = db(db.project_link_pairs.project_id == project_id)._select(db.project_link_pairs.link_id)
+            
+            links = db((db.project_links.id.belongs(link_ids)) &
+                       (db.project_links.id == db.project_link_pairs.link_id) &
+                       (db.project_id.id <> project_id) &
+                       (db.project_link_pairs.project_id == db.project_id.id) &
+                       (db.project_id.project_details_id == db.project_details.id))
+            links = links.select(db.project_links.user_id, db.project_details.title,
+                                 db.project_id.id, db.project_details.version)
+            
+            # look up project details and wrap them up into a table of links
+            link_rows = [TR(TD(A(r.project_details.title, 
+                                 _href = URL('projects','project_details', 
+                                             args=[r.project_id.id, r.project_details.version]))),
+                            TD(A(r.project_links.user_id.last_name + ', ' + r.project_links.user_id.first_name, 
+                                 _href = URL('people','user_details', 
+                                             args=r.project_links.user_id)))) 
+                         for r in links]
+            
+            # now implement a mechanism for adding new links
+            # - coordinators of _any_ project can add a link between their projects and this one
+            # - admins and coordinators of _this_ project can link any other projects.
+            if auth.has_membership('admin') or (auth.user.id in project_coords):
+                
+                linkable = db(db.project_id.project_details_id == db.project_details.id)
+                linkable = linkable.select(db.project_details.title,
+                                           db.project_id.id)
+            else:
+                
+                # what projects is the user a coordinator for?
+                coordinating = db((db.project_members.user_id == auth.user_id) &
+                                  (db.project_members.project_id <> project_id) &
+                                  (db.project_members.is_coordinator == 'T'))
+                
+                # if the user is a coordinator of other projects, allow linking to this one
+                if coordinating.count() > 0:
+                    linkable = db((db.project_id.project_details_id == db.project_details.id) &
+                                  (db.project_id.id.belongs(coordinating._select())))
+                    linkable = linkable.select(db.project_details.title,
+                                               db.project_id.id)
+                else:
+                    linkable = None
+            
+            if linkable is not None:
+                
+                # build up a form containing a table of the current links and some controls
+                # to add new ones
+                selector = SELECT(*[OPTION(r.project_details.title, _value=r.project_id.id) for r in linkable],
+                                  _class="generic-widget form-control", _name='project_id')
+                add_button = TAG.BUTTON(add_member_icon, _type="submit",
+                                        _style='background:none; border:none;padding:0px 10px;font-size: 100%;')
+                
+                link_rows.append(TR(TD(selector), TD(add_button)))
+                
+                linked_projects = FORM(DIV(DIV(H5('Linked projects'), _class='panel-heading'),
+                                       TABLE(TR(TH('Linked project', _width='80%'), TH('Linked by')),
+                                            *link_rows,
+                                            _width='100%', _class='table table-striped'),
+                                       DIV(_class='panel-footer'),
+                                       _class="panel panel-primary"))
+                
+                # form handling for the link form
+                if linked_projects.process(formname='linking').accepted:
+                    
+                    # create the link and populate the link pairs
+                    link_id = db.project_links.insert(user_id = auth.user.id,
+                                                      link_date = datetime.datetime.now())
+                    db.project_link_pairs.insert(link_id = link_id,
+                                                 project_id = project_id)
+                    db.project_link_pairs.insert(link_id = link_id,
+                                                 project_id = linked_projects.vars.project_id)
+                    
+                    # signal success and load the newly created record in a details page
+                    session.flash = CENTER(B('New project link added.'), _style='color: green')
+                    redirect(URL('projects', 'project_details', args=[project_id, version_id]))
+            
+            else:
+                # just provide a view of the existing links
+                linked_projects = DIV(DIV(H5('Linked projects'), _class='panel-heading'),
+                                      TABLE(TR(TH('Linked project', _width='80%'), TH('Linked by')),
+                                            *link_rows,
+                                            _width='100%', _class='table table-striped'),
+                                      DIV(_class='panel-footer'),
+                                      _class="panel panel-primary")
+        else:
+            # blank placeholder
+            linked_projects = DIV()
+        
+        
+        return dict(header_text = header_text,
+                    form=form,
+                    members=members,
+                    linked_projects = linked_projects)
 
-        return dict(form=form, record=record, readonly=readonly, members=members, add_member=add_member)
-
-
-def validate_project(form):
+def validate_project_details(form):
     
-    # insert proposal time and proposer if blank (new proposal)
-    if form.vars.proposer_id is None:
+    # capture if the request is a submission
+    if 'submit_draft' in request.vars.keys():
+        form.submit = True
+    else:
+        form.submit = False
+    
+    # insert proposal time, proposer and a temporary project_id if there 
+    # is no record (so a new proposal)
+    if form.record is None:
         form.vars.proposer_id = auth.user_id
-        form.vars.proposal_date =  datetime.date.today().isoformat()
+        form.vars.proposal_date =  datetime.datetime.now()
     
     # must agree to share data
     if form.vars.data_sharing is False or form.vars.data_sharing is None:
         form.errors.data_sharing = 'Data sharing is a mandatory part of the requirements for working at SAFE.'
     
-    # must provide ethics  details if needed
+    # must provide ethics details if needed
     if form.vars.ethics_approval_required == 'on' and \
       (form.vars.ethics_approval_details == '' or form.vars.ethics_approval_details is None):
         form.errors.ethics_approval_details = 'You must provide details of the ethics approval you will need and how you plan to obtain it.'
@@ -346,48 +880,64 @@ def validate_project(form):
         form.errors.data_use = 'You must select at least one data use option'
 
 
+
 def validate_new_project_member(form):
     
-    pass
-
-@auth.requires_login()
-def remove_member():
-
-    """
-    Removes a row from the project_member table and as such needs careful safeguarding
-    against use by non-authorised people - must be a logged in user who is a coordinator
-    for the project
-    """
-
-    # get the row id
-    row_id = request.args(0)
-    record = db.project_members(row_id)
+    # Because we're using SQLFORM always in create mode (there's no existing record
+    # preloaded into the widgets in the form) we need to handle 'updates' in a slightly
+    # sly way. Basically, look here to see if the user is already a member of this
+    # project and delete that record here. It then gets recreated with new values
+    # by the rest of the form handling.
     
-    if record is not None:
     
-        # get a set of users who have the right to access this interface for the row
-        project_coords = db((db.project_members.project_id == record.project_id) &
-                            (db.project_members.is_coordinator == 'True')).select()
-        project_coord_id = [r.user_id for r in project_coords]
+    if (int(form.vars.user_id) == auth.user.id) & (form.vars.is_coordinator is None):
+        form.errors.user_id = "You cannot remove your own coordinator status!"
     
-        # if the user is a member then check it makes sense to delete and do so.
-        if  auth.user.id in project_coord_id:
-            
-            # are we removing the last coordinator?
-            if len(project_coord_id) == 1 and int(row_id) == project_coords.first().id:
-                 session.flash =  CENTER(B('You may not remove the last coordinator from a project'), _style='color: red')
-                 redirect(URL('projects','project_details', args=record.project_id))
-            else:
-                # TODO - notify the member that they're being removed?
-                session.flash =  CENTER(B('Project member removed'), _style='color: green')
-                db(db.project_members.id == row_id).delete()
-                redirect(URL('projects','project_details', args=record.project_id))
-        else:
-            session.flash =  CENTER(B('Unauthorised use of projects/remove_member'), _style='color: red')
-            redirect(URL('projects','projects'))
-    else:
-        session.flash = CENTER(B('Unknown row ID in projects/remove_member'), _style='color: red')
-        redirect(URL('projects','projects'))
+    existing_record = db((db.project_members.project_id == form.vars.project_id) & 
+                         (db.project_members.user_id == form.vars.user_id)).select()
+    
+    for r in existing_record:
+        db.project_members(r.id).delete_record()
+    
+
+# @auth.requires_login()
+# def remove_member():
+#
+#     """
+#     Removes a row from the project_member table and as such needs careful safeguarding
+#     against use by non-authorised people - must be a logged in user who is a coordinator
+#     for the project
+#     """
+#
+#     # get the row id
+#     row_id = request.args(0)
+#     record = db.project_members(row_id)
+#
+#     if record is not None:
+#
+#         # get a set of users who have the right to access this interface for the row
+#         project_coords = db((db.project_members.project_id == record.project_id) &
+#                             (db.project_members.is_coordinator == 'True')).select()
+#         project_coord_id = [r.user_id for r in project_coords]
+#
+#         # if the user is a member then check it makes sense to delete and do so.
+#         if  auth.user.id in project_coord_id:
+#
+#             # are we removing the last coordinator?
+#             if len(project_coord_id) == 1 and int(row_id) == project_coords.first().id:
+#                  session.flash =  CENTER(B('You may not remove the last coordinator from a project'), _style='color: red')
+#                  redirect(URL('projects','project_details', args=record.project_id))
+#             else:
+#                 # TODO - notify the member that they're being removed?
+#                 session.flash =  CENTER(B('Project member removed'), _style='color: green')
+#                 db(db.project_members.id == row_id).delete()
+#                 redirect(URL('projects','project_details', args=record.project_id))
+#         else:
+#             session.flash =  CENTER(B('Unauthorised use of projects/remove_member'), _style='color: red')
+#             redirect(URL('projects','projects'))
+#     else:
+#         session.flash = CENTER(B('Unknown row ID in projects/remove_member'), _style='color: red')
+#         redirect(URL('projects','projects'))
 
 
 ## -----------------------------------------------------------------------------

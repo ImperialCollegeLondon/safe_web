@@ -185,10 +185,14 @@ db.define_table('project_members',
 
 
 db.define_table('project_links',
-    Field('project1_id', 'reference project_id', notnull=True),
-    Field('project2_id', 'reference project_id', notnull=True),
     Field('user_id', 'reference auth_user', notnull=True),
     Field('link_date','date'))
+
+db.define_table('project_link_pairs',
+    Field('link_id', 'reference project_links', notnull=True),
+    Field('project_id', 'reference project_id'))
+
+
 
 ## -----------------------------------------------------------------------------
 ## OUTPUTS
