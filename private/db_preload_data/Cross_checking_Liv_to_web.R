@@ -496,11 +496,21 @@ setwd('/users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/private/db
 # OUTPUTS
 
 	# get the outputs
-	outputs <- read.csv('output_inputs_with_users.csv')
+	outputs <- read.csv('output_inputs_with_users.csv', stringsAsFactors=FALSE)
 	
 	# do all the hand edited output owners match up
 	test <-merge(liv_user_data, outputs) 
 	any(is.na(test$legacy_user_id))
+	
+	# validate the formats
+	unique(outputs$format)
+	outputs$format[outputs$format == 'Journal'] <- 'Journal Paper'
+	outputs$format[outputs$format == 'Chapters'] <- 'Book Chapter'
+	outputs$format[outputs$legacy_output_id == 16] <- 'Report'
+	outputs$format[outputs$legacy_output_id == 54] <- 'Website'
+	outputs$format[outputs$legacy_output_id == 55] <- 'Field Guide'
+	outputs$format[outputs$legacy_output_id == 56] <- 'Field Guide'
+	
 	
 	# match up projects to outputs	
 	project_outputs <- read.csv('project_outputs_inputs.csv')
