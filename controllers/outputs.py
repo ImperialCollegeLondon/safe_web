@@ -164,16 +164,14 @@ def output_details():
         redirect(URL('outputs','outputs'))
         
     elif output_id is not None and ((record.user_id != auth.user.id) & (not auth.has_membership('admin'))):
-        print 'hello!'
-        print not auth.has_membership('admin')
         # security check to stop people editing other users outputs
         session.flash = CENTER(B('You do not have permission to edit these output details, showing output view.'), _style='color: red')
         redirect(URL('outputs','view_output', args=output_id))
         
     else:
         
-        # allow admins to view but not edit the record
-        if record.user_id <> auth.user.id:
+        # allow admins to view but not edit existing records
+        if (record is not None) and (record.user_id <> auth.user.id):
             readonly=True
         else:
             readonly=False
@@ -218,21 +216,29 @@ def output_details():
         
         
         # now repackage the form as a more attractive DIV
-                
-        # - picture
-        if (record is None) or (record.picture in [None, 'NA', '']):
-            pic = URL('static', 'images/default_thumbnails/missing_output.png')
-        else:
-            pic = URL('default','download', args = record.picture)
+        if record is not None:
+            # - picture
+            if (record is None) or (record.picture in [None, 'NA', '']):
+                pic = URL('static', 'images/default_thumbnails/missing_output.png')
+            else:
+                pic = URL('default','download', args = record.picture)
         
-        # - file
-        if record.file not in [None, 'NA', '']:
-            # need to retrieve the file to get the original file name
-            fn, stream = db.outputs.file.retrieve(record.file)
-            stream.close()
-            dfile = A(fn, _href=URL('default','download', args = record.file))
+            # - file
+            if record.file not in [None, 'NA', '']:
+                # need to retrieve the file to get the original file name
+                fn, stream = db.outputs.file.retrieve(record.file)
+                stream.close()
+                dfile = A(fn, _href=URL('default','download', args = record.file))
+            else:
+                dfile = ""
+            
+            uploader =  DIV('Uploaded by: ', record.user_id.first_name, ' ', record.user_id.last_name,
+                            _style='text-align:right; color=grey; font-size:smaller',
+                            _class='col-sm-8')
         else:
+            pic = URL('static', 'images/default_thumbnails/missing_output.png')
             dfile = ""
+            uploader = DIV()
         
         form =  CAT(form.custom.begin, 
                     DIV(DIV(H5('Output details', ), _class="panel-heading"),
@@ -271,9 +277,7 @@ def output_details():
                                 _class='row'),
                             _class='panel_body', _style='margin:10px 10px'),
                             DIV(DIV(DIV(form.custom.submit, _class='col-sm-4'),
-                                    DIV('Uploaded by: ', record.user_id.first_name, ' ', record.user_id.last_name,
-                                        _style='text-align:right; color=grey; font-size:smaller',
-                                        _class='col-sm-8'),
+                                    uploader,
                                     _class='row'),
                                 _class='panel-footer'),
                         _class="panel panel-primary"),
@@ -334,7 +338,7 @@ def output_details():
                 pass
             
         else:
-            projects = None
+            projects = DIV()
     
     # admin history display
     if record is not None and record.admin_history is not None:
@@ -358,7 +362,7 @@ def output_details():
         header = H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)
     
     # Add an admin interface
-    if auth.has_membership('admin'):
+    if record is not None and auth.has_membership('admin'):
         
         selector = SELECT('Resubmit', 'Approved',  _class="generic-widget form-control", _name='decision')
         comments = TEXTAREA(_type='text', _class="form-control string", _rows=2, _name='comment')
@@ -415,8 +419,6 @@ def output_details():
         admin = DIV()
     
     return dict(form=form, projects=projects, admin_history=admin_history, header=header, admin=admin)
-
-
 
 
 def validate_output_details(form):

@@ -1750,7 +1750,7 @@ def export_research_visits():
                   'Content-Disposition':attachment + ';'})
 
 
-def bed_availability():
+def safe_bed_availability():
 
     """
     This controller:
@@ -1758,10 +1758,27 @@ def bed_availability():
         - combining this and the booking on a single page causes issues
     """
 
-    # get the dates when beds are booked
+    # get the dates when beds are booked and the status of the RV that
+    # they are associated with
     # and select as an iterable of rows
-    bed_data = db(db.bed_data)
+    bed_data = db(db.bed_reservations_safe.research_visit_id == db.research_visit.id)
     rows = bed_data.select()
+    
+    # calculate the beds available by date
+    approved = []
+    pending = []
+    
+    for r in rows:
+        
+        dates = date_range(r.safe_bed_availability.start_date,
+                           r.safe_bed_availability.end_date)
+                           
+        if r.research_visit.admin_status == 'Approved':
+            approved.extend(dates)
+        else:
+            pending.extend(dates)
+    
+    
     
     # Pass a list of events to the view for the javascript calendar
     # - need to handle null values from db

@@ -395,6 +395,7 @@ def project_details():
             mode = 'edit'
             buttons = [TAG.button('Save new draft',_type="submit", 
                                   _name='save_new', _style='padding: 5px 15px 5px 15px;')]
+            status_div = DIV()
             details = None
             version_dropdown = DIV()
             header_text = CAT(H2('New Project Submission'), 
