@@ -138,12 +138,14 @@ def volunteer_details():
         
         # only allow volunteers to see rejected or pending records
         if record.user_id == auth.user.id:
-            delete = CAT('Click here to permanently remove your offer to volunteer at the SAFE project:', 
-                         XML('&nbsp;') * 5,
-                         A(SPAN('Delete', _class="buttontext button"),
-                           _class="button btn btn-default", 
-                           _href=URL("marketplace","volunteer_delete", args=[record_id], user_signature=True),
-                           _style='padding: 3px 5px 3px 5px;'))
+            delete = FORM(CAT('Click here to permanently remove your request for project help:', 
+                          XML('&nbsp;') * 5,
+                          TAG.BUTTON('Delete', _type="submit", _class="button btn btn-default",
+                                                      _style='padding: 3px 5px 3px 5px;')))
+            
+            if delete.process().accepted:
+                record.delete_record()
+                redirect(URL('marketplace', 'volunteers'))
         elif record.admin_status == 'Approved':
             delete = DIV()
         else:
@@ -196,30 +198,6 @@ def volunteer_details():
     
     # pass components to the view
     return dict(vol=vol)
-    
-
-@auth.requires_login()
-def volunteer_delete():
-    
-    """
-    Custom delete function
-    """
-    
-    # retrieve the record id from the page arguments passed by the button
-    record_id = request.args(0)
-    
-    # control access to records based on status
-    record = db.help_offered(record_id)
-    
-    if (record is None) or (record.user_id <> auth.user.id):
-        session.flash = CENTER(B('Unauthorised attempt to delete volunteer offer.'), _style='color: red')
-        redirect(URL('marketplace', 'volunteers'))
-    else:
-        record.delete_record()
-        redirect(URL('marketplace', 'volunteers'))
-
-
-
 
 @auth.requires_membership('admin')
 def administer_volunteers():
@@ -386,21 +364,23 @@ def new_help_request():
     # - find the acceptable project ID numbers
     query = db((db.project_members.user_id == auth.user.id) &
                (db.project_members.is_coordinator == 'T') & 
-               (db.project_members.project_id == db.project.id))
+               (db.project_members.project_id == db.project_id.id) &
+               (db.project_details.project_id == db.project_id.id))
     
     # - modify the help_request project_id requirements within this controller
-    db.help_request.project_id.requires = IS_IN_DB(query, db.project.id, '%(title)s', zero=None)
+    db.help_request.project_id.requires = IS_IN_DB(query, db.project_details.project_id, '%(title)s', zero=None)
     
     # check to see if anything is available
     if query.count() == 0:
-        form = CENTER(B('You are not registered as a coordinator of any projects.'), _style='color: red')
+        form =  CENTER(B('You are not registered as a coordinator of any projects.'), _style='color: red')
     else:
-        form = SQLFORM(db.help_request,
-                       fields =['project_id',
+        form =  SQLFORM(db.help_request,
+                        fields =['project_id',
                                 'start_date',
                                 'end_date',
-                                'work_description'])
-
+                                'work_description'],
+                        labels={'project_id': "Project"})
+    
         if form.process(onvalidation=validate_new_help_request).accepted:
             # Signal success and email the proposer
             mail.send(to=auth.user.email,
@@ -449,26 +429,36 @@ def help_request_details():
         # for the record and this users id
         query = db((db.project_members.user_id == auth.user.id) &
                    (db.project_members.is_coordinator == 'T') & 
-                   (db.project_members.project_id == db.project.id))
+                   (db.project_members.project_id == db.project_id.id))
         
         # only allow coordinators to see rejected or pending records
         if query.count() > 0 :
-            delete = CAT('Click here to permanently remove your request for project help:', 
-                         XML('&nbsp;') * 5,
-                         A(SPAN('Delete', _class="buttontext button"),
-                           _class="button btn btn-default", 
-                           _href=URL("marketplace","help_request_delete", args=[record_id], user_signature=True),
-                           _style='padding: 3px 5px 3px 5px;'))
+            
+            delete = FORM(CAT('Click here to permanently remove your request for project help:', 
+                          XML('&nbsp;') * 5,
+                          TAG.BUTTON('Delete', _type="submit", _class="button btn btn-default",
+                                                      _style='padding: 3px 5px 3px 5px;')))
+            
+            if delete.process().accepted:
+                record.delete_record()
+                redirect(URL('marketplace', 'help_requests'))
+            
         elif record.admin_status == 'Approved':
             delete = DIV()
         else:
             session.flash = CENTER(B('Not an approved help request record'), _style='color: red')
             redirect(URL('marketplace', 'help_request'))
         
+        # get a row with all the joined details needed
+        query =  db((db.help_request.id == record_id) &
+                    (db.help_request.project_id == db.project_id.id) &
+                    (db.project_details.project_id == db.project_id.id))
+        
+        row = query.select().first()
         
         req = DIV(DIV(H5('Project help request'), _class="panel-heading"),
                   DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
-                      DIV(A(record.project_id.title, 
+                      DIV(A(row.project_details.title, 
                             _href=URL("marketplace","help_request_details", args=[record_id])),
                           _class="col-sm-10"),
                       _class='row', _style='margin:10px 10px'),
@@ -478,18 +468,17 @@ def help_request_details():
                       DIV(record.end_date,  _class="col-sm-4"),
                       _class='row', _style='margin:10px 10px'),
                   DIV(LABEL('Research areas:', _class="control-label col-sm-2" ),
-                      DIV(', '.join(record.project_id.research_areas),  _class="col-sm-10"),
+                      DIV(', '.join(row.project_details.research_areas),  _class="col-sm-10"),
                       _class='row', _style='margin:10px 10px'),
                   DIV(LABEL('Work description:', _class="control-label col-sm-2" ),
                       DIV(record.work_description,  _class="col-sm-10"),
                       _class='row', _style='margin:10px 10px'),
                   DIV('Contact details', _class='panel-footer'),
                   DIV(LABEL('Project contact:', _class="control-label col-sm-2" ),
-                      DIV(record.user_id.last_name + ", " + record.user_id.first_name, _class="col-sm-8"),
-                      DIV(A('[Contact details]', _href = URL('people', 'users', 
-                                        args=('view','auth_user', record.user_id),
-                                        user_signature=True)),
-                          _class="col-sm-2"),
+                      DIV(A(record.user_id.last_name + ", " + record.user_id.first_name,
+                            _href = URL('people', 'users', args=('view','auth_user', record.user_id),
+                                        user_signature=True)), 
+                          _class='col-sm-4'),
                       _class='row', _style='margin:10px 10px'),
                   DIV(LABEL('Institution:', _class="control-label col-sm-2" ),
                       DIV(record.user_id.institution, _class="col-sm-10"),
