@@ -174,10 +174,32 @@ def project_view():
             outputs = DIV()
         
         # project links
-        # STILL TO BE DONE
-        project_links = project_record.project_links.select()
+        project_link_id = db(db.project_link_pairs.project_id == project_id)._select(db.project_link_pairs.link_id)
         
-    
+        project_query = db((db.project_link_pairs.link_id.belongs(project_link_id)) &
+                           (db.project_link_pairs.project_id == db.project_id.id) &
+                           (db.project_id.id != project_id) &
+                           (db.project_id.id == db.project_details.project_id))
+        
+        project_rows = project_query.select(db.project_details.project_id, 
+                                            db.project_details.version, 
+                                            db.project_details.title)
+        
+        if len(project_rows) > 0:
+            
+            for r in project_rows:
+                print r
+            project_links = DIV(DIV('Linked projects', _class="panel-heading"),
+                                TABLE(*[TR(TD(A(r.title, 
+                                                _href=URL('projects','project_view', 
+                                                          args=[r.project_id]))))
+                                           for r in project_rows],
+                                      _class='table table-striped', _style='width:100%'),
+                                DIV(_class='panel-footer'),
+                                _class="panel panel-primary")
+        else:
+            
+            project_links = DIV()
     
     # pass components to the view
     return dict(project_id = project_id, project_details = project_details,

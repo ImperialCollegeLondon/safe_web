@@ -16,7 +16,7 @@ project_roles = ['Lead Researcher', 'Supervisor', 'Co-supervisor', 'PhD Student'
                  'Field Assistant', 'Malaysian Collaborator', 'Coordinator']
 
 output_formats = ["Book Chapter", "Journal Paper", "Field Guide", "Poster", "Presentation",
-                  "Masters Thesis", "PhD Thesis", "Video", "Report", "Other"]
+                  "Masters Thesis", "PhD Thesis", "Video", "Report", "Other", 'Website']
 
 volunteer_type = ['Voluntary experience', 'Undergraduate Honours project', 'Other']
 

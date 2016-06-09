@@ -75,7 +75,7 @@ def my_safe():
                        'blogs':    {'query': (db.blog_posts.user_id == auth.user.id),
                                     'select': [db.blog_posts.id, db.blog_posts.title, db.blog_posts.admin_status],
                                     'none': 'You have not created any blog posts',
-                                    'cntr': 'blogs', 'view': 'blog_details',
+                                    'cntr': 'blog', 'view': 'blog_details',
                                     'display': db.blog_posts.title,
                                     'url_args': [db.blog_posts.id],
                                     'status': db.blog_posts.admin_status,
@@ -131,7 +131,7 @@ def my_safe():
             
         else:
             # give a simple message back if there are no rows
-            grids[k] = TABLE(TR(TD(B(CENTER(v['none'])))), _class='table table-striped', _style='width:100%')
+            grids[k] = TABLE(TR(TD()),TR(TD(B(CENTER(v['none'])))), _class='table table-striped', _style='width:100%')
     
     # build the HTML programatically - have to include some args indirectly because
     # they contain hyphens
