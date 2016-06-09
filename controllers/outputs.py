@@ -11,18 +11,9 @@ def outputs():
     This controller shows the grid view for outputs
     """
     
-    # create a links object that associates a row with the image uploaded for it
-    # and adds in a link button to the standalone view controller
+    # create a link object that associates a row with the image uploaded for it
     links = [dict(header = '', body = lambda row: IMG(_src = URL('default', 
-                  'download', args = row.picture), _width = 100, _height = 100)),
-            # dict(header = '', 
-            #      body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
-            #                           SPAN('View', _class="buttontext button"),
-            #                           _class="button btn btn-default", 
-            #                           _href=URL("outputs","view_output", args=[row.id], user_signature=True),
-            #                           _style='padding: 3px 5px 3px 5px;'))
-            ]
-    
+                  'download', args = row.picture), _width = 100, _height = 100))]
     
     # we need the picture field in the fields fetched, in order to look up
     # the picture to display as a row using links, but we don't want to actually 
@@ -57,26 +48,26 @@ def view_output():
     output = db(db.outputs.id == output_id).select().first()
     
     # build the view in controller and pass over to the view as a single object
-    if output.picture is None:
+    if output.picture not in [None, 'NA', '']:
         pic = URL('static', 'images/default_thumbnails/missing_output.png')
     else:
         pic = URL('default','download', args = output.picture)
     
-    if output.url is not None and output.url <> 'NA':
+    if output.url not in [None, 'NA', '']:
         url = DIV(DIV(B('Output URL:'), _class='col-sm-2'), 
                   DIV(A(output.url, _href=output.url), _class='col-sm-10'),
                   _class='row')
     else:
         url = ""
     
-    if output.doi is not None and output.doi <> 'NA':
+    if output.doi not in [None, 'NA', '']:
         doi = DIV(DIV(B('Output DOI:'), _class='col-sm-2'), 
                   DIV(A(output.doi, _href=output.doi), _class='col-sm-10'),
                   _class='row')
     else:
         doi = ""
     
-    if output.file is not None and output.file <> 'NA':
+    if output.file not in [None, 'NA', '']:
         # need to retrieve the file to get the original file name
         fn, stream = db.outputs.file.retrieve(output.file)
         stream.close()
@@ -106,8 +97,8 @@ def view_output():
                                         _class='row'),
                                     _class='panel-body',
                                     _style='margin:10px 10px'),
-                            DIV(DIV(DIV('Uploaded by: ', output.user_id.first_name, ' ', output.user_id.last_name,
-                                        _style='text-align:right; color=grey; font-size:smaller')),
+                            DIV(DIV('Uploaded by: ', output.user_id.first_name, ' ', output.user_id.last_name,
+                                        _style='text-align:right; color=grey; font-size:smaller'),
                                 _class='panel-footer'),
                             _class="panel panel-primary"))
     
@@ -161,28 +152,39 @@ def output_details():
     
     if output_id is not None:
         record = db.outputs(output_id)
+        button = 'Save edits'
     else:
         record = None
+        button = 'Submit output'
         
     if output_id is not None and record is None:
         
-        # avoid unknown blogs
+        # avoid unknown outputs
         session.flash = B(CENTER('Invalid output id'), _style='color:red;')
         redirect(URL('outputs','outputs'))
         
-    elif output_id is not None and record.user_id <> auth.user.id:
+    elif output_id is not None and ((record.user_id != auth.user.id) & (not auth.has_membership('admin'))):
+        print 'hello!'
+        print not auth.has_membership('admin')
         # security check to stop people editing other users outputs
-        session.flash = CENTER(B('You do not have permission to edit these output details.'), _style='color: red')
-        redirect(URL('outputs','outputs', args=output_id))
+        session.flash = CENTER(B('You do not have permission to edit these output details, showing output view.'), _style='color: red')
+        redirect(URL('outputs','view_output', args=output_id))
         
     else:
         
+        # allow admins to view but not edit the record
+        if record.user_id <> auth.user.id:
+            readonly=True
+        else:
+            readonly=False
+        
         # create the form
-        form = SQLFORM(db.outputs, record = output_id,
-                       fields = ['picture','file','title','description',
+        form =  SQLFORM(db.outputs, record = output_id,
+                        fields = ['picture','file','title','description',
                                  'format', 'citation', 'doi','url'],
-                       showid=False,
-                       submit_button = 'Submit output')
+                        readonly=readonly,
+                        showid=False,
+                        submit_button = button)
         
         # now intercept and parse the various inputs
         if form.process(onvalidation=validate_output_details, formname='outputs').accepted:
@@ -218,13 +220,13 @@ def output_details():
         # now repackage the form as a more attractive DIV
                 
         # - picture
-        if (record is None) or (record.picture in [None, '']):
+        if (record is None) or (record.picture in [None, 'NA', '']):
             pic = URL('static', 'images/default_thumbnails/missing_output.png')
         else:
             pic = URL('default','download', args = record.picture)
         
         # - file
-        if record.file is not None and record.file <> 'NA':
+        if record.file not in [None, 'NA', '']:
             # need to retrieve the file to get the original file name
             fn, stream = db.outputs.file.retrieve(record.file)
             stream.close()
@@ -268,7 +270,12 @@ def output_details():
                                 DIV(form.custom.widget.url,  _class="col-sm-10"),
                                 _class='row'),
                             _class='panel_body', _style='margin:10px 10px'),
-                            DIV(form.custom.submit, _class='panel-footer'),
+                            DIV(DIV(DIV(form.custom.submit, _class='col-sm-4'),
+                                    DIV('Uploaded by: ', record.user_id.first_name, ' ', record.user_id.last_name,
+                                        _style='text-align:right; color=grey; font-size:smaller',
+                                        _class='col-sm-8'),
+                                    _class='row'),
+                                _class='panel-footer'),
                         _class="panel panel-primary"),
                     form.custom.end)
         
@@ -311,7 +318,7 @@ def output_details():
                                 DIV(_class="panel-footer"),
                                 _class='panel panel-primary'))
             
-            if projects.process(onvalidation=validate_add_project, formname='projects').accepted:
+            if projects.process(formname='projects').accepted:
                 
                 # add the selected_project
                 db.project_outputs.insert(project_id = projects.vars.project_id,
@@ -350,7 +357,66 @@ def output_details():
     else:
         header = H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)
     
-    return dict(form=form, projects=projects, admin_history=admin_history, header=header)
+    # Add an admin interface
+    if auth.has_membership('admin'):
+        
+        selector = SELECT('Resubmit', 'Approved',  _class="generic-widget form-control", _name='decision')
+        comments = TEXTAREA(_type='text', _class="form-control string", _rows=2, _name='comment')
+        submit = TAG.BUTTON('Submit', _type="submit", _class="button btn btn-default",
+                            _style='padding: 3px 5px 3px 5px;')
+        
+        admin = FORM(DIV(DIV(H5('Admin Decision', ), _class="panel-heading"),
+                        DIV(DIV(DIV(LABEL('Select decision', _class='row'),
+                                DIV(selector, _class='row'),
+                                DIV(submit,  _class='row'),
+                                _class='col-sm-2'),
+                            DIV(LABEL('Comments', _class='row'),
+                                DIV(comments, _class='row'),
+                                _class='col-sm-10'),
+                            _class='row',_style='margin:10px 10px'),
+                            _class = 'panel_body', _style='margin:10px 10px'),
+                        DIV(_class="panel-footer"),
+                        _class='panel panel-primary'))
+        
+        if admin.process(formname='admin').accepted:
+            
+            # add info to the history string
+            new_history = '[{} {}, {}, {}]\\n{}\\n'.format(auth.user.first_name,
+                           auth.user.last_name, datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                           admin.vars.decision, admin.vars.comment)
+            
+            # update the admin history
+            if record.admin_history in [None, '']:
+                record.update_record(admin_status=admin.vars.decision,
+                                     admin_history = new_history)
+            else:
+                record.update_record(admin_status=admin.vars.decision,
+                                     admin_history = record.admin_history + '\\n' + new_history)
+    
+            # set a flash message
+            flash_message  = CENTER(B('Decision emailed to project member at {}.'.format(record.user_id.email)), _style='color: green')
+    
+            if admin.vars.decision == 'Approved':
+                mail.send(to=record.user_id.email,
+                          subject='SAFE output submission',
+                          message='Dear {},\n\nLucky template\n\n {}'.format(record.user_id.first_name, admin.vars.comment))
+                session.flash = flash_message
+            elif admin.vars.decision == 'Resubmit':
+                mail.send(to=record.user_id.email,
+                          subject='SAFE output submission',
+                          message='Dear {},\n\nUnlucky template\n\n {}'.format(record.user_id.first_name, admin.vars.comment))
+                session.flash = flash_message
+            else:
+                pass
+            
+            # reload
+            redirect(URL('outputs', 'output_details', args=output_id))
+    else:
+        admin = DIV()
+    
+    return dict(form=form, projects=projects, admin_history=admin_history, header=header, admin=admin)
+
+
 
 
 def validate_output_details(form):
@@ -367,12 +433,6 @@ def validate_output_details(form):
     
     # update the record admin status to make it Pending
     form.vars.admin_status='Pending'
-
-
-def validate_add_project(form):
-    
-    
-    pass
 
 # @auth.requires_login()
 # def remove_project():
@@ -414,78 +474,16 @@ def administer_outputs():
     """
     This controller handles:
      - presenting admin users with a list of pending output uploads
-     - the ability to approve or reject them
+     - a link to the details page, which will provide an admin decision box
     """
     
-    # lock down which fields can be changed
-    db.outputs.picture.writable = False
-    db.outputs.file.writable = False
-    db.outputs.url.writable = False
-    db.outputs.doi.writable = False
-    db.outputs.title.writable = False
-    db.outputs.description.writable = False
-    db.outputs.citation.writable = False
-    db.outputs.format.writable = False
-    db.outputs.user_id.writable = False
-    db.outputs.submission_date.writable = False
-    db.outputs.description.writable = False
-    # hide legacy field and lock history
-    db.outputs.legacy_output_id.readable = False
-    db.outputs.legacy_output_id.writable = False
-    db.outputs.admin_history.writable = False
-    
-    # make the administrator choose rejected or approved
-    db.outputs.admin_status.requires = IS_IN_SET(['Rejected', 'Approved'])
-    
-    # get a query of pending requests 
-    form = SQLFORM.grid(query=(db.outputs.admin_status == 'Pending'), csv=False,
-                        fields=[db.outputs.title,
-                                db.outputs.format],
-                         maxtextlength=250,
-                         deletable=False,
-                         editable=True,
-                         create=False,
-                         details=False,
-                         editargs = {'showid': False},
-                         onupdate = update_administer_outputs,
-                         )
-    
-    return dict(form=form)
+    rows = db(db.outputs.admin_status == 'Pending').select()
 
-
-def update_administer_outputs(form):
-    
-    # Email the decision to the proposer
-    # TODO - create and link to a Google Calendar for volunteer periods
-    
-    # reload the record
-    output_record = db.outputs(form.vars.id)
-    
-    # update the admin history
-    # add a comment to the history
-    new_history = '[{} {}, {}, {}]\\n{}\\n'.format(auth.user.first_name,
-                   auth.user.last_name, datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
-                   form.vars.admin_status, form.vars.admin_notes)
-    
-    if output_record.admin_history is None or output_record.admin_history == '':
-        output_record.update_record(admin_history = new_history)
+    if len(rows) > 0:
+        table_rows = [TR(TD(A(r.title, _href=URL('outputs', 'output_details', args=r.id)))) for r in rows]
     else:
-        output_record.update_record(admin_history = output_record.admin_history + '\\n' + new_history)
+        table_rows = [TR(TD(B(CENTER('No pending outputs to administer'))))]
     
-    # set a flash message
-    flash_message  = CENTER(B('Decision emailed to project member at {}.'.format(output_record.user_id.email)), _style='color: green')
+    outputs = TABLE(*table_rows, _width='100%', _class='table table-striped')
     
-    if form.vars.admin_status == 'Approved':
-        mail.send(to=output_record.user_id.email,
-                  subject='SAFE output submission',
-                  message='Dear {},\n\nLucky template\n\n {}'.format(output_record.user_id.first_name, form.vars.admin_notes))
-        session.flash = flash_message
-    elif form.vars.admin_status == 'Rejected':
-        mail.send(to=output_record.user_id.email,
-                  subject='SAFE output submission',
-                  message='Dear {},\n\nUnlucky template\n\n {}'.format(output_record.user_id.first_name, form.vars.admin_notes))
-        session.flash = flash_message
-    else:
-        pass
-    
-
+    return dict(outputs=outputs)
