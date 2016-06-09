@@ -35,7 +35,6 @@ def todo():
 #
 #     return auth.wiki()
 
-
 @auth.requires_login()
 def my_safe():
     
@@ -44,78 +43,114 @@ def my_safe():
     visits, blogs, volunteer positions, work offers that a user is associated with.
     """
     
-    # provide a look up of which tables and columns to query
-    membership_dict = {'project': {'tab':'project_members', 'col':'project_id',
-                                   'fld': ['title'], 'name': 'projects',
-                                   'cntr': 'projects', 'view': 'project_details'},
-                       'outputs': {'tab':'outputs', 'col':'id',
-                                   'fld': ['title'], 'name': 'outputs',
-                                   'cntr': 'outputs', 'view': 'output_details'},
-                       'research_visit': {'tab':'research_visit_member', 'col':'research_visit_id',
-                                   'fld': ['title'], 'name': 'research visits',
-                                   'cntr': 'research_visits', 'view': 'research_visit_details'},
-                       'blog_posts': {'tab':'blog_posts', 'col':'id',
-                                   'fld': ['title'], 'name': 'blog posts',
-                                   'cntr': 'blog', 'view': 'blog_details'},
-                       'help_offered': {'tab':'help_offered', 'col':'id',
-                                   'fld': ['statement_of_interests'], 'name': 'help offered',
-                                   'cntr': 'marketplace', 'view': 'volunteer_details'},
-                       'help_request': {'tab':'help_request', 'col':'id',
-                                   'fld': ['work_description'], 'name': 'help request',
-                                   'cntr': 'marketplace', 'view': 'help_request_details'}}
+    # for most simple tables, provide a look up of which tables and columns to query
+    # - the dictionary key is a tag used to populate boostrap nav tabs
+    # - query selects a chunk of data containing the fields to display
+    # - select details which fields to recover from the query
+    # - 'none' provides a message if there aren't any rows that the user is a member of
+    # - 'display' provides a field that is to be shown for each item
+    # - 'cntr' and 'view' provide the controller and view for the linked URL
+    # - 'url_args' provides a list of fields used to specify the URL
+    # - 'status' provides a field to match into the status icons. 
+    # There is currently no provision for a display grid without status icons.
     
+    membership_dict = {'projects': {'query': (db.project_members.user_id == auth.user.id) &
+                                             (db.project_members.project_id == db.project_id.id) &
+                                             (db.project_details.id == db.project_id.project_details_id),
+                                    'select': [db.project_details.project_id, db.project_details.version, db.project_details.title, db.project_details.admin_status],
+                                    'none': 'You are not a member of any projects',
+                                    'cntr': 'projects', 'view': 'project_details',
+                                    'display': db.project_details.title,
+                                    'url_args': [db.project_details.project_id, db.project_details.version],
+                                    'status': db.project_details.admin_status,
+                                    'header': 'Projects'},
+                       'outputs':  {'query': (db.outputs.user_id == auth.user.id),
+                                    'select': [db.outputs.id, db.outputs.title, db.outputs.admin_status],
+                                    'none': 'You have not uploaded any outputs',
+                                    'cntr': 'outputs', 'view': 'output_details',
+                                    'display': db.outputs.title,
+                                    'url_args': [db.outputs.id],
+                                    'status': db.outputs.admin_status,
+                                    'header': 'Outputs'},
+                       'blogs':    {'query': (db.blog_posts.user_id == auth.user.id),
+                                    'select': [db.blog_posts.id, db.blog_posts.title, db.blog_posts.admin_status],
+                                    'none': 'You have not created any blog posts',
+                                    'cntr': 'blogs', 'view': 'blog_details',
+                                    'display': db.blog_posts.title,
+                                    'url_args': [db.blog_posts.id],
+                                    'status': db.blog_posts.admin_status,
+                                    'header': 'Blog posts'},
+                       'visits'  : {'query': (db.research_visit_member.user_id == auth.user.id) &
+                                             (db.research_visit_member.research_visit_id == db.research_visit.id),
+                                    'select': [db.research_visit.id, db.research_visit.title, db.research_visit.admin_status],
+                                    'none': 'You are not a member of any research visits',
+                                    'cntr': 'research_visits', 'view': 'research_visit_details',
+                                    'display': db.research_visit.title,
+                                    'url_args': [db.research_visit.id],
+                                    'status': db.research_visit.admin_status,
+                                    'header': 'Research visits'},
+                       'volunteer':{'query': (db.help_offered.user_id == auth.user.id),
+                                    'select': [db.help_offered.id, db.help_offered.statement_of_interests, db.help_offered.admin_status],
+                                    'none': 'You have not created any offers to volunteer at SAFE',
+                                    'cntr': 'marketplace', 'view': 'volunteer_details',
+                                    'display': db.help_offered.statement_of_interests,
+                                    'url_args': [db.help_offered.id],
+                                    'status': db.help_offered.admin_status,
+                                    'header': 'Volunteer offers'},
+                       'request':  {'query': (db.help_request.user_id == auth.user.id),
+                                    'select': [db.help_request.id, db.help_request.work_description, db.help_request.admin_status],
+                                    'none': 'You have not created any requests for project help at SAFE',
+                                    'cntr': 'marketplace', 'view': 'help_request_details',
+                                    'display': db.help_request.work_description,
+                                    'url_args': [db.help_request.id],
+                                    'status': db.help_request.admin_status,
+                                    'header': 'Help requests'}
+                      }
+    
+    # Loop over the dictionary, populating tables for each grid of results
     grids = {}
     
-    # Is the requested set in the defined set
-    for table in membership_dict.keys():
+    for k, v in membership_dict.iteritems():
         
-        m = membership_dict[table]
+        query = v['query']
         
-        # get the set of item ids that the user is a member of 
-        # currently showing all statuses but could restrict
-        valid_ids = db(db[m['tab']].user_id == auth.user.id)._select(m['col'])
-        # query = ((db[table].id.belongs(valid_ids)) &
-        #          (db[table].admin_status.belongs(['Approved', 'Pending'])))
-        query = (db[table].id.belongs(valid_ids)) 
-        
+        # run the query and see how many rows are returned
         if db(query).count() > 0:
             
-            # get the grid display fields
-            flds = [db[table][f] for f in m['fld']]
-            flds.append(db[table]['admin_status'])
-            db[table]['admin_status'].readable = False
+            # select the rows if there are any
+            rows = db(query).select(*v['select'])
             
-            # create the links to the standalone controllers
-            links = [dict(header = '', 
-                          body = lambda row: A(SPAN('',_class="glyphicon glyphicon-zoom-in"),
-                                      SPAN('View', _class="buttontext button"),
-                                      _class="button btn btn-default", 
-                                      _href=URL(m['cntr'], m['view'], args=[row.id], user_signature=True),
-                                      _style='padding: 3px 5px 3px 5px;')),
-                     dict(header = '', 
-                          body = lambda row: approval_icons[row.admin_status])]
+            # build a table row containing the display name with a URL link
+            rows = [TR(TD(A(r[v['display']], _href= URL(v['cntr'], v['view'], args=[r[x] for x in v['url_args']])),
+                          _style='width:90%'),
+                      TD(approval_icons[r[v['status']]]))
+                   for r in rows]
             
-            grid = SQLFORM.grid(query, fields=flds,
-                                csv=False, create=False, 
-                                editable=False, deletable=False,
-                                details = False, 
-                                maxtextlength=500,
-                                searchable=False,
-                                # links_placement='left',
-                                links=links)
-            
-            # hard wire the width of the first column so that the buttons 
-            # stay horizontally aligned
-            grid.elements('th')[0]['_style'] = 'width:80%;'
+            # package into a table
+            grids[k] = TABLE(*rows, _class='table table-striped', _style='width:100%')
             
         else:
-            grid = B(CENTER('You are not a member of any {}'.format(m['name'])))
-        
-        grids[table] = grid
+            # give a simple message back if there are no rows
+            grids[k] = TABLE(TR(TD(B(CENTER(v['none'])))), _class='table table-striped', _style='width:100%')
     
-    return dict(grids = grids)
+    # build the HTML programatically - have to include some args indirectly because
+    # they contain hyphens
+    ul_tags = {'_class':"nav nav-tabs nav-justified", '_data-tabs':"tabs"}
+    a_tags = {'_data-toggle':"tab"}
     
-
+    headers = [v['header'] for k,v in membership_dict.iteritems()]
+    keys = membership_dict.keys()
+    
+    # need a UL defining the tabs and a DIV containing tab contents as tab pane DIVs .
+    tabs = UL([LI(A(h, _href='#'+k , **a_tags), _role='presentation', _name=k) for k, h in zip(keys, headers)], **ul_tags)
+    content = DIV([DIV(grids[k], _class="tab-pane", _id=k) for k in keys], _class="tab-content")
+    
+    # amend the tabs and content to make one active on load
+    active = 'projects'
+    tabs.element('li[name=' + active + ']')['_class'] = 'active'
+    content.element('#' + active)['_class'] += ' active'
+    
+    return dict(grids = CAT(tabs, content))
 
 
 def lang_switch():

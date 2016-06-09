@@ -20,40 +20,6 @@ hr {
 <p>This page allows you to quickly see projects, outputs and research visits of which you are a member and any volunteering, project help requests or blog posts you have created. Use the tabs below to switch between options.</p>
 <br>
 
-<ul class="nav nav-tabs nav-justified" data-tabs="tabs">
-  <li role='presentation' class="active">
-    <a data-toggle="tab" href='#project'>Projects</a></li>
-  <li role='presentation' >
-    <a data-toggle="tab" href='#outputs'>Outputs</a></li>
-  <li role='presentation'>
-    <a data-toggle="tab" href='#research_visit'>Research visits</a></li>
-  <li role='presentation' >
-    <a data-toggle="tab" href='#help_offered'>Volunteering</a></li>
-  <li role='presentation' >
-    <a data-toggle="tab" href='#help_request'>Project help</a></li>
-  <li role='presentation' >
-    <a data-toggle="tab" href='#blog_posts'>Blog posts</a></li>
-</ul>
-
-<div class="tab-content">
-    <div class="tab-pane active" id="project">
-        {{=grids['project']}}
-    </div>
-    <div class="tab-pane" id="outputs">
-        {{=grids['outputs']}}
-    </div>
-    <div class="tab-pane" id="research_visit">
-        {{=grids['research_visit']}}
-    </div>
-    <div class="tab-pane" id="help_offered">
-        {{=grids['help_offered']}}
-    </div>
-    <div class="tab-pane" id="help_request">
-        {{=grids['help_request']}}
-    </div>
-    <div class="tab-pane" id="blog_posts">
-        {{=grids['blog_posts']}}
-    </div>
-</div>
+{{=grids}}
 
 <br>
