@@ -2,7 +2,8 @@ import datetime
 from gluon.storage import Storage
 import openpyxl
 import itertools
-
+from collections import Counter
+ 
 ## -----------------------------------------------------------------------------
 ## RESEARCH VISITS
 ## -- provide a general grid view of visits for users and routes to a detail view 
@@ -73,6 +74,10 @@ def research_visit_details():
     - provide check all buttons for selecting sets of checkboxes
     """
     
+    ##
+    ## SECTION 1) CHECK USER STATUS AND SET UP FOR NEW VS EXISTING
+    ##
+    
     # look for an existing record, otherwise a fresh start with an empty record
     rv_id = request.args(0)
     if rv_id is not None:
@@ -104,20 +109,33 @@ def research_visit_details():
             db.research_visit.look_see_visit.writable = False
             
             button_text = 'Update'
+            new_rv_and_not_coord = False
         else:
             # otherwise is the user a coordinator for any project that could create a new record?
             # join the tables here to get at the title 
-            coord_query = db((db.project_members.project_id == db.project.id) &
-                             (db.project_members.is_coordinator == 'True'))
+            coord_query = db((db.project_members.project_id == db.project_id.id) &
+                             (db.project_members.is_coordinator == 'True') &
+                             (db.project_members.user_id == auth.user.id) &
+                             (db.project_details.id == db.project_id.project_details_id))
             readonly = False
             button_text = 'Create'
             
-            # restrict new records to projects that the user coordinates
-            # - use distinct to remove multiple coordinators
-            db.research_visit.project_id.requires = IS_NULL_OR(IS_IN_DB(coord_query, 
-                                                             db.project.id, 
-                                                             '%(title)s',
-                                                             distinct=True))
+            if coord_query.count() > 0:
+                # restrict new records to projects that the user coordinates
+                db.research_visit.project_id.requires = IS_NULL_OR(IS_IN_DB(coord_query, 
+                                                                 db.project_details.project_id, 
+                                                                 '%(title)s'))
+                readonly = False
+                button_text = 'Create'
+                new_rv_and_not_coord = False
+            else:
+                readonly = True
+                button_text = 'Not available'
+                new_rv_and_not_coord = True
+    
+    ##
+    ## SECTION 2) PROVIDE THE BASIC VISIT FORM
+    ##
     
     # provide a form to edit/create details of visit
     visit = SQLFORM(db.research_visit, 
@@ -129,13 +147,16 @@ def research_visit_details():
                     submit_button = button_text,
                     showid = False)
     
-    # repack the fields into a new format.
-    #visit.custom.widget.arrival_date['_class'] = "col-sm-3"
-    #visit.custom.widget.arrival_date['_type'] = "date"
-    #visit.custom.widget.departure_date['_class'] = "col-sm-3"
-    #visit.custom.widget.departure_date['_type'] = "date"
+    # process the visit form to create hidden fields and to process input
+    if visit.process(onvalidation=validate_research_visit_details, formname='visit').accepted:
+        
+        session.flash = 'Research visit proposal registered'
+        redirect(URL('research_visits','research_visit_details', args=visit.vars.id))
+    else:
+        
+        pass
     
-    # get a link for download once a record is created
+    # Now repackage the form into a custom DIV
     if rv_id  is None:
         download_link = DIV()
         hdr_block =DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
@@ -148,12 +169,13 @@ def research_visit_details():
         if record.look_see_visit:
             proj_row = 'This is a look see visit'
         else:
-            proj_row = visit.custom.widget.project_id
-        
+            proj_row = db((db.project_id.id == record.project_id) &
+                          (db.project_id.project_details_id == db.project_details.id))
+            proj_row = proj_row.select(db.project_details.title).first().title
+            
         hdr_block =DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
                        DIV(proj_row, _class="col-sm-9"),
                        _class='row', _style='margin:10px 10px')
-    
     
     visit = FORM(DIV(DIV(H5('Research visit details'), _class="panel-heading"),
                      DIV(visit.custom.begin,
@@ -175,16 +197,20 @@ def research_visit_details():
                         _class='panel_body'),
                     DIV(download_link, _class='panel-footer'),
                     _class="panel panel-primary"))
-
-
-    # process the visitor form if it is submitted
-    if visit.process(onvalidation=validate_research_visit_details, formname='visit').accepted:
-        
-        session.flash = 'Research visit proposal registered'
-        redirect(URL('research_visits','research_visit_details', args=visit.vars.id))
-    else:
-        
-        pass
+    
+    # catch the new records by non_coordinators
+    # -this is a FORM to maintain the process method for this controller, but there are no inputs
+    if new_rv_and_not_coord:
+        visit = FORM(DIV(DIV(H5('Research visit details'), _class="panel-heading"),
+                         DIV('You are not a project coordinator, so cannot create new research visits',
+                            _class='panel_body', _style='margin:10px 10px'),
+                        DIV(download_link, _class='panel-footer'),
+                        _class="panel panel-primary"))
+    
+    ##
+    ## SECTION 3) PROVIDE CONTROLS TO ADD VISIT COMPONENTS FOR EXISTING VISIT RECORDS
+    ##
+    
     
     if rv_id is not None:
         
@@ -274,7 +300,7 @@ def research_visit_details():
                                               _style='padding-left: 30px;'),
                                        TAG.DT(replace_icons, XML('&nbsp;')*3,'Remove visitor'), 
                                        TAG.DD('Check a box next to an existing visitor and click this button to remove that '
-                                              'visitor', B('and all associated bookings'), 'from the research visit',
+                                              'visitor ', B('and all associated bookings'), 'from the research visit',
                                               _style='padding-left: 30px;'))
         
         # A3) Controls
@@ -316,10 +342,10 @@ def research_visit_details():
        
         # combine into the panel
         if readonly:
-            visitors = DIV(DIV(H5('Research visit members'), _class="panel-heading"),
+            visitors = DIV(DIV(H5('Research visit members'),  _class="panel-heading"),
                            visitors,
                            DIV(_class='panel-footer'),
-                           _class="panel panel-primary")
+                           _class="panel panel-primary", _name='visitors')
         else:
             visitors = DIV(DIV(H5('Research visit members'), _class="panel-heading"),
                            DIV(visitors_instructions, _class='panel_body', _style='margin:10px 10px'),
@@ -680,9 +706,14 @@ def research_visit_details():
         
         # combine the panels into a single form, along with a hidden field containing
         # the research visit id to allow the validation to cross check.
+        # - insert anchors between panels to bring the URL back to the pane that was edited
         
-        
-        console = FORM(visitors + dates + safe + maliau + transfers + res_assists + 
+        console = FORM(A(_name='visitors') + visitors + 
+                       A(_name='dates') + dates + 
+                       A(_name='safe') + safe + 
+                       A(_name='maliau') + maliau +
+                       A(_name='transfers') + transfers +
+                       A(_name='ra') + res_assists + 
                        INPUT(_name='id', _id='id', _value=rv_id, _type='hidden'),
                        _id='console')
         
@@ -692,8 +723,6 @@ def research_visit_details():
             # row info for history
             history_hdr = '[{} {}, {}]'.format(auth.user.first_name,
                     auth.user.last_name, datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'))
-            
-            print console.vars
             
             # add user and project share the same code, so create a local function
             def add_user(uid):
@@ -993,7 +1022,22 @@ def research_visit_details():
             record.update_record()
             
             # reload the page to update changes
-            redirect(URL('research_visit_details', args=rv_id))
+            if console.action == 'datechange':
+                anchor = 'dates'
+            elif console.action in ['add_visitor', 'add_project', 'delete_visitor', 'replace_visitor']:
+                anchor = 'visitors'
+            elif console.action in ['add_beds_safe','release_beds_safe', 'cancel_beds_safe']:
+                anchor = 'safe'
+            elif console.action in ['add_beds_maliau','release_beds_maliau', 'cancel_beds_maliau']:
+                anchor = 'maliau'
+            elif console.action in ['book_transfer','cancel_transfer']:
+                anchor = 'transfers'
+            elif console.action in ['book_res_assist','cancel_res_assist']:
+                anchor = 'ra'
+            else:
+                anchor = ''
+            
+            redirect(URL('research_visit_details', args=rv_id, anchor=anchor))
         
         elif console.errors:
             print console.errors
@@ -1005,10 +1049,11 @@ def research_visit_details():
         else:
             history = ""
         
-        history = DIV(DIV(H5('Research visit history'), _class="panel-heading"),
-                      DIV(history, _class='panel_body', _style='margin:10px 10px;height:100px;overflow-y:scroll'),
-                      DIV(_class='panel-footer'),
-                      _class="panel panel-primary")
+        history = CAT(A(_name='history'),
+                      DIV(DIV(H5('Research visit history'), _class="panel-heading"),
+                          DIV(history, _class='panel_body', _style='margin:10px 10px;height:100px;overflow-y:scroll'),
+                          DIV(_class='panel-footer'),
+                          _class="panel panel-primary"))
     else:
         
         console = DIV()
@@ -1045,7 +1090,7 @@ def research_visit_details():
         record.update_record()
         
         # reload the page to update changes
-        redirect(URL('research_visit_details', args=rv_id))
+        redirect(URL('research_visit_details', args=rv_id, anchor='history'))
     
     
     return dict(visit_record = record, visit=visit, console=console, 
@@ -1556,7 +1601,10 @@ def export_research_visits():
         ws['A2'] = 'All research visits'
         ws['A2'].font = subhead
     else:
-        ws['A2'] = 'Research visit #' + str(record.id) + ": " + record.project_id.title
+        title =  db((db.project_id.id == record.project_id) &
+                    (db.project_id.project_details_id == db.project_details.id))
+        title = title.select(db.project_details.title).first().title
+        ws['A2'] = 'Research visit #' + str(record.id) + ": " + title
         ws['A2'].font = subhead
     
     ws['A3'] = 'Costs are estimated and do not include site transport costs at SAFE'
@@ -1770,29 +1818,32 @@ def safe_bed_availability():
     
     for r in rows:
         
-        dates = date_range(r.safe_bed_availability.start_date,
-                           r.safe_bed_availability.end_date)
+        dates = date_range(r.bed_reservations_safe.arrival_date,
+                           r.bed_reservations_safe.departure_date)
                            
         if r.research_visit.admin_status == 'Approved':
             approved.extend(dates)
         else:
             pending.extend(dates)
     
+    # now tabulate and align to get days
+    pending =  Counter(pending)
+    approved =  Counter(approved)
     
-    
-    # Pass a list of events to the view for the javascript calendar
-    # - need to handle null values from db
-    pend = [0 if r.pending is None else r.pending for r in rows]
-    conf = [0 if r.approved is None else r.approved for r in rows]
+    # get unique days across pending and approved
+    dates = set(pending.keys() + approved.keys())
+    pend  = [0 if pending[d] is None else pending[d] for d in dates]
+    conf  = [0 if approved[d] is None else approved[d] for d in dates]
     avail = [n_beds_available - (x+y) for x, y in zip(pend, conf)]
-    # handle admin approved overbooking by trunctating
+    
+    # handle admin approved overbooking by truncating
     avail = [0 if x < 0 else x for x in avail]
-    date = [r.day.isoformat() for r in rows]
+    date = [d.isoformat() for d in dates]
     
     # now zip into sets of events, with three per day
     # one for each of pending confirmed and available
-    n_events = len(date)
-    event_n_beds =pend + conf + avail
+    n_events = len(dates)
+    event_n_beds = pend + conf + avail
     event_class  = ['pending'] * n_events + ['confirmed'] * n_events + ['available'] * n_events
     event_title  = [ str(x) + ' ' + y for x,y in zip(event_n_beds, event_class)]
     event_order  = [2] * n_events + [3] * n_events + [1] * n_events

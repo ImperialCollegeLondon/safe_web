@@ -60,6 +60,7 @@ def volunteers():
     return dict(form=form)
 
 
+
 @auth.requires_login()
 def new_volunteer():
     
@@ -96,6 +97,7 @@ def new_volunteer():
         pass
     
     return dict(form=form)
+
 
 
 @auth.requires_login()
@@ -136,8 +138,9 @@ def volunteer_details():
     
     if record is not None:
         
+        print auth.is_logged_in()
         # only allow volunteers to see rejected or pending records
-        if record.user_id == auth.user.id:
+        if auth.is_logged_in() and (record.user_id == auth.user.id):
             delete = FORM(CAT('Click here to permanently remove your request for project help:', 
                           XML('&nbsp;') * 5,
                           TAG.BUTTON('Delete', _type="submit", _class="button btn btn-default",
@@ -155,11 +158,9 @@ def volunteer_details():
         
         vol = DIV(DIV(H5('Volunteer details'), _class="panel-heading"),
                   DIV(LABEL('Volunteer:', _class="control-label col-sm-2" ),
-                      DIV(record.user_id.last_name + ", " + record.user_id.first_name, _class="col-sm-8"),
-                      DIV(A('[User details]', _href = URL('people', 'users', 
-                                        args=('view','auth_user', record.user_id),
-                                        user_signature=True)),
-                          _class="col-sm-2"),
+                      DIV(A(record.user_id.last_name + ", " + record.user_id.first_name, 
+                            _href = URL('people', 'users', args=('view','auth_user', record.user_id),
+                            user_signature=True)), _class="col-sm-10"),
                       _class='row', _style='margin:10px 10px'),
                   DIV(LABEL('Institution:', _class="control-label col-sm-2" ),
                       DIV(record.user_id.institution, _class="col-sm-10"),

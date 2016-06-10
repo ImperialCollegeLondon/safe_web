@@ -1,17 +1,11 @@
+
 {{response.files.append(URL(r=request,c='static',f='js/moment.min.js'))}}
-{{response.files.append(URL(r=request,c='static',f='js/jquery.min.js'))}}
 {{response.files.append(URL(r=request,c='static',f='js/fullcalendar.min.js'))}}
 {{response.files.append(URL(r=request,c='static',f='css/fullcalendar.min.css'))}}
 
 {{extend 'layout.html'}}
 
 <div class="flash">{{=response.flash or ' '}}</div>
-
-
-{{=A('Go to bed reservations',_class='button btn btn-default',
-    _href=URL("bed_reservations","reserve_beds"),
-    _title="There is a javascript incompatibility with the calendar that breaks the dropdown menus on this page, so this is here as an escape button. Or you can use the SAFE logo to go the home page. Sorry!")}}
-
 
 {{=H3('Bed availability')}}
 
