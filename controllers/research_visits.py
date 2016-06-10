@@ -720,9 +720,8 @@ def research_visit_details():
         # console validation
         if console.process(onvalidation = validate_research_visit_details_console, formname='console').accepted:
             
-            # row info for history
-            history_hdr = '[{} {}, {}]'.format(auth.user.first_name,
-                    auth.user.last_name, datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'))
+            # intialise a list to gather history for changes
+            new_history = []
             
             # add user and project share the same code, so create a local function
             def add_user(uid):
@@ -736,7 +735,7 @@ def research_visit_details():
                     user = db.auth_user(uid)
                     name = user.last_name + ", " + user.first_name
                     
-                new_history = '{} New visitor added: {}\\n'.format(history_hdr, name)
+                new_history = ' -- New visitor added: {}\\n'.format(name)
                 
                 return(new_history)
             
@@ -747,12 +746,12 @@ def research_visit_details():
             
             if console.action == 'add_visitor':
                 
-                record.admin_history += add_user(console.vars.user)
+                new_history.append(add_user(console.vars.user))
             
             elif console.action == 'add_project':
                 
                 for uid in console.vars.user:
-                    record.admin_history += add_user(uid)
+                    new_history.append(add_user(uid))
             
             elif console.action == 'delete_visitor':
                 
@@ -770,7 +769,7 @@ def research_visit_details():
                 __check_availability()
                 
                 # update the history
-                record.admin_history += '{} Visitor removed: {}\\n'.format(history_hdr, name)
+                new_history.append(' -- Visitor removed: {}\\n'.format(name))
             
             elif console.action == 'replace_visitor':
                 
@@ -798,7 +797,7 @@ def research_visit_details():
                 db(db.transfers.research_visit_member_id == console.vars.records[0]).update(user_id = console.vars.user)
                 
                 # update the history
-                record.admin_history += '{} Visitor replaced: {} >> {}\\n'.format(history_hdr, old_name, new_name)
+                new_history.append(' -- Visitor replaced: {} >> {}\\n'.format(old_name, new_name))
             
             # --------------------------------
             # SIX ACTIONS THAT BOOK ACCOMODATION
@@ -825,8 +824,8 @@ def research_visit_details():
                     else:
                         name = rvm_record.user_id.last_name + ", " + rvm_record.user_id.first_name
                     
-                    record.admin_history += ('{} SAFE bed booked for {} from {} to {} \\n').format(history_hdr,
-                                             name, session.safe.arrival_date, session.safe.departure_date)
+                    new_history.append(' -- SAFE bed booked for {} from {} to {}\\n'.format(
+                                             name, session.safe.arrival_date, session.safe.departure_date))
                 
                 __check_availability()
                 
@@ -848,8 +847,8 @@ def research_visit_details():
                     else:
                         name = rvm_record.user_id.last_name + ", " + rvm_record.user_id.first_name
                                 
-                    record.admin_history += ('{} SAFE beds released for {} between {} to {} \\n').format(history_hdr,
-                                             name, session.safe.arrival_date, session.safe.departure_date)
+                    new_history.append(' -- SAFE beds released for {} between {} to {}\\n'.format(
+                                             name, session.safe.arrival_date, session.safe.departure_date))
                 
                 __check_availability()
             
@@ -866,8 +865,8 @@ def research_visit_details():
                     else:
                         name = res_record.user_id.last_name + ", " + res_record.user_id.first_name
                     
-                    record.admin_history += ('{} SAFE bed cancelled for {} between {} - {} \\n').format(history_hdr,
-                                             name, res_record.arrival_date, res_record.departure_date)
+                    new_history.append(' -- SAFE bed cancelled for {} between {} - {} \\n'.format(
+                                             name, res_record.arrival_date, res_record.departure_date))
                     
                     res_record.delete_record()
                 
@@ -898,8 +897,8 @@ def research_visit_details():
                     else:
                         name = rvm_record.user_id.last_name + ", " + rvm_record.user_id.first_name
                     
-                    record.admin_history += ('{} Maliau bed booked for {} from {} to {} \\n').format(history_hdr,
-                                             name, session.safe.arrival_date, session.safe.departure_date)
+                    new_history.append(' -- Maliau bed booked for {} from {} to {} \\n'.format(
+                                             name, session.safe.arrival_date, session.safe.departure_date))
             
             elif console.action == 'release_beds_maliau':
                 
@@ -919,8 +918,8 @@ def research_visit_details():
                     else:
                         name = rvm_record.user_id.last_name + ", " + rvm_record.user_id.first_name
                     
-                    record.admin_history += ('{} Maliau beds released for {}, {} between {} to {} \\n').format(history_hdr,
-                                             name, session.safe.arrival_date, session.safe.departure_date)
+                    new_history.append(' -- Maliau beds released for {}, {} between {} to {} \\n'.format(
+                                             name, session.safe.arrival_date, session.safe.departure_date))
             
             
             elif console.action == 'cancel_beds_maliau':
@@ -936,9 +935,9 @@ def research_visit_details():
                     else:
                         name = res_record.user_id.last_name + ", " + res_record.user_id.first_name
                     
-                    record.admin_history += ('{} Maliau bed cancelled for {} between {} - {} \\n').format(history_hdr,
+                    new_history.append(' -- Maliau bed cancelled for {} between {} - {} \\n'.format(
                                              name, res_record.arrival_date, 
-                                             res_record.departure_date)
+                                             res_record.departure_date))
                     res_record.delete_record()
             
             # --------------------------------
@@ -962,8 +961,8 @@ def research_visit_details():
                     else:
                         name = rvm_record.user_id.last_name + ", " + rvm_record.user_id.first_name
                     
-                    record.admin_history += ('{} Transfer booked for {} from {} on {}\\n').format(history_hdr,
-                                             name, console.vars.transfer, console.vars.arrival_date)
+                    new_history.append(' -- Transfer booked for {} from {} on {}\\n'.format(
+                                             name, console.vars.transfer, console.vars.arrival_date))
                 
             
             elif console.action == 'cancel_transfer':
@@ -980,8 +979,8 @@ def research_visit_details():
                     
                     trns_record.delete_record()
                     
-                    record.admin_history += ('{} Transfer cancelled for {} from {} on {}\\n').format(history_hdr,
-                                             name, trns_record.transfer, trns_record.transfer_date)
+                    new_history.append(' -- Transfer cancelled for {} from {} on {}\\n'.format(
+                                             name, trns_record.transfer, trns_record.transfer_date))
             
             # --------------------------------
             # TWO ACTIONS THAT BOOK RAs
@@ -999,9 +998,9 @@ def research_visit_details():
                                     ropework = ropework,
                                     nightwork = nightwork)
                                     
-                record.admin_history += ('{} RA booked {} from {} to {}\\n').format(history_hdr,
+                new_history.append(' -- RA booked {} from {} to {}\\n'.format(
                                          console.vars.ra_site_time, console.vars.arrival_date,
-                                         console.vars.departure_date)
+                                         console.vars.departure_date))
             
             elif console.action == 'cancel_res_assist':
                 
@@ -1009,8 +1008,8 @@ def research_visit_details():
                     
                     rec = db.research_assistant_bookings(r)
                     
-                    record.admin_history += ('{} RA cancelled {} from {} to {}\\n').format(history_hdr,
-                                             rec.site_time, rec.start_date,rec.finish_date)
+                    new_history.append(' -- RA cancelled {} from {} to {}\\n'.format(
+                                             rec.site_time, rec.start_date,rec.finish_date))
                     
                     rec.delete_record()
             
@@ -1019,7 +1018,13 @@ def research_visit_details():
                 pass
             
             # update the RV record to catch history changes
-            record.update_record()
+            if len(new_history) > 0:
+                history_update = '[{}] {} {}\\n'.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                        auth.user.first_name,
+                                                        auth.user.last_name)
+                history_update += ''.join(new_history)
+                history_update += record.admin_history
+                record.update_record(admin_history = history_update)
             
             # reload the page to update changes
             if console.action == 'datechange':
@@ -1079,15 +1084,14 @@ def research_visit_details():
     
     if rv_id is not None and auth.has_membership('admin') and admin_form.process(formname='admin_form').accepted:
         
-        new_history = '[{} {}, {}] ** Admin decision {}: {}\\n'.format(auth.user.first_name,
+        new_history = '[{}] {} {}\\n ** Admin decision {}: {}\\n'.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                           auth.user.first_name,
                                            auth.user.last_name, 
-                                           datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
                                            admin_form.vars.admin_status,
-                                           admin_form.vars.admin_notes)
+                                           admin_form.vars.admin_notes) + record.admin_history 
         
-        record.admin_history += new_history
-        record.admin_status = admin_form.vars.admin_status
-        record.update_record()
+        record.update_record(admin_status = admin_form.vars.admin_status,
+                             admin_history = new_history)
         
         # reload the page to update changes
         redirect(URL('research_visit_details', args=rv_id, anchor='history'))
@@ -1107,8 +1111,9 @@ def validate_research_visit_details(form):
     if form.record is None:
         form.vars.proposer_id = auth.user.id
         form.vars.proposal_date = datetime.datetime.utcnow().isoformat()
-        form.vars.admin_history =  '[{} {}, {}] {}\\n'.format(auth.user.first_name,
-                    auth.user.last_name, datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+        form.vars.admin_history =  '[{}] {} {}\\n -- {}\\n'.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                    auth.user.first_name,
+                    auth.user.last_name, 
                     'Research visit proposal created.')
     
     # check the arrival date is more than a fortnight away
