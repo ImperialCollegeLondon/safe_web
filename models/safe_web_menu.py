@@ -101,21 +101,21 @@ if auth.is_logged_in():
 
 n_dict = {'grp': db.group_request.admin_status,
           'vis': db.research_visit.admin_status,
-          'proj': db.project_details.admin_status,
-          'output': db.outputs.admin_status,
+          'prj': db.project_details.admin_status,
+          'out': db.outputs.admin_status,
           'vol': db.help_offered.admin_status,
-          'blog': db.blog_posts.admin_status,
-          'help': db.help_request.admin_status,
-          'new_users': db.auth_user.registration_key
+          'blg': db.blog_posts.admin_status,
+          'hlp': db.help_request.admin_status,
+          'usr': db.auth_user.registration_key
          }
 
+n= {}
+badge_class = {}
 for key, field in n_dict.iteritems():
-    
-    n = db(field.belongs(['Pending', 'pending', 'In Review'])).count() # auth_user uses 'pending' as part of built in mechanisms
-    if n > 0:
-        n_dict[key] = ' (' + str(n) + ')'
-    else:
-        n_dict[key] = ''
+    # auth_user uses 'pending' as part of built in mechanisms, others are status values 
+    n[key] = db(field.belongs(['Pending', 'pending', 'Submitted', 'In Review'])).count() 
+    badge_class[key] = 'label badge-danger' if n[key] == 0 else 'label label-danger'
+
 
 if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
     response.menu += [('Admin',  False,  None, [
@@ -125,15 +125,24 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (T('Manage blogs'), True, URL('blog', 'manage_blogs'), []),
                         LI(_class="divider"),
                         (B('Approvals'), False, None, None),
-                        (T('> New users') + n_dict['new_users'], True, URL('people', 'administer_new_users'), []),
-                        (T('> New group requests') + n_dict['grp'], True, URL('groups', 'administer_group_requests'), []),
-                        (T('> Project proposals') + n_dict['proj'], True, URL('projects', 'administer_projects'), []),
-                        (T('> New outputs') + n_dict['output'], True, URL('outputs', 'administer_outputs'), []),
-                        (T('> Research visits') + n_dict['vis'], True, URL('research_visits', 'research_visits', 
-                                          vars=dict(keywords = 'research_visit.admin_status = "Pending"')), []),
-                        (T('> Blog posts') + n_dict['blog'], True, URL('blog', 'administer_blogs'), []),
-                        (T('> Volunteers') + n_dict['vol'], True, URL('marketplace', 'administer_volunteers'), []),
-                        (T('> Help requests' + n_dict['help']), True, URL('marketplace', 'administer_help_requests'), []),
+                        (CAT(SPAN(n['usr'], _class=badge_class['usr']),
+                             T('  New users')), True, URL('people', 'administer_new_users'), []),
+                        (CAT(SPAN(n['grp'], _class=badge_class['grp']),
+                             T('  New group requests')), True, URL('groups', 'administer_group_requests'), []),
+                        (CAT(SPAN(n['prj'], _class=badge_class['prj']),
+                             T('  Project proposals')), True, URL('projects', 'administer_projects'), []),
+                        (CAT(SPAN(n['out'], _class=badge_class['out']),
+                             T('  New outputs')), True, URL('outputs', 'administer_outputs'), []),
+                        (CAT(SPAN(n['vis'], _class=badge_class['vis']),
+                             T('  Research visits')), True, 
+                             URL('research_visits', 'research_visits', 
+                                 vars=dict(keywords = 'research_visit.admin_status = "Pending"')), []),
+                        (CAT(SPAN(n['blg'], _class=badge_class['blg']),
+                             T('  Blog posts')), True, URL('blog', 'administer_blogs'), []),
+                        (CAT(SPAN(n['vol'], _class=badge_class['vol']),
+                             T('  Volunteers')), True, URL('marketplace', 'administer_volunteers'), []),
+                        (CAT(SPAN(n['hlp'], _class=badge_class['hlp']),
+                             T('  Help requests')), True, URL('marketplace', 'administer_help_requests'), []),
                         LI(_class="divider"),
                         (T('Database admin'), True, URL('appadmin', 'index'))
                       ])]

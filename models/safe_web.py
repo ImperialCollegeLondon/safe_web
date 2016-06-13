@@ -170,12 +170,9 @@ db.define_table('project_details',
     Field('proposer_id','reference auth_user'),
     Field('proposal_date','datetime'),
     # The fields below are to handle approval of new records
-    # - admin_history is used internally to maintain a record of admin notes
+    # - admin_history is used to maintain a record of proposal processing
     Field('admin_status','string', requires=IS_IN_SET(project_status_set), default='Pending'), 
-    Field('admin_id','reference auth_user'),
-    Field('admin_notes','text'),
     Field('admin_history','text', writable=False), 
-    Field('admin_decision_date','date'),
     # set the way the row is represented in foreign tables
     format='%(title)s'
     ) 

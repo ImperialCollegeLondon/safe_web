@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 ## -----------------------------------------------------------------------------
 ## PROJECT CONTROLLERS
@@ -38,10 +39,7 @@ def projects():
     # For standard users (need a separate admin projects controller)
     # don't show the authorization fields and don't show a few behind 
     # the scenes fields
-    db.project_details.admin_id.readable = False 
     db.project_details.admin_status.readable = False 
-    db.project_details.admin_notes.readable = False 
-    db.project_details.admin_decision_date.readable = False 
     db.project_details.proposer_id.readable = False 
     db.project_details.proposal_date.readable = False 
     db.project_details.data_sharing.readable = False 
@@ -55,8 +53,8 @@ def projects():
     # 1) displays a thumbnail of the  project image
     # 2) creates a custom button to pass the row id to a custom view 
     
-    links = [dict(header = '', body = lambda row: IMG(_src = URL('default', 'download', args = row.project_details.picture) if row.project_details.picture is not None else 
-                                                             URL('static', 'images/default_thumbnails/missing_project.png'),
+    links = [dict(header = '', body = lambda row: IMG(_src = URL('static', 'images/default_thumbnails/missing_project.png') if row.project_details.picture in [None,''] else 
+                                                             URL('default', 'download', args = row.project_details.picture),
                                                         _height = 100)),
              dict(header = '', 
                   body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
@@ -66,6 +64,10 @@ def projects():
                                        _style='padding: 3px 5px 3px 5px;'))]
     
     # create a grid view on the join between project_id and project_details
+    query = (db.project_id.project_details_id == db.project_details.id)
+    
+    print db(query)._select(db.project_details.title, db.project_details.picture)
+    
     form = SQLFORM.grid(db.project_id.project_details_id == db.project_details.id, csv=False, 
                         fields=[db.project_details.title,
                                 # db.project_details.start_date, 
@@ -95,8 +97,9 @@ def project_view():
     
     # control access to records based on status
     project_record = db.project_id(project_id)
+    
     # get the linked project details (there is only one)
-    project_details = project_record.project_details.select().first()
+    project_details = db.project_details(project_record.project_details_id)
     
     if (project_record is None) or (project_details.admin_status != 'Approved'):
     
@@ -229,7 +232,8 @@ def project_details():
     as an argument to reload existing records and project_details_id to allow access to
     different versions.
     
-    The controller also need access control to cover who has write access.
+    The controller also need access control to cover who has write access. For admin users,
+    an admin panel is exposed to input decisions on submitted and in review proposal.
     
     The controller contains a lot of formatting code, to return simple units to the view
     for display, rather than having a lot of logic in {{}} in the view html.
@@ -283,7 +287,7 @@ def project_details():
             version_detail_id = [v.id for v in versions]
             version_dict = dict(zip(version_num, version_detail_id))
             
-            # If there isn't a version number provided, then load the record for the
+            # If there isn't a version number provided, then redirect to load the record for the
             # one linked in the projects_id table, which is the most recently approved
             if version_id is None:
                 linked_version = db.project_details(project_record.project_details_id).version
@@ -306,7 +310,7 @@ def project_details():
             
             # two icons to show which version is currently being looked at - one is just
             # a glyphicon class with a minimum width to align the text that follows
-            this_icon = SPAN(_class='glyphicon glyphicon-eye-open', _style='min-width:15px')
+            this_icon = SPAN(_class='glyphicon glyphicon-ok-sign', _style='min-width:15px')
             other_icon = SPAN(_class='glyphicon',_style='min-width:15px')
             
             for n, d in zip(version_num, version_date):
@@ -327,20 +331,12 @@ def project_details():
                                                  '_data-toggle': "dropdown",
                                                  '_style': 'padding: 5px 15px 5px 15px;background-color:lightgrey;color:black'}),
                                               UL(*version_list, _class="dropdown-menu dropdown-menu-right"),
-                                   _class="dropdown")
+                                   _class="dropdown col-sm-3")
             
-            
-            # Get a panel body with status information to include in the html
-            if project_id is None:
-                status_div = DIV(DIV('This is a unsaved new project draft.', _class='col-sm-9'),
-                                 _class='panel_body',
-                                 _style='background-color:lightgrey;height:40px;vertical-align:centre;')
-            else:
-                status_div = DIV(DIV(version_dropdown, _class='col-sm-3'),
-                                 DIV('This version has status ' + details.admin_status, _class='col-sm-9'),
-                                 _class='panel_body',
-                                 _style='background-color:lightgrey;height:40px;vertical-align:centre;')
-            
+            status = DIV(approval_icons[details.admin_status], XML('&nbsp'),
+                         'Status: ', XML('&nbsp'), details.admin_status, 
+                         _class='col-sm-3',
+                         _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
             
             # B) now sort out what the mode and editability is
             
@@ -356,7 +352,7 @@ def project_details():
             else: 
                 launch_new_version = False
             
-            if auth.user.id in project_coords and details.admin_status == 'Draft':
+            if auth.user.id in project_coords and details.admin_status in ['Draft', 'Resubmit']:
                 # an active draft
                 mode = 'edit'
                 buttons = [TAG.button('Save draft',_type="submit", 
@@ -386,7 +382,9 @@ def project_details():
                 header_text = CAT(H2('Project details'), 
                                    P('The form below shows the details of a project proposal submitted to SAFE. Note that proposals ',
                                      'cannot be edited once they have been submitted or are in review - you will have to wait for a', 
-                                     'decision to be made before you can alter a proposal.'))
+                                     'decision to be made before you can alter a proposal.'),
+                                   P('You can add new project members to submitted project proposals both you and other project '
+                                     'coordinators may add new project links.'))
 
         else:
             # otherwise, we're providing a blank form with only a save changes button, 
@@ -395,7 +393,8 @@ def project_details():
             mode = 'edit'
             buttons = [TAG.button('Save new draft',_type="submit", 
                                   _name='save_new', _style='padding: 5px 15px 5px 15px;')]
-            status_div = DIV()
+            version_dropdown = DIV(_class='col-sm-3')
+            status = DIV(_class='col-sm-3')
             details = None
             version_dropdown = DIV()
             header_text = CAT(H2('New Project Submission'), 
@@ -404,8 +403,12 @@ def project_details():
                                  'members and identify linked projects.'))
         
         # NOW we setup the main form for edit mode
+        panel_header = DIV(H5('Project details', _class='col-sm-6'),
+                           status, version_dropdown,
+                           _class='row', _style='margin:0px 0px')
+        
         if mode == 'edit':
-            
+        
             form = SQLFORM(db.project_details, 
                            record = details, 
                            fields =  ['picture', 'title', 
@@ -422,9 +425,14 @@ def project_details():
                 
                 # actions depend on whether this is a submission, a new project, an update
                 if form.submit:
-                    # if this is a submission
-                    # i) change the status and redirect
-                    details.update_record(admin_status = 'Submitted')
+                    # i) update the history, change the status and redirect
+                    hist_str = '[{}] {} {}\\n -- Proposal submitted\\n'
+                    new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                               auth.user.first_name,
+                                                               auth.user.last_name) + details.admin_history
+                    
+                    details.update_record(admin_status = 'Submitted',
+                                          admin_history = new_history)
                     
                     # ii) email the proposer
                     template =  'email_templates/project_submitted.html'
@@ -445,10 +453,16 @@ def project_details():
                     new_details = db.project_details(form.vars.id)
                     project_id = db.project_id.insert(project_details_id = new_details.id,
                                                       project_details_uuid = new_details.uuid)
-                    # ii) set it up as a Draft version
+                    # ii) set it up as a Draft version and initialise the history
+                    hist_str = '[{}] {} {}\\n -- New proposal created\\n'
+                    new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                               auth.user.first_name,
+                                                               auth.user.last_name)
+                    
                     new_details.update_record(project_id = project_id, 
                                               version=1,
-                                              admin_status='Draft')
+                                              admin_status='Draft',
+                                              admin_history = new_history)
                     
                     # iii) add the proposer as the Main Contact for the project
                     db.project_members.insert(user_id = auth.user.id,
@@ -470,6 +484,14 @@ def project_details():
                     session.flash = CENTER(B('SAFE project draft created.'), _style='color: green')
                     redirect(URL('projects', 'project_details', args=[project_id, version_id]))
                 else:
+                    # i) update the history
+                    hist_str = '[{}] {} {}\\n -- Proposal updated\\n'
+                    new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                               auth.user.first_name,
+                                                               auth.user.last_name) + details.admin_history
+                    
+                    details.update_record(admin_history = new_history)
+                    
                     # Just edits submitted via the save draft button so send a signal success 
                     session.flash = CENTER(B('SAFE project proposal updated.'), _style='color: green')
                     redirect(URL('projects', 'project_details', args=[project_id, version_id]))
@@ -497,8 +519,8 @@ def project_details():
             
             # - now package the widgets
             form = CAT(form.custom.begin, 
-                            DIV(DIV(H5('Project details', ), _class="panel-heading"),
-                            status_div,
+                        DIV(DIV(panel_header,
+                                _class="panel-heading"),
                             DIV(DIV(DIV(IMG(_src=pic, _height='100px'), _class='col-sm-2'),
                                     DIV(DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
                                             DIV(form.custom.widget.title,  _class="col-sm-10"),
@@ -637,8 +659,8 @@ def project_details():
                 funds = CAT(P('This project has provided the following funding information.'), DIV(details.funding, _class='well'))
             
             # build the form to look pretty in  view mode
-            form =  FORM(DIV(DIV(H5('Project details'), _class="panel-heading"),
-                            status_div,
+            form =  FORM(DIV(DIV(panel_header,
+                                _class="panel-heading"),
                             DIV(DIV(DIV(IMG(_src=pic, _height='100px'), _class='col-sm-2'),
                                     DIV(DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
                                             DIV(details.title,  _class="col-sm-10"),
@@ -694,8 +716,18 @@ def project_details():
                 
                 # duplicate the details record into a new record
                 new_draft_id = db.project_details.insert(**db.project_details._filter_fields(details))
+                # update the history
+                hist_str = '[{}] {} {}\\n -- New draft version created\\n'
+                new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                              auth.user.first_name,
+                                              auth.user.last_name) + details.admin_history
+                
+                # get the new record updated with the new status, version number and uuid
                 db.project_details(new_draft_id).update_record(admin_status='Draft',
-                                                               version=details.version + 1)
+                                                               uuid = uuid.uuid4(),
+                                                               version=details.version + 1,
+                                                               admin_history = new_history)
+                                                               
                 redirect(URL('projects', 'project_details', args=[project_id, details.version + 1]))
         
         # NOW PROVIDE FORMS TO ADD MEMBERS AND LINKS:
@@ -721,9 +753,27 @@ def project_details():
                 
                 # set the processing in order to setup hidden fields
                 if members.process(onvalidation=validate_new_project_member, formname='members').accepted:
+                    
+                    # i) lookup the new member details to get a reference to auth and update the history
+                    new_member = db.project_members(members.vars.id)
+                    
+                    hist_str = '[{}] {} {}\\n -- Project members added/updated: {} {}, {} {}\\n'
+                    new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                  auth.user.first_name,
+                                                  auth.user.last_name,
+                                                  new_member.user_id.first_name,
+                                                  new_member.user_id.last_name,
+                                                  members.vars.project_role,
+                                                  'and Coordinator' if members.vars.is_coordinator else ''
+                                                  ) + details.admin_history
+                    
+                    details.update_record(admin_history = new_history)
+                    
                     session.flash = CENTER(B('Project members updated.'), _style='color: green')
                     redirect(URL('projects', 'project_details', args=[project_id, version_id]))
+                    
                 elif members.errors:
+                    
                     response.flash = CENTER(B('Problem with adding project member.'), _style='color: red')
                     print members.errors
                 else:
@@ -844,6 +894,15 @@ def project_details():
                     db.project_link_pairs.insert(link_id = link_id,
                                                  project_id = linked_projects.vars.project_id)
                     
+                    # update the history
+                    link_str = '[{}] {} {}\\n -- Project linked to project id {}\\n'
+                    new_history = link_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                  auth.user.first_name,
+                                                  auth.user.last_name,
+                                                  linked_projects.vars.project_id) + details.admin_history
+                
+                    details.update_record(admin_history = new_history)
+                    
                     # signal success and load the newly created record in a details page
                     session.flash = CENTER(B('New project link added.'), _style='color: green')
                     redirect(URL('projects', 'project_details', args=[project_id, version_id]))
@@ -860,11 +919,100 @@ def project_details():
             # blank placeholder
             linked_projects = DIV()
         
+        # admin history display
+        if project_record is not None and details.admin_history is not None:
+            admin_history = DIV(DIV(H5('Admin History', ), _class="panel-heading"),
+                                DIV(XML(details.admin_history.replace('\\n', '<br />'),
+                                        sanitize=True, permitted_tags=['br/']),
+                                    _class = 'panel_body'),
+                                DIV(_class="panel-footer"),
+                                _class='panel panel-primary')
+        else:
+            admin_history = DIV()
+        
+        ## ADMIN INTERFACE
+        if project_id is not None and auth.has_membership('admin') and details.admin_status in ['Submitted', 'In Review']:
+            
+            selector = SELECT('Resubmit', 'Approved', 'In Review', _class="generic-widget form-control", _name='decision')
+            comments = TEXTAREA(_type='text', _class="form-control string", _rows=2, _name='comment')
+            submit = TAG.BUTTON('Submit', _type="submit", _class="button btn btn-default",
+                                _style='padding: 3px 5px 3px 5px;')
+        
+            admin = FORM(DIV(DIV(H5('Admin Decision', ), _class="panel-heading"),
+                            DIV(DIV(DIV(LABEL('Select decision', _class='row'),
+                                    DIV(selector, _class='row'),
+                                    DIV(submit,  _class='row'),
+                                    _class='col-sm-2'),
+                                DIV(LABEL('Comments', _class='row'),
+                                    DIV(comments, _class='row'),
+                                    _class='col-sm-10'),
+                                _class='row',_style='margin:10px 10px'),
+                                _class = 'panel_body', _style='margin:10px 10px'),
+                            DIV(_class="panel-footer"),
+                            _class='panel panel-primary'))
+            
+            if admin.process(formname='admin').accepted:
+                
+                # update record with decision
+                admin_str = '[{}] {} {}\\n ** Decision: {}\\n ** Comments: {}\\n'
+                new_history = admin_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                           auth.user.first_name,
+                                                           auth.user.last_name,
+                                                           admin.vars.decision,
+                                                           admin.vars.comment) + details.admin_history
+                
+                details.update_record(admin_status = admin.vars.decision,
+                                      admin_history = new_history)
+                
+                # if this is an approval then update the project_id table
+                if admin.vars.decision == 'Approved':
+                    id_record = db.project_id(project_id)
+                    id_record.update_record(project_details_id = details.id,
+                                            project_details_uuid = details.uuid)
+                
+                # TODO - think about who gets emailed. Just the proposer or all members
+                proposer = details.proposer_id
+                
+                # pick an decision
+                if admin.vars.decision == 'Approved':
+                    mail.send(to=proposer.email,
+                              subject='SAFE project submission',
+                              message='Dear {},\n\nLucky template\n\n {}'.format(proposer.first_name, admin.vars.comment))
+                    redirect(URL('projects','administer_projects'))
+                elif admin.vars.decision == 'Resubmit':
+                    mail.send(to=proposer.email,
+                              subject='SAFE project resubmission',
+                              message='Dear {},\n\nChanges needed\n\n {}'.format(proposer.first_name, admin.vars.comment))
+                    redirect(URL('projects','administer_projects'))
+                elif admin.vars.decision == 'In Review':
+                    mail.send(to=proposer.email,
+                              subject='SAFE project in review',
+                              message='Dear {},\n\nSent to reviewers\n\n {}'.format(proposer.first_name, admin.vars.comment))
+                    # TODO - send email to review panel
+                    redirect(URL('projects','administer_projects'))
+                elif admin.vars.decision == 'Rejected':
+                    mail.send(to=proposer.email,
+                              subject='SAFE project submission',
+                              message='Dear {},\n\nUnlucky template\n\n {}'.format(proposer.first_name, admin.vars.comment))
+                    redirect(URL('projects','administer_projects'))
+                else:
+                    pass
+                
+                session.flash = CENTER(B('Decision emailed to project proposer at {}.'.format(proposer.email)), _style='color: green')
+                
+            elif form.errors:
+                response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
+            else:
+                pass
+        else:
+            admin = DIV()
         
         return dict(header_text = header_text,
                     form=form,
                     members=members,
-                    linked_projects = linked_projects)
+                    linked_projects = linked_projects,
+                    admin_history = admin_history,
+                    admin = admin)
 
 def validate_project_details(form):
     
@@ -965,8 +1113,8 @@ def validate_new_project_member(form):
 
 ## -----------------------------------------------------------------------------
 ## ADMINISTER NEW PROJECTS
-## - viewing these is through the view projects interface so this just adds the
-##   ability for project members to edit and add project members but not delete
+## - viewing a simple list of proposals that need action, with links to the
+##   project_details page, which exposes an admin interface 
 ## -----------------------------------------------------------------------------
 
 @auth.requires_membership('admin')
@@ -974,29 +1122,38 @@ def administer_projects():
 
     """
     This controller handles:
-     - presenting admin users with a list of pending new projects
-     - a custom link to a page showing members and project details
+     - presenting admin users with a list of submitted new proposals
+       and in review proposals
+     - a custom link to the project details page (which exposes an admin controller)
     """
     
     # create an icon showing project status and a new button that
     # passes the project id to a new controller
     links = [dict(header = '', body = lambda row: approval_icons[row.admin_status]),
              dict(header = '', body = lambda row: A('Details',_class='button btn btn-default'
-                  ,_href=URL("projects","administer_project_details", args=[row.id])))
+                  ,_href=URL("projects","project_details", args=[row.project_id, row.version]),
+                  _style =  'padding: 5px 15px 5px 15px;'))
             ]
     
     # hide the text of the admin_status
-    db.project.admin_status.readable = False
+    db.project_details.admin_status.readable = False
+    db.project_details.project_id.readable = False
+    db.project_details.version.readable = False
+    
+    query = (db.project_details.admin_status.belongs(['Submitted','In Review']))
     
     # get a query of pending requests 
-    form = SQLFORM.grid(query=(db.project.admin_status.belongs(['Pending','In Review'])), csv=False,
-                        fields=[db.project.proposal_date,
-                                db.project.title,
+    form = SQLFORM.grid(query = query,
+                        csv=False,
+                        fields=[db.project_details.proposal_date,
+                                db.project_details.title,
                                 #db.project.start_date,
                                 #db.project.end_date
-                                db.project.admin_status,
+                                db.project_details.admin_status,
+                                db.project_details.project_id,
+                                db.project_details.version,
                                 ],
-                         orderby = db.project.proposal_date,
+                         orderby = db.project_details.proposal_date,
                          maxtextlength=250,
                          deletable=False,
                          editable=False,
@@ -1007,93 +1164,93 @@ def administer_projects():
     
     return dict(form=form)
 
-@auth.requires_membership('admin')
-def administer_project_details():
-
-    """
-    Custom project view - shows the members and details of a project
-    and allows the admin to approve or reject the project
-    """
-
-    # look for an existing record, otherwise a fresh start with an empty record
-    project_id = request.args(0)
-    
-    if project_id is None or (project_id is not None and db.project(project_id) is None):
-        # avoid unknown projects
-        session.flash = B(CENTER('Invalid or missing project id'), _style='color:red;')
-        redirect(URL('projects','administer_projects'))
-    else:
-        
-        # get project members 
-        members = db(db.project_members.project_id == project_id).select()
-        record = db.project(project_id)
-        
-        # pass the admin fields through as a field and the rest as a record
-        form = SQLFORM(db.project, record = project_id, showid=False,
-                       fields = ['admin_status', 'admin_notes'],
-                       submit_button = 'Submit decision')
-        
-        # process the form and handle actions
-        if form.process(onvalidation=validate_administer_projects).accepted:
-        
-            # retrieve the whole form record to get at the creator details
-            # TODO - think about who gets emailed. Just the proposer or all members
-            proposer = record.proposer_id
-        
-            # set a flash message
-            flash_message  = CENTER(B('Decision emailed to project proposer at {}.'.format(proposer.email)), _style='color: green')
-        
-            # pick an decision
-            if form.vars.admin_status == 'Approved':
-                mail.send(to=proposer.email,
-                          subject='SAFE project submission',
-                          message='Dear {},\n\nLucky template\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
-                session.flash = flash_message
-                redirect(URL('projects','administer_projects'))
-            elif form.vars.admin_status == 'Resubmit':
-                mail.send(to=proposer.email,
-                          subject='SAFE project resubmission',
-                          message='Dear {},\n\nChanges needed\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
-                session.flash = flash_message
-                redirect(URL('projects','administer_projects'))
-            elif form.vars.admin_status == 'In Review':
-                mail.send(to=proposer.email,
-                          subject='SAFE project in review',
-                          message='Dear {},\n\nSent to reviewers\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
-                # TODO - send email to review panel
-                session.flash = flash_message
-                redirect(URL('projects','administer_projects'))
-            elif form.vars.admin_status == 'Rejected':
-                mail.send(to=proposer.email,
-                          subject='SAFE project submission',
-                          message='Dear {},\n\nUnlucky template\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
-                session.flash = flash_message
-                redirect(URL('projects','administer_projects'))
-            else:
-                pass
-        elif form.errors:
-            response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
-        else:
-            pass
-        
-        
-        # pass components to the view
-        return dict(record=record, members=members, form=form)
-
-def validate_administer_projects(form):
-    
-    # validation handles any checking (none here) and also any 
-    # amendments to the form variable  - adding admin user, date of admin decision 
-    # and decision
-    form.vars.admin_id = auth.user.id
-    today = datetime.date.today().isoformat()
-    form.vars.admin_decision_date = today
-    
-    # update the history
-    new_history = '[{} {}, {}, {}]\\n {}'.format(auth.user.first_name, 
-                   auth.user.last_name, today, form.vars.admin_status, 
-                   form.vars.admin_notes)
-    if form.vars.admin_history is None:
-        form.vars.admin_history = new_history
-    else:
-        form.vars.admin_history += new_history
+# @auth.requires_membership('admin')
+# def administer_project_details():
+#
+#     """
+#     Custom project view - shows the members and details of a project
+#     and allows the admin to approve or reject the project
+#     """
+#
+#     # look for an existing record, otherwise a fresh start with an empty record
+#     project_id = request.args(0)
+#
+#     if project_id is None or (project_id is not None and db.project(project_id) is None):
+#         # avoid unknown projects
+#         session.flash = B(CENTER('Invalid or missing project id'), _style='color:red;')
+#         redirect(URL('projects','administer_projects'))
+#     else:
+#
+#         # get project members
+#         members = db(db.project_members.project_id == project_id).select()
+#         record = db.project(project_id)
+#
+#         # pass the admin fields through as a field and the rest as a record
+#         form = SQLFORM(db.project, record = project_id, showid=False,
+#                        fields = ['admin_status', 'admin_notes'],
+#                        submit_button = 'Submit decision')
+#
+#         # process the form and handle actions
+#         if form.process(onvalidation=validate_administer_projects).accepted:
+#
+#             # retrieve the whole form record to get at the creator details
+#             # TODO - think about who gets emailed. Just the proposer or all members
+#             proposer = record.proposer_id
+#
+#             # set a flash message
+#             flash_message  = CENTER(B('Decision emailed to project proposer at {}.'.format(proposer.email)), _style='color: green')
+#
+#             # pick an decision
+#             if form.vars.admin_status == 'Approved':
+#                 mail.send(to=proposer.email,
+#                           subject='SAFE project submission',
+#                           message='Dear {},\n\nLucky template\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
+#                 session.flash = flash_message
+#                 redirect(URL('projects','administer_projects'))
+#             elif form.vars.admin_status == 'Resubmit':
+#                 mail.send(to=proposer.email,
+#                           subject='SAFE project resubmission',
+#                           message='Dear {},\n\nChanges needed\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
+#                 session.flash = flash_message
+#                 redirect(URL('projects','administer_projects'))
+#             elif form.vars.admin_status == 'In Review':
+#                 mail.send(to=proposer.email,
+#                           subject='SAFE project in review',
+#                           message='Dear {},\n\nSent to reviewers\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
+#                 # TODO - send email to review panel
+#                 session.flash = flash_message
+#                 redirect(URL('projects','administer_projects'))
+#             elif form.vars.admin_status == 'Rejected':
+#                 mail.send(to=proposer.email,
+#                           subject='SAFE project submission',
+#                           message='Dear {},\n\nUnlucky template\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
+#                 session.flash = flash_message
+#                 redirect(URL('projects','administer_projects'))
+#             else:
+#                 pass
+#         elif form.errors:
+#             response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
+#         else:
+#             pass
+#
+#
+#         # pass components to the view
+#         return dict(record=record, members=members, form=form)
+#
+# def validate_administer_projects(form):
+#
+#     # validation handles any checking (none here) and also any
+#     # amendments to the form variable  - adding admin user, date of admin decision
+#     # and decision
+#     form.vars.admin_id = auth.user.id
+#     today = datetime.date.today().isoformat()
+#     form.vars.admin_decision_date = today
+#
+#     # update the history
+#     new_history = '[{} {}, {}, {}]\\n {}'.format(auth.user.first_name,
+#                    auth.user.last_name, today, form.vars.admin_status,
+#                    form.vars.admin_notes)
+#     if form.vars.admin_history is None:
+#         form.vars.admin_history = new_history
+#     else:
+#         form.vars.admin_history += new_history
