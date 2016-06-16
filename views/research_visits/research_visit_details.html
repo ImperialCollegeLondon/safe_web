@@ -1,85 +1,69 @@
 {{extend 'layout.html'}}
 
-
-<style>
-.panel-heading a:after {
-    font-family:'Glyphicons Halflings';
-    content:"\e114";
-    float: right;
-    color: grey;
-}
-.panel-heading a.collapsed:after {
-    content:"\e080";
-}
-</style>
-
-
 {{=session.flash or response.flash}}
-
 
 {{=H2('Research visit planning')}}
 
+{{=P('In order to work in the field, you will need to put together a research visit proposal. This will tell us who is in the field and allow you to book accomodation, transport between locations and research assistant support. Follow the steps below:')}}
 
-{{=P('In order to work in the field, you will need to put together a research visit proposal. This will tell us who is in the field and allow you to book accomodation, transport between locations and research assistant support.')}}
+{{=TAG.DL(TAG.DT('Step One'),
+          TAG.DD(P('Select the project you want to book a research visit for. You must be a project ',
+                    'coordinator to propose a project research visit. If you want to visit the SAFE ', 
+                    'project to look at the research system and plan a later formal project or grant, ',
+                    'then you can propose a "look see" visit without being a project coordinator or member.'),
+                   _style='padding:0 0 0 20px'),
+          TAG.DT('Step Two'),
+          TAG.DD(P('Provide us with a title for the visit and a short description of the research purpose. ',
+                   'You also need to give start and finish dates for the visit, covering the whole period when ',
+                   'your researchers will be in the field. You will only be able to submit proposals that ',
+                   'provide ', B('at least 14 days notice', _style='text-decoration: underline;'), 
+                   ' of your arrival in the field.'),
+                   _style='padding:0 0 0 20px'),
+          TAG.DT('Step Three'),
+          TAG.DD(P('Once the visit description has been created, you will then be able to book accomodation, '
+                   'transfers and research assistant support.'),
+                   _style='padding:0 0 0 20px'),
+          TAG.DT('Step Four'),
+          TAG.DD(P('When you have created all the bookings you want to request, ', B('press the Submit Proposal button', 
+                   _style='text-decoration: underline;'), ' to send the proposal to the adminstrators for comment and approval.'),
+                   _style='padding:0 0 0 20px'))}}
 
-{{=P('Most research visits are associated with an established project - note that only coordinators for a project can propose research visit. If you want to visit the SAFE project to look at the research system and plan a later formal project or grant, then you can also propose a "look see" visit.')}}
-
-
-{{=OL(LI('Provide us with a title for the visit and a short description of the research purpose. You also need to give start and finish dates for the visit, covering the whole period when your researchers will be in the field. For research project visits, the dropdown menu will show all projects for which you are a coordinator.'),
-      LI('Once the visit description has been submitted, you will then be able to book accomodation, transfers and research assistants' ))}}
-
+{{=DIV(B('Warning!'), ' All details below are provisional until your research visit proposal has been submitted and approved by an administrator. If conditions in the field change, even approved reservations may have to be changed with little or no notice.', _class="alert alert-info", _style='background:grey', _role="alert")}}
 
 {{=visit}}
 
+{{=instructions}}
+
+{{=session.flash}}
 
 {{=console}}
-
 
 {{=history}}
 
 {{=admin_panel}}
 
-<!-- <div class="panel panel-default" id="panel1">
-    <div class="panel-heading">
-         <h3 class="panel-title">
-           <a data-toggle="collapse" data-target="#maliau_table" href="#maliau_table" class="collapsed">
-             Maliau Reservations
-           </a>
-         </h3>
-    </div>
-    <div id="maliau_table" class="panel-collapse collapse">
-        Content
-    </div>
-</div> -->
-
-
-
-
-
-
-
-
 
 {{=BR()}}
 
-<!-- Scripts to select all for sets of checkboxes by name -->
+<!-- Script to select all user records -->
 <script>
 $("#checkAll").change(function () {
     $("[name='records']").prop('checked', $(this).prop("checked"));
 });
 </script>
 
-
-<!-- Script to act as a safety catch on removing visitors, since that
-     can swallow the button name on the request, add a hidden field -->
+<!-- Script to act as a safety catch on removing visitors, and pass
+     through the id of the clicked button, which passes the row id 
+     to delete to the backend -->
 
 <script>
-function show_alert() {
-  if(confirm("Removing users from a research visit will remove all accomodation and transfer bookings. Are you sure?"))
-       $("#console").append('<input type="hidden" name="delete_visitor" value="True" />');
+function show_alert(this_id) {
+  if(confirm("Removing users from a research visit will remove all their accomodation and transfer bookings. Are you sure?")){
+       $("#console").append('<input type="hidden" name="' + this_id +'" value="True" />');
        $("#console").submit();
-  else
+  } else {
     return false;
+  }
 }
 </script>
 
@@ -90,12 +74,11 @@ function show_alert() {
 
 <script>
 function date_change() {
-    var a = $("#arr_date").val();
-    var d = $("#dep_date").val();
-    if (a != '' && d != '' ) {
-       $("#console").append('<input type="hidden" name="datechange" value="True" />');
-       $("#console").submit();
-    }
-}
+//     var a = $("#arr_date").val();
+//     var d = $("#dep_date").val();
+//     if (a != '' && d != '' ) {
+//        $("#console").append('<input type="hidden" name="datechange" value="True" />');
+//        $("#console").submit();
+//     }
+ }
 </script>
-

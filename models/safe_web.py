@@ -80,13 +80,13 @@ not_coordinator_icon = SPAN('',_class="glyphicon glyphicon-remove",
                                _style="color:grey;font-size: 1.3em;", 
                                _title='Not a Project Coordinator')
 
-hs_ok = SPAN('',_class="glyphicon glyphicon-ok", 
-               _style="color:green;font-size: 1em;", 
-               _title='H&S completed')
+hs_ok = SPAN('',_class="glyphicon glyphicon-eye-open", 
+               _style="color:green;font-size: 1.4em;", 
+               _title='View H&S record')
 
-hs_no = SPAN('',_class="glyphicon glyphicon-remove", 
-                _style="color:red;font-size: 1em;", 
-                _title='H&S not completed')
+hs_no = SPAN('',_class="glyphicon glyphicon-eye-close", 
+                _style="color:red;font-size: 1.4em;", 
+                _title='No H&S record')
 
 remove_member_icon = SPAN('',_class="glyphicon glyphicon-minus-sign",
                              _style="color:red;font-size: 1.6em;padding: 0px 10px;", 
@@ -267,15 +267,16 @@ db.define_table('help_request',
 
 ## -----------------------------------------------------------------------------
 ## VISITS
-## - two classes of thing:
-##   1) approval of a bed reservation to stay at SAFE. Can be entirely unassociated
-##      with a research visit for a project for look-see type bookings
-##   2) a booking for people working on an existing approved visit
+## - 1) A description of the RV.
+## - 2) A list of research visit members (RVM)
+## - 3) Tables matching beds, transfers to RVM and research assistant suppor to RV
+##
+## Note - all RVs are reviewed and approved at the level of research visit not at
+##        the level of individual components 
 ## -----------------------------------------------------------------------------
 
 db.define_table('research_visit',
-    Field('look_see_visit', 'boolean', default=False, notnull=True),
-    Field('project_id', 'reference project_id'),
+    Field('project_id', 'reference project_id'), # can be null for look see visits
     Field('title', 'string', notnull=True),
     Field('arrival_date','date', notnull=True),
     Field('departure_date','date', notnull=True),
@@ -285,34 +286,30 @@ db.define_table('research_visit',
     Field('proposer_id', 'reference auth_user'),
     Field('proposal_date', 'date'),
     # The fields below are to handle approval of new records
-    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
+    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Draft'), 
     Field('admin_notes','text'),
     Field('admin_history','text'))
 
-
+# this defines a list of people who are attending a research visit
+# - note that user_id can be NULL for unknown visitors and can be
+#   switched to change the user associated with a set of bookings
 db.define_table('research_visit_member',
     Field('research_visit_id', 'reference research_visit', notnull=True),
     Field('user_id', 'reference auth_user'))
 
-# this table links back to the row in research visit member, to allow
-# anonymous bookings to be updated with user ID. Could only link row id
-# and not provide user ID to avoid having to update two tables?
-
-# all bookings are reviewed and approved at the level of research visit
+# the following tables links back to the row in research visit member
 
 db.define_table('bed_reservations_safe',
     Field('research_visit_id', 'reference research_visit'),
     Field('research_visit_member_id', 'reference research_visit_member'), # 
     Field('arrival_date','date', notnull=True),
-    Field('departure_date','date', notnull=True),
-    Field('user_id','reference auth_user'))
+    Field('departure_date','date', notnull=True))
 
 db.define_table('bed_reservations_maliau',
     Field('research_visit_id', 'reference research_visit'),
     Field('research_visit_member_id', 'reference research_visit_member'), # 
     Field('arrival_date','date', notnull=True),
     Field('departure_date','date', notnull=True),
-    Field('user_id','reference auth_user'), # needs to handle anonymous bookings
     Field('type', 'string', requires=IS_IN_SET(['Hostel','Annex']), default='Annex'),
     Field('breakfast', 'boolean', default=False),
     Field('lunch', 'boolean', default=False),
@@ -322,16 +319,14 @@ db.define_table('transfers',
     Field('transfer', 'string', requires=IS_IN_SET(transfer_set)),
     Field('research_visit_id', 'reference research_visit'),
     Field('research_visit_member_id', 'reference research_visit_member'), # 
-    Field('transfer_date','date', notnull=True),
-    Field('user_id','reference auth_user')) # needs to handle anonymous bookings
+    Field('transfer_date','date', notnull=True))
 
 db.define_table('research_assistant_bookings',
     Field('research_visit_id', 'reference research_visit'),
     Field('start_date','date', notnull=True),
     Field('finish_date','date', notnull=True),
     Field('site_time','string', requires=IS_IN_SET(res_assist_set)),
-    Field('ropework', 'boolean', default=False),
-    Field('nightwork', 'boolean', default=False))
+    Field('work_type', 'string', requires=IS_IN_SET(['Standard', 'Rope work','Night work'])))
 
 ## -----------------------------------------------------------------------------
 ## H & S
