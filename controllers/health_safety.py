@@ -32,8 +32,6 @@ def health_and_safety():
     #   and we have a right to view it (Admin or Project Coordinator)
     user_record = db.auth_user(uid)
     
-    print uid, user_record
-    
     if uid == auth.user.id:
         if user_record.h_and_s_id is None:
             # create a new record for this user and hard link to auth_user
@@ -43,7 +41,6 @@ def health_and_safety():
             user_record.update_record()
         else:
             hs_record = db.health_and_safety(user_record.h_and_s_id)
-            print hs_record
         readonly = False
     else:
         # does this user have any right to view

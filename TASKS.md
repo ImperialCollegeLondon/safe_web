@@ -5,26 +5,16 @@
 
 ### Tedious prelaunch tasks 
 
-* Classification of projects to tag
-* User list consolidation - emails
-* Existing project member roles and assign coordinators
 * Species photos - replace with ones we have any right to
-* Tag existing projects with new tags and revamp 'Ecological monitoring' page to 'Research areas'
+* revamp 'Ecological monitoring' page to 'Research areas'
  * Outputs - create an Abstract and Twitter description.
                  - update existing output descriptions to match.
  
 
-
 ### Programming tasks
-
-* Project versioning
-Check out:
-http://web2py.com/books/default/chapter/29/07/forms-and-validators#Record-versioning
-
 
 * Data structure sketch.
 * Passwords, match SALT/HASH to Earthcape
-* Project, project\_members, auth\_users all need UID
 * Lock down removal of project members and visit members in existing visits and reservations
 * Fix wiki path to Wiki (apache config, I think, maybe change dir name)
 * Diagrams of processes
@@ -35,7 +25,6 @@ http://web2py.com/books/default/chapter/29/07/forms-and-validators#Record-versio
      form.custom.widget.tm_home["_placeholder"] = "Home Team Name"
 
 * Project carousel
-* Add discussion board
 
 ### Tasks to classify from meeting with Rob
 
@@ -43,7 +32,6 @@ http://web2py.com/books/default/chapter/29/07/forms-and-validators#Record-versio
  * Replace maps with new versions
  * Species profiles - make
  * Outputs/Wiki/Data to "Data and results" main menu
- * Make all project and output links
  * Word restrictions on project case 300, 500.
 
 

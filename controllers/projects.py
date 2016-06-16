@@ -66,8 +66,6 @@ def projects():
     # create a grid view on the join between project_id and project_details
     query = (db.project_id.project_details_id == db.project_details.id)
     
-    print db(query)._select(db.project_details.title, db.project_details.picture)
-    
     form = SQLFORM.grid(db.project_id.project_details_id == db.project_details.id, csv=False, 
                         fields=[db.project_details.title,
                                 # db.project_details.start_date, 
@@ -191,15 +189,14 @@ def project_view():
         if len(project_rows) > 0:
             
             for r in project_rows:
-                print r
-            project_links = DIV(DIV('Linked projects', _class="panel-heading"),
-                                TABLE(*[TR(TD(A(r.title, 
-                                                _href=URL('projects','project_view', 
-                                                          args=[r.project_id]))))
-                                           for r in project_rows],
-                                      _class='table table-striped', _style='width:100%'),
-                                DIV(_class='panel-footer'),
-                                _class="panel panel-primary")
+                project_links = DIV(DIV('Linked projects', _class="panel-heading"),
+                                    TABLE(*[TR(TD(A(r.title, 
+                                                    _href=URL('projects','project_view', 
+                                                              args=[r.project_id]))))
+                                               for r in project_rows],
+                                          _class='table table-striped', _style='width:100%'),
+                                    DIV(_class='panel-footer'),
+                                    _class="panel panel-primary")
         else:
             
             project_links = DIV()
@@ -775,7 +772,7 @@ def project_details():
                 elif members.errors:
                     
                     response.flash = CENTER(B('Problem with adding project member.'), _style='color: red')
-                    print members.errors
+                    
                 else:
                     pass
                 

@@ -138,7 +138,6 @@ def volunteer_details():
     
     if record is not None:
         
-        print auth.is_logged_in()
         # only allow volunteers to see rejected or pending records
         if auth.is_logged_in() and (record.user_id == auth.user.id):
             delete = FORM(CAT('Click here to permanently remove your request for project help:', 
