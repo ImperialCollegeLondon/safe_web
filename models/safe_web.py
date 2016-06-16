@@ -125,7 +125,7 @@ add_member_icon = SPAN('',_class="glyphicon glyphicon-plus-sign",
 db.define_table('project_id', 
     Field('uuid', length=64, default=uuid.uuid4),
     Field('project_details_id', 'integer'),
-    Field('project_details_uuid', length=64, requires=IS_IN_DB(db, 'project_details.uuid'))
+    Field('project_details_uuid', length=64)
     )
 
 
@@ -479,10 +479,12 @@ db.define_table('discussion_topics',
                 Field('n_messages', 'integer'))
 
 db.define_table('discussion_message',
-                Field('parent_id', 'integer', requires=IS_NULL_OR(IS_IN_DB(db, 'discussion_message.id'))),
+                Field('parent_id', 'integer'),
                 Field('depth', 'integer'),
                 Field('topic_id', 'reference discussion_topics'),
                 Field('message','text'),
                 Field('message_user_id', 'reference auth_user'),
                 Field('message_date','datetime'))
+
+db.discussion_message.parent_id.requires=IS_NULL_OR(IS_IN_DB(db, 'discussion_message.id'))
 

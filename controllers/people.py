@@ -107,7 +107,7 @@ def user_details():
                                  _class="col-sm-10"),
                              _class='row', _style='margin:10px 10px')
         
-        usr = DIV(DIV(H5(" ".join((record.title, record.first_name, record.last_name))), 
+        usr = DIV(DIV(H5(" ".join(('' if record.title is None else record.title, record.first_name, record.last_name))), 
                   _class="panel-heading"),
                   # DIV(LABEL('User:', _class="control-label col-sm-2" ),
                   #     DIV(record.last_name + ", " + record.first_name, _class="col-sm-10"),
