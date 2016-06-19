@@ -507,6 +507,8 @@ def project_details():
             form.custom.widget.rationale['_rows'] = 4
             form.custom.widget.methods['_rows'] = 4
             form.custom.widget.research_areas['_size'] = 3
+            form.custom.widget.start_date['_class'] = "form-control input-sm"
+            form.custom.widget.end_date['_class'] = "form-control input-sm"
             
             # picture
             if (details is None) or (details.picture in [None, '']):
@@ -525,11 +527,13 @@ def project_details():
                                         DIV(LABEL('Picture:', _class="control-label col-sm-2" ),
                                             DIV(form.custom.widget.picture,  _class="col-sm-10"),
                                             _class='row'),
-                                        DIV(LABEL('Start Date:', _class="control-label col-sm-2" ),
-                                            DIV(form.custom.widget.start_date,  _class="col-sm-4"),
-                                            LABEL('End Date:', _class="control-label col-sm-2" ),
-                                            DIV(form.custom.widget.end_date,  _class="col-sm-4"),
-                                            _class='row'), 
+                                        DIV(LABEL('Dates:', _class="control-label col-sm-2" ),
+                                             DIV(DIV(form.custom.widget.start_date,
+                                                     SPAN('to', _class="input-group-addon input-sm"),
+                                                     form.custom.widget.end_date,
+                                                     _class="input-daterange input-group", _id="proj_datepicker"),
+                                                 _class='col-sm-10'),
+                                             _class='row'),
                                         _class='col-sm-10'),
                                     _class='row', _style='margin:10px 10px'),
                               local_hr,
@@ -600,7 +604,11 @@ def project_details():
                                 DIV(form.custom.submit, _class='panel-footer'),
                                 _class='panel_body'),
                             _class="panel panel-primary"),
-                        form.custom.end)
+                        form.custom.end,
+                        datepicker_script(id = 'proj_datepicker',
+                                          autoclose = 'true',
+                                          startDate ='"+0d"',
+                                          endDate ='"+365d"'))
         
         elif mode == 'view':
             
