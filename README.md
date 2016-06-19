@@ -153,11 +153,63 @@ Now clone the repo into the web2py applications folder. You could set up SSH, wh
     cd /home/www-data/web2py/applications
     sudo -u www-data git clone https://davidorme@bitbucket.org/davidorme/safe_web.git
 
+It is wise to disable the app from the admin site before updating! The web server provides a nice maintenance banner whilst it is disabled.
+
+
 Updating from the repo requires the following:
 
     sudo git remote update
     sudo git pull
 
+
+##### Resetting the DB in development NOT once in production #####
+
+In production, the DB is the ultimate source of truth, but in the startup, this is populated from the zzz-fixtures.py file. Between major revisions in development, it is probably wise to purge the DB data and reload it:
+
+1) In the DB, delete all the tables.
+
+    # requires password
+    psql -h earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com safe_web2py safe_admin
+
+And then in SQL:
+
+    -- this require write permission
+    DROP SCHEMA public CASCADE;
+    CREATE SCHEMA public;
+    GRANT ALL ON SCHEMA public TO postgres;
+    GRANT ALL ON SCHEMA public TO public;
+    COMMENT ON SCHEMA public IS 'standard public schema';
+
+or possibly, if you can't figure out what sets schema permissions
+
+    -- may need to kill sessions attached to it
+    SELECT pg_terminate_backend(pg_stat_activity.pid)
+    FROM pg_stat_activity
+    WHERE pg_stat_activity.datname = 'safe_web2py'
+      AND pid <> pg_backend_pid();
+    -- recreate
+    \c template0
+    drop database safe_web2py;
+    create database safe_web2py;
+
+2) In the file system the upload directory contains copies of files loaded in. These won't be purged by deleting the DB content, so avoid duplicating them on reload:
+
+    cd uploads
+    sudo find . -type f -delete
+ 
+ 3) Kill the databases files - they need to be regenerated when the DB is brought back up
+ 
+    cd databases
+    sudo rm *.table
+    sudo rm sql.log
+
+This should now be the DB empty of data, ready to repopulate everything, once the models run. You may also need to restart the server:
+
+    sudo service apache2 restart
+
+ Once the system is in production, of course, this is a disasterous thing to do. So need a snapshotting system to preserve the file
+ structure and a db dump to preserve the DB contents.
+ 
 #### web2py Plugins ####
 
 The SAFE website only uses [web2py_ckeditor4](https://github.com/timrichardson/web2py_ckeditor4/releases) to add a WYSIWYG interface for blogs and news.

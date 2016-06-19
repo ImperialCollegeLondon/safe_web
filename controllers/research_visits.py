@@ -213,11 +213,17 @@ def research_visit_details():
                 msg_status = mail.send(to=auth.user.email,
                                        subject='SAFE research visit proposal submitted',
                                        message=message)
-                                   
+                
                 session.flash = CENTER(B('Research visit proposal submitted.'), _style='color: green')
                 redirect(URL('research_visits', 'research_visit_details', args=[rv_id]))
         
             else:
+                
+                # if this is a new proposal then need to insert the project_id, which isn't
+                # included in the form, as long as it isn't a look see visit
+                if rv_id is None and new_rv_project_requested != '0':
+                    db.research_visit(visit.vars.id).update_record(project_id = new_rv_project_requested)
+                
                 session.flash = 'Research visit proposal created/update'
                 redirect(URL('research_visits','research_visit_details', args=[rv_id]))
         else:
@@ -1082,33 +1088,6 @@ def uname(uid, rowid):
         
     return nm
 
-
-def datepicker_script(id, **settings):
-    
-    """
-    This function generates a JS script, keyed to the id of a HTML entity
-    that loads it as a datepicker object and allows settings on that datepicker object
-    """
-    
-    settings_str = ',\n'.join(item[0] + ':' + str(item[1]) for item in settings.iteritems()) if settings else ''
-    javascript = SCRIPT("""
-        $('head').append($('<link  href="%(cssurl)s" type="text/css" rel="stylesheet" />'));
-        $.getScript('%(scripturl)s').done(function(){
-            $('#%(_id)s').datepicker({
-                format: w2p_ajax_date_format.replace('%%Y', 'yyyy').replace('%%m', 'mm').replace('%%d', 'dd'),
-                %(settings)s
-            })
-        });
-        """ % {
-            'cssurl': URL('static', 'plugin_bs_datepicker/datepicker.css'),
-            'scripturl': URL('static', 'plugin_bs_datepicker/bootstrap-datepicker.js'),
-            '_id': id,
-            'settings': settings_str
-        })
-    
-    return javascript
-
-
 def validate_research_visit_details(form):
     
     """
@@ -1593,6 +1572,7 @@ def export_research_visits():
     warn = openpyxl.styles.Font(bold=True, color='FF0000')
     cell_shade = {'Approved': openpyxl.styles.PatternFill(fill_type='solid', start_color='8CFF88'),
                   'Pending': openpyxl.styles.PatternFill(fill_type='solid', start_color='FFCB8B'),
+                  'Draft': openpyxl.styles.PatternFill(fill_type='solid', start_color='DDDDDD'),
                   'Rejected': openpyxl.styles.PatternFill(fill_type='solid', start_color='FF96C3')}
     
     # name the worksheet and add a heading

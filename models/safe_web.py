@@ -247,10 +247,8 @@ db.define_table('help_offered',
           widget=SQLFORM.widgets.multiple.widget),
     Field('statement_of_interests','text', notnull=True),
     # The fields below are to handle approval of new records
-    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
-    Field('admin_id','reference auth_user'),
-    Field('admin_notes','text'),
-    Field('admin_decision_date','date'))
+    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Submitted'), 
+    Field('admin_history','text'))
 
 db.define_table('help_request',
     Field('user_id', 'reference auth_user', notnull=True),
@@ -260,10 +258,8 @@ db.define_table('help_request',
     Field('end_date','date', notnull=True),
     Field('work_description','text', notnull=True),
     # The fields below are to handle approval of new records
-    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
-    Field('admin_id','reference auth_user'),
-    Field('admin_notes','text'),
-    Field('admin_decision_date','date'))
+    Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Submitted'), 
+    Field('admin_history','text'))
 
 ## -----------------------------------------------------------------------------
 ## VISITS
@@ -488,3 +484,55 @@ db.define_table('discussion_message',
 
 db.discussion_message.parent_id.requires=IS_NULL_OR(IS_IN_DB(db, 'discussion_message.id'))
 
+
+## Define a general function to power the datepicker widgets. Not sure if this is the best location for it.
+
+def datepicker_script(id, **settings):
+    
+    """
+    This function generates a JS script, keyed to the id of a HTML entity
+    that loads it as a datepicker object and allows settings on that datepicker object
+    """
+    
+    settings_str = ',\n'.join(item[0] + ':' + str(item[1]) for item in settings.iteritems()) if settings else ''
+    javascript = SCRIPT("""
+        $('head').append($('<link  href="%(cssurl)s" type="text/css" rel="stylesheet" />'));
+        $.getScript('%(scripturl)s').done(function(){
+            $('#%(_id)s').datepicker({
+                format: w2p_ajax_date_format.replace('%%Y', 'yyyy').replace('%%m', 'mm').replace('%%d', 'dd'),
+                %(settings)s
+            })
+        });
+        """ % {
+            'cssurl': URL('static', 'plugin_bs_datepicker/datepicker.css'),
+            'scripturl': URL('static', 'plugin_bs_datepicker/bootstrap-datepicker.js'),
+            '_id': id,
+            'settings': settings_str
+        })
+    
+    return javascript
+
+def admin_decision_form(selector_options):
+    
+    
+    selector = SELECT(selector_options, _class="generic-widget form-control", _name='decision')
+    comments = TEXTAREA(_type='text', _class="form-control string", _rows=3, _name='comment')
+    submit = TAG.BUTTON('Submit', _type="submit", _class="button btn btn-default",
+                        _style='padding: 5px 15px 5px 15px;')
+
+    admin = FORM(DIV(DIV(H5('Admin Decision', ), _class="panel-heading"),
+                    DIV(DIV(DIV(LABEL('Select decision', _class='row'),
+                            DIV(selector, _class='row'),
+                            DIV(_class='row', _style='padding:5px'),
+                            DIV(submit,  _class='row'),
+                            _class='col-sm-2'),
+                        DIV(LABEL('Comments', _class='row'),
+                            DIV(comments, _class='row'),
+                            _class='col-sm-9 col-sm-offset-1'),
+                        _class='row',_style='margin:10px 10px'),
+                        _class = 'panel_body', _style='margin:10px 10px'),
+                    DIV(_class="panel-footer"),
+                    _class='panel panel-primary'))
+    
+    return admin
+    
