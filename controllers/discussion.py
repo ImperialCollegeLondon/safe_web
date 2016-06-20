@@ -54,9 +54,9 @@ def new_topic():
                                    'message'])
     
     if form.process(onvalidation=validate_new_topic).accepted:
-        id = db.discussion_topics.insert(**db.discussion_topics._filter_fields(form.vars))    
+        id = db.discussion_topics.insert(**db.discussion_topics._filter_fields(form.vars))
         form.vars.topic_id = id
-        id = db.discussion_message.insert(**db.discussion_message._filter_fields(form.vars)) 
+
         
         redirect(URL('discussion','discussion_board'))
     

@@ -19,7 +19,7 @@ def blogs():
     
     db.blog_posts.thumbnail_figure.readable=False
     
-    form = SQLFORM.grid((db.blog_posts.expired == False) &
+    form = SQLFORM.grid((db.blog_posts.hidden == False) &
                         (db.blog_posts.admin_status == 'Approved'), 
                         fields=[db.blog_posts.thumbnail_figure,
                                 db.blog_posts.title,
@@ -48,8 +48,8 @@ def blog_post():
     blog_id = request.args(0)
     blog_post = db.blog_posts(blog_id)
     
-    if blog_post is None or blog_post.expired:
-        session.flash = CENTER(B('Invalid blog post id.'), _style='color: red')
+    if blog_post is None or blog_post.hidden or blog_post.admin_status != 'Approved':
+        session.flash = CENTER(B('Blog post id not available.'), _style='color: red')
         redirect(URL('blog','blogs'))
     
     return dict(blog_post = blog_post)
@@ -60,28 +60,15 @@ def blog_post():
 ## -----------------------------------------------------------------------------
 
 @auth.requires_membership('bloggers')
-def new_blog_post():
-    
-    form = SQLFORM(db.blog_posts,
-                   fields=['thumbnail_figure','authors','title','content'])
-    
-    if form.process(onvalidation=validate_blog_post).accepted:
-        response.flash = CENTER(B('Blog post submitted.'), _style='color: green')
-    else:
-        response.flash = CENTER(B('Problems with the form, check below.'), _style='color: red')
-    
-    return dict(form=form)
-
-
-@auth.requires_membership('bloggers')
 def blog_details():
     
     """
-    This allows blogger to edit or create a blog post - existing posts are
-    linked to from the My SAFE page for the creator.
+    This allows blogger to create or edit a blog post - existing posts are
+    linked to from the My SAFE page for the creator. These records are not
+    visible to all users, who would just read the blog post.
     """
     
-    # do we have a request for an existing blog post
+    # do we have a request for an existing blog post?
     blog_id = request.args(0)
     
     if blog_id is not None:
@@ -90,44 +77,164 @@ def blog_details():
         record = None
         
     if blog_id is not None and record is None:
-        
         # avoid unknown blogs
         session.flash = B(CENTER('Invalid blog id'), _style='color:red;')
         redirect(URL('blog','blogs'))
         
-    elif blog_id is not None and record.user_id <> auth.user.id:
+    elif record is None or record.user_id == auth.user.id or auth.has_membership('admin'):
         
-        # security check to stop people editing other users blogs
-        session.flash = CENTER(B('You do not have permission to edit this blog post.'), _style='color: red')
-        redirect(URL('blog','blogs', args=blog_id))
-        
-    else:
+        if record is None:
+            buttons =  [TAG.BUTTON('Create', _type="submit", _class="button btn btn-default",
+                                   _style='padding: 5px 15px 5px 15px;', _name='create')]
+            readonly = False
+        else:
+            readonly = True if record.admin_status == 'Submitted' else False
+            buttons =  [TAG.BUTTON('Update and resubmit', _type="submit", _class="button btn btn-default",
+                                   _style='padding: 5px 15px 5px 15px;', _name='update')]
         
         # provide a form to create or edit
-        form = SQLFORM(db.blog_posts, record=blog_id,
+        form = SQLFORM(db.blog_posts,
+                       readonly=readonly,
+                       record=record,
+                       buttons=buttons,
                        fields=['thumbnail_figure','authors','title','content'], 
                        showid=False)
         
         if form.process(onvalidation=validate_blog_post).accepted:
             
-            # add a comment to the history
-            new_history = '[{} {}, {}, {}]\\n'.format(auth.user.first_name,
-                           auth.user.last_name, datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
-                           'Post created' if blog_id is None else "Post edited")
+            req_keys = request.vars.keys()
             
-            blog_post = db.blog_posts(form.vars.id)
+            # get and add a comment to the history
+            hist_str = '[{}] {} {}\\n -- {}\\n'
+            new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                       auth.user.first_name,
+                                                       auth.user.last_name,
+                                                       'Post created' if blog_id is None else "Post edited")
             
-            if blog_post.admin_history is None or blog_post.admin_history == '':
-                blog_post.update_record(admin_history = new_history)
+            if 'update' in req_keys:
+                id = record.update_record(admin_history = new_history + record.admin_history,
+                                          **db.blog_posts._filter_fields(form.vars))
+                msg = CENTER(B('Blog post updated and resubmitted for approval.'), _style='color: green')
+            elif 'create' in req_keys:
+                id = db.blog_posts.insert(admin_history=new_history, 
+                                          **db.blog_posts._filter_fields(form.vars))
+                msg = CENTER(B('Blog post created and submitted for approval.'), _style='color: green')
             else:
-                blog_post.update_record(admin_history = blog_post.admin_history + '\\n' + new_history)
+                pass
             
-            session.flash = CENTER(B('Blog post created/edited and submitted for approval.'), _style='color: green')
-            redirect(URL('blog','blogs'))
-        else:
+            session.flash = msg
+            redirect(URL('blog','blog_details', args=form.vars.id))
+            
+        elif form.errors:
             response.flash = CENTER(B('Problems with the form, check below.'), _style='color: red')
+        else:
+            pass
         
-        return dict(form=form, record=record)
+        # package form into a panel
+        if record is None:
+            status = ""
+            vis = ""
+        else:
+            status =    DIV(approval_icons[record.admin_status], XML('&nbsp'),
+                           'Status: ', XML('&nbsp'), record.admin_status, 
+                            _class='col-sm-3',
+                            _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
+            if record.hidden:
+                vis = DIV('Hidden', _class='col-sm-1 col-sm-offset-1',
+                          _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
+            else:
+                vis = DIV('Visible', _class='col-sm-1 col-sm-offset-1',
+                          _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
+            
+                      
+        panel_header = DIV(H5('Blog post', _class='col-sm-7'), status, vis,
+                           _class='row', _style='margin:0px 0px')
+        
+        if readonly:
+            content = XML(record.content)
+        else:
+            content = form.custom.widget.content
+        
+        form = FORM(form.custom.begin,
+                    DIV(DIV(panel_header, _class="panel-heading"),
+                        DIV(LABEL('Thumbnail Figure:', _class="control-label col-sm-2" ),
+                            DIV(form.custom.widget.thumbnail_figure, _class="col-sm-10"),
+                            _class='row', _style='margin:10px 10px'),
+                        DIV(LABEL('Authors:', _class="control-label col-sm-2" ),
+                            DIV(form.custom.widget.authors,  _class="col-sm-10"),
+                            _class='row', _style='margin:10px 10px'),
+                        DIV(LABEL('Title:', _class="control-label col-sm-2" ),
+                            DIV(form.custom.widget.title, _class="col-sm-10"),
+                            _class='row', _style='margin:10px 10px'),
+                        DIV(LABEL('Blog Content:', _class="control-label col-sm-2" ),
+                            DIV(content,  _class="col-sm-10"),
+                            _class='row', _style='margin:10px 10px'),
+                        DIV(form.custom.submit, _class='panel-footer'),
+                        _class="panel panel-primary"),
+                        form.custom.end)
+    else: 
+        # security doesn't allow people editing other users blogs
+        session.flash = CENTER(B('You do not have permission to edit this blog post.'), _style='color: red')
+        redirect(URL('blog','blog_post', args=blog_id))
+    
+    # admin history display
+    if record is not None and record.admin_history is not None:
+        admin_history = DIV(DIV(H5('Admin History', ), _class="panel-heading"),
+                            DIV(XML(record.admin_history.replace('\\n', '<br />'),
+                                    sanitize=True, permitted_tags=['br/']),
+                                _class = 'panel_body'),
+                            DIV(_class="panel-footer"),
+                            _class='panel panel-primary')
+    else:
+        admin_history = DIV()
+    
+    ## ADMIN INTERFACE
+    if record is not None and auth.has_membership('admin') and record.admin_status == 'Submitted':
+        
+        admin = admin_decision_form(['Resubmit','Approved'])
+        
+        if admin.process(formname='admin').accepted:
+            
+            # update record with decision
+            admin_str = '[{}] {} {}\\n ** Decision: {}\\n ** Comments: {}\\n'
+            new_history = admin_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                       auth.user.first_name,
+                                                       auth.user.last_name,
+                                                       admin.vars.decision,
+                                                       admin.vars.comment) + record.admin_history
+            
+            record.update_record(admin_status = admin.vars.decision,
+                                 admin_history = new_history)
+            
+            # pick an decision
+            poster = record.user_id
+            
+            # pick an decision
+            if admin.vars.decision == 'Approved':
+                mail.send(to=poster.email,
+                          subject='SAFE blog post',
+                          message='Dear {},\n\nLucky template\n\n {}'.format(poster.first_name, admin.vars.comments))
+                msg = CENTER(B('Blog approval emailed to poster at {}.'.format(poster.email)), _style='color: green')
+            elif admin.vars.decision == 'Resubmit':
+                mail.send(to=poster.email,
+                          subject='SAFE blog post',
+                          message='Dear {},\n\nUnlucky template\n\n {}'.format(poster.first_name, admin.vars.comments))
+                msg = CENTER(B('Blog resubmission emailed to poster at {}.'.format(poster.email)), _style='color: green')
+            else:
+                pass
+            
+            redirect(URL('blog','administer_blogs'))
+            session.flash = msg
+            
+        elif admin.errors:
+            response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
+        else:
+            pass
+    else:
+        admin = DIV()
+    
+    # pass components to the view
+    return dict(form=form,  admin_history=admin_history, admin=admin)
 
 
 @auth.requires_membership('bloggers')
@@ -138,8 +245,8 @@ def validate_blog_post(form):
     form.vars.user_id = auth.user_id
     form.vars.date_posted =  datetime.date.today().isoformat()
     
-    # need to set approval to pending to get oversight on edits
-    form.vars.admin_status = 'Pending'
+    # need to set approval to flag oversight on edits
+    form.vars.admin_status = 'Submitted'
 
 
 ## -----------------------------------------------------------------------------
@@ -152,17 +259,17 @@ def administer_blogs():
 
     """
     This controller handles:
-     - presenting admin users with a list of pending new projects
+     - presenting admin users with a list of submitted blogs
      - a custom link to a page showing members and project details
     """
     
     # create a new button that passes the project id to a new controller
     links = [dict(header = '', body = lambda row: A('Details',_class='button btn btn-default'
-                  ,_href=URL("blog","administer_blog_details", args=[row.id])))
+                  ,_href=URL("blog","blog_details", args=[row.id])))
             ]
     
     # get a query of pending requests 
-    form = SQLFORM.grid(query=(db.blog_posts.admin_status == 'Pending'), csv=False,
+    form = SQLFORM.grid(query=(db.blog_posts.admin_status == 'Submitted'), csv=False,
                         fields=[db.blog_posts.title,
                                 db.blog_posts.user_id,
                                 db.blog_posts.date_posted],
@@ -177,146 +284,65 @@ def administer_blogs():
     
     return dict(form=form)
 
-
-@auth.requires_membership('admin')
-def administer_blog_details():
-
-    """
-    Custom blog view - displays a pending blog post
-    and allows the admin to approve or reject it
-    """
-    
-    # TODO - check the project is pending?
-    # retrieve the user id from the page arguments passed by the button
-    blog_id = request.args(0)
-    
-    # pass the record to the view for content
-    blog_post = db.blog_posts(blog_id)
-    
-    # check this is pending, so Admin can't use this interface when the 
-    # post is approved or rejected
-    if blog_post.admin_status <> 'Pending':
-        session.flash = CENTER(B('This blog ID does not have Pending status'), _style='color: green')
-        redirect(URL('blog','administer_blogs'))
-    
-    # set up the form for the approval fields
-    blog_form = SQLFORM(db.blog_posts, blog_id,
-                        fields = ['admin_status','admin_notes'],
-                        showid=False)
-    
-    # process the form and handle actions
-    if blog_form.process().accepted:
-        
-        # get the poster ID from the record
-        poster = blog_post.user_id
-        
-        # reload the record to get at fresh admin details
-        # and update the admin history
-        blog_post = db.blog_posts(blog_id)
-        new_history = '[{} {}, {}, {}]\\n {}\\n'.format(auth.user.first_name,
-                       auth.user.last_name, datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
-                       blog_post.admin_status, blog_post.admin_notes)
-        
-        # immediately pass the admin notes into the history and 
-        # clear the admin notes field
-        if blog_post.admin_history is None or blog_post.admin_history == '':
-            blog_post.update_record(admin_history = new_history,
-                                    admin_notes = '')
-        else:
-            blog_post.update_record(admin_history = blog_post.admin_history + '\\n' + new_history,
-                                     admin_notes = '')
-        
-        # pick an decision
-        if blog_form.vars.admin_status == 'Approved':
-            mail.send(to=poster.email,
-                      subject='SAFE blog post',
-                      message='Dear {},\n\nLucky template\n\n {}'.format(poster.first_name, blog_form.vars.admin_notes))
-            session.flash = CENTER(B('Blog approval emailed to poster at {}.'.format(poster.email)), _style='color: green')
-            redirect(URL('blog','administer_blogs'))
-        elif blog_form.vars.admin_status == 'Rejected':
-            mail.send(to=poster.email,
-                      subject='SAFE blog post',
-                      message='Dear {},\n\nUnlucky template\n\n {}'.format(poster.first_name, blog_form.vars.admin_notes))
-            session.flash = CENTER(B('Blog rejection emailed to poster at {}.'.format(poster.email)), _style='color: green')
-            redirect(URL('blog','administer_blogs'))
-        else:
-            pass
-    
-    elif blog_form.errors:
-        response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
-    else:
-        pass
-    
-    # pass components to the view
-    return dict(blog_form=blog_form, blog_post=blog_post)
-
-
-# def validate_administer_blog_details(form):
-#
-#     # validation handles any checking (none here) and also any
-#     # amendments to the form variable  - adding user and date of admin
-#     form.vars.admin_id = auth.user_id
-#     today = datetime.date.today().isoformat()
-#     form.vars.admin_decision_date = today
-
-
-## -----------------------------------------------------------------------------
-## BLOG MANAGEMENT
-## - controller to allow admins to edit and suppress any blog
-## -----------------------------------------------------------------------------
-
-
 @auth.requires_membership('admin')
 def manage_blogs():
     
-    """
-    Controller to allow admin to create, edit and delete blogs
-    """
+    hide_glyph = SPAN('', _class="glyphicon glyphicon-eye-close")
+    visib_glyph = SPAN('', _class="glyphicon glyphicon-eye-open")
+    hide_style = "padding:3px 10px;background:darkred"
+    visib_style = "padding:3px 10px;background:darkgreen"
     
     links = [dict(header = '', body = lambda row: A(IMG(_src = URL('default', 
-                  'download', args = row.thumbnail_figure), _height = 100)))]
-                  
-    # need these three fields in the fields list to allow the links
-    # to be created but don't want to actually show them in the grid
-    db.blog_posts.thumbnail_figure.readable=False
+                  'download', args = row.thumbnail_figure), _height = 100))),
+             dict(header = '', 
+                  body = lambda row: A(SPAN('',_class="glyphicon glyphicon-zoom-in"),
+                                       SPAN('View'), _class="button btn btn-default", 
+                                       _href=URL("blog","blog_details", args=[row.id], user_signature=True),
+                                       _style='padding: 3px 5px 3px 5px;')),
+            dict(header = '', 
+                 body = lambda row: A(hide_glyph if row.hidden else visib_glyph,
+                                      _class="button btn btn-default", 
+                                      _href=URL("blog","blog_hide", args=[row.id], user_signature=True),
+                                      _style=hide_style if row.hidden else visib_style))] 
     
-    form = SQLFORM.grid(db.blog_posts, csv=False, 
+    db.blog_posts.thumbnail_figure.readable=False
+    db.blog_posts.hidden.readable=False
+    
+    form = SQLFORM.grid(db.blog_posts, 
                         fields=[db.blog_posts.thumbnail_figure,
+                                db.blog_posts.hidden,
                                 db.blog_posts.title,
-                                db.blog_posts.date_posted,
-                                ],
-                        maxtextlength=100,
-                        create=False,
-                        deletable=False,
-                        editable=True, 
-                        details=False, # just reveals a bunch of crappy html.
-                        # searchable=False,
-                        formargs={'showid':False,
-                                  'fields': ['expired', 'thumbnail_figure', 'authors', 'title','content'],
-                                  'labels': {'expired':'Remove blog from public view.'},
-                                  'links': None},
-                        editargs={'deletable':False},
+                                db.blog_posts.date_posted],
+                        orderby= ~ db.blog_posts.date_posted,
+                        maxtextlength=150,
                         links=links,
                         links_placement='left',
-                        onvalidation = validate_blog_post,
-                        oncreate = oncreate_blog_post,
-                        onupdate = onupdate_blog_post
-                        )
+                        editable=False,
+                        create=False,
+                        deletable=False,
+                        details=False,
+                        csv=False)
     
     return dict(form=form)
 
-# these functions provide simple info back to the manage_blogs Admin view 
 
 @auth.requires_membership('admin')
-def oncreate_blog_post(form):
+def blog_hide():
     
+    blog_id = request.args(0)
+    record = db.blog_posts(blog_id)
+    if record.hidden:
+        record.hidden = False
+        new_history = '[{}] {} {}\\n ** Blog un-hidden\\n'
+    else:
+        record.hidden = True
+        new_history = '[{}] {} {}\\n ** Blog hidden\\n'
     
-    session.flash = CENTER(B('Blog post created.'), _style='color: green')
-
-
-@auth.requires_membership('admin')
-def onupdate_blog_post(form):
+    record.admin_history = new_history.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                              auth.user.first_name,
+                                              auth.user.last_name) + record.admin_history
     
-    session.flash = CENTER(B('Blog edited.'), _style='color: green')
-
-
+    record.update_record()
+    
+    redirect(URL('blog', 'manage_blogs'))
+        

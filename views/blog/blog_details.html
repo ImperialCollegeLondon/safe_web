@@ -13,10 +13,6 @@ News posts and edits to existing posts will be held until approved by an adminis
 
 <br>
 
-{{=H4('Admin comments', _style='background-color: lightgrey; line-height: 40px')}}
+{{=admin_history}}
 
-{{if record.admin_history is not None:}}
-{{=XML(record.admin_history.replace('\\n', '<br />'),
-        sanitize=True, permitted_tags=['br/'])}}
-{{pass}}
-<br><br>
+{{=admin}}

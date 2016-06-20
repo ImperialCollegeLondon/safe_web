@@ -420,9 +420,8 @@ db.define_table('blog_posts',
                 Field('date_posted', 'date'),
                 # The fields below are to handle approval of new records
                 Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
-                Field('admin_notes','text'),
                 Field('admin_history','text'),
-                Field('expired','boolean', default=False))
+                Field('hidden','boolean', default=False))
 
 
 ## -----------------------------------------------------------------------------
