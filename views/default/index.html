@@ -1,8 +1,85 @@
 <!-- {{left_sidebar_enabled,right_sidebar_enabled=False,('message' in globals())}} -->
 {{extend 'layout.html'}}
 
+<!-- CODE linking to FB and Twitter SDKs -->
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/sdk.js#xfbml=1&version=v2.6";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+<script>window.twttr = (function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0],
+    t = window.twttr || {};
+  if (d.getElementById(id)) return t;
+  js = d.createElement(s);
+  js.id = id;
+  js.src = "https://platform.twitter.com/widgets.js";
+  fjs.parentNode.insertBefore(js, fjs);
+ 
+  t._e = [];
+  t.ready = function(f) {
+    t._e.push(f);
+  };
+ 
+  return t;
+}(document, "script", "twitter-wjs"));</script>
+
+
 <div class="flash">{{=response.flash or session.flash or ' '}}</div>
 
-<h1>Landing page</h1>
+<div class='col-sm-8'>
 
-<p>This is just a default landing page - much of the static content has not been ported whilst I work on the functionality.</p>
+<h2>Welcome to the SAFE Project</h2>
+
+<p>The SAFE Project is one of the largest ecological experiments in the world. We are studying how biodiversity and ecosystem function change as forests are modified by human activities. As well as studying the change, we also explore whether preserving sections of forest within modified landscapes and around waterways can protect biodiversity and ecosystem function, and how much protection is needed to be effective.</p>
+
+<p>Scientific research at the SAFE Project is a huge collaboration across many institutions, each running interlinked projects to better understand the ecology of changing landscapes. At the moment, there are:</p>
+
+<ul>
+<li> {{=B(n_proj, ' projects ')}} completed, in progress or being developed at the SAFE Project.</li>
+<li> {{=B(n_researchers, ' researchers ')}} participating in planning and carrying out these projects and hundreds more who have worked with the vital data collected at the SAFE Project.</li>
+<li> {{=B(n_outputs, ' recorded outputs ')}} that researchers have linked to from this site.</li>
+</ul>
+
+<h3>Recent news</h3>
+<p>For a full list of news from the SAFE Project see here: {{=A('test', _href=URL('news','news'))}}</p>
+
+{{=news_carousel}}
+
+
+</div>	
+
+<!-- Social media feeds as sidebars -->
+
+
+<div class='col-sm-4'>
+<a href="https://twitter.com/safe_project" class="twitter-follow-button" data-show-count="false">Follow @safe_project</a>
+<div class="fb-follow" data-href="https://www.facebook.com/SAFEProjectMalaysia" data-width="300" data-layout="button" data-show-faces="true"></div>
+
+<div class='well'>
+<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+
+<a class="twitter-timeline" data-height=600
+  href="https://twitter.com/safe_project">
+Tweets from the @SAFE_project
+</a>
+</div>
+
+
+<div class='well'>
+
+<div class="fb-page" data-href="https://www.facebook.com/SAFEProjectMalaysia" data-tabs="timeline" data-height="600" data-small-header="true" data-adapt-container-width="true" data-hide-cover="false" data-show-facepile="true"><blockquote cite="https://www.facebook.com/SAFEProjectMalaysia" class="fb-xfbml-parse-ignore"><a href="https://www.facebook.com/SAFEProjectMalaysia">SAFE Project</a></blockquote></div>
+</div>
+
+<div class='well'>
+<iframe src="https://www.flickr.com/photos/safeproject/10070040533/player/" frameborder="0" allowfullscreen webkitallowfullscreen mozallowfullscreen oallowfullscreen msallowfullscreen></iframe>
+</div>
+
+
+</div>

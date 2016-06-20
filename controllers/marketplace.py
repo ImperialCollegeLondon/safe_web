@@ -169,7 +169,7 @@ def volunteer_details():
     
     if record is None:
             session.flash = CENTER(B('Not an approved volunteer offer record'), _style='color: red')
-            redirect(URL('marketplace', 'volunteer_details'))
+            redirect(URL('marketplace', 'volunteers'))
     else:
         
         # viewing permissions
@@ -215,7 +215,7 @@ def volunteer_details():
                 # delete
                 record.delete_record()
                 session.flash = CENTER(B('Volunteer offer deleted.'), _style='color:red')
-                redirect(URL('marketplace','volunteer_details'))
+                redirect(URL('marketplace','volunteers'))
         else:
             pass
         

@@ -25,7 +25,50 @@ def index():
     rendered by views/default/index.html or views/generic.html
     """
     
-    return dict(message=T('Welcome to web2py!'))
+    n_proj = db(db.project_id).count()
+    n_outputs = db(db.outputs).count()
+    n_researchers = db(db.auth_user).count()
+    
+    
+    # BUILD a news carousel of most recent five posts
+    news = db(db.news_posts).select(orderby=~db.news_posts.date_posted, limitby=(0,5))
+    
+    items = []
+    indicators =[]
+    for i, r in enumerate(news):
+        ind_args = {'_data-target': "#newsCarousel", '_data-slide-to': str(i)} 
+        if i == 0:
+            ind_args['_class'] = 'active'
+        slides_args = {'_class':'item active'} if i == 0 else {'_class':'item'}
+        
+        indicators.append(LI(**ind_args))
+        items.append(DIV(TABLE(TR(TD(IMG(_src=URL('default', 'download', args = r.thumbnail_figure),
+                                         _alt=r.title, _height='100px', _style='margin:auto')),
+                                  TD(H4(r.title), _style='padding:10px'))),
+                         _style='margin: auto;width:70%', **slides_args))
+    
+    news_carousel = DIV(#OL(indicators, _class="carousel-indicators"),
+                        DIV(items, _class="carousel-inner", _role="listbox"),
+                        A(SPAN(_class="glyphicon glyphicon-chevron-left"),
+                          SPAN('Previous', _class='sr-only'),
+                            **{'_class':"left carousel-control", '_href':"#newsCarousel",
+                               '_role':"button", '_data-slide':"prev"}),
+                        A(SPAN(_class="glyphicon glyphicon-chevron-right"),
+                          SPAN('Next', _class='sr-only'),
+                            **{'_class':"right carousel-control", '_href':"#newsCarousel",
+                               '_role':"button", '_data-slide':"next"}),
+                        **{'_id': "newsCarousel", 
+                           '_class':"carousel slide", 
+                           '_style':"overflow:hidden",
+                           '_data-ride':"carousel"})
+    
+    
+    print DIV(**{'_id': "newsCarousel", 
+                           '_class':"carousel slide", 
+                           '_data-ride':"carousel"})
+    
+    return dict(n_proj=n_proj, n_outputs=n_outputs, n_researchers=n_researchers,
+                news_carousel=news_carousel)
 
 def todo():
     

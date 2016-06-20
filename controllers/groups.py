@@ -29,14 +29,20 @@ def group_request():
     
     # get a Set of rows of available groups to autocreate a table
     # omitting the autocreated user groups, which aren't used at all
-    # and perhaps could be suppressed
+    # and are now suppressed
     groups = db(~ db.auth_group.role.startswith('user_') ).select(db.auth_group.role,db.auth_group.description)
+    
+    groups = TABLE(TR(TH('Group name'), TH('Description')),
+                   *[TR(TD(r.role),TD(r.description)) for r in groups],
+                   _width='100%', _class='table table-striped')
     
     if form.process(onvalidation=validate_group_request).accepted:
         # signal success and load the newly created record in a details page
         response.flash = CENTER(B('Request to join group submitted.'), _style='color: green')
-    else:
+    elif form.errors:
         response.flash = CENTER(B('Problem with group request.'), _style='color: red')
+    else:
+        pass
     
     return dict(form=form, groups=groups)
 
@@ -44,6 +50,9 @@ def group_request():
 def validate_group_request(form):
     
     form.vars.user_id = auth.user.id
+    
+    if form.vars.justification == '':
+        form.errors.justification = 'You must provide a short justification for joining the group'
 
 
 @auth.requires_membership('admin')
