@@ -2,7 +2,9 @@
 import datetime
 import dateutil.parser
 import requests
-
+from collections import Counter
+from gluon.contrib import simplejson
+import os
 
 ## -----------------------------------------------------------------------------
 ## A collection of controllers handling mostly static information pages
@@ -51,6 +53,35 @@ def funders():
 def ecological_monitoring():
     
     return response.render()
+
+def research_areas():
+    
+    proj_query = db(db.project_id.project_details_id == db.project_details.id)
+    research_areas = proj_query.select(db.project_details.research_areas)
+    
+    ra_list = [r.research_areas for r in research_areas]
+    ra_list = [item for sublist in ra_list for item in sublist]
+    ra_table = Counter(ra_list)
+    
+    f = os.path.join(request.folder, 'private','content/en/info/research_areas.json')
+    content = simplejson.load(open(f))
+    
+    content_formatted = []
+    for k in content.keys():
+        block = DIV(H3(k),
+                    IMG(_src=URL('static', str(content[k]['image'])), 
+                        _width=150, _align='left', 
+                        _style='margin:0px 15px 15px 0px'),
+                    P(content[k]['text']),
+                    P(B(ra_table[k], ' projects'), ' are currently tagged with this research area. See them ',
+                      A('here', _href=URL('projects','projects', 
+                        vars={'keywords':'project_details.research_areas contains "' + k + '"'}))))
+        
+        content_formatted.append(block)
+    
+    return dict(content = content_formatted)
+
+
 
 def calendars():
     
