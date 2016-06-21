@@ -96,6 +96,10 @@ add_member_icon = SPAN('',_class="glyphicon glyphicon-plus-sign",
                           _style="color:green;font-size: 1.6em;", 
                           _title='Add member')
 
+hide_glyph = SPAN('', _class="glyphicon glyphicon-eye-close")
+visib_glyph = SPAN('', _class="glyphicon glyphicon-eye-open")
+hide_style = "padding:3px 10px;background:darkred"
+visib_style = "padding:3px 10px;background:darkgreen"
 ## -----------------------------------------------------------------------------
 ## SAFE TABLE DEFINITIONS
 ## -- TODO - look at UUIDs in definitions for integration with EarthCape
@@ -125,8 +129,7 @@ add_member_icon = SPAN('',_class="glyphicon glyphicon-plus-sign",
 db.define_table('project_id', 
     Field('uuid', length=64, default=uuid.uuid4),
     Field('project_details_id', 'integer'),
-    Field('project_details_uuid', length=64)
-    )
+    Field('project_details_uuid', length=64))
 
 
 db.define_table('project_details',
@@ -438,7 +441,8 @@ db.define_table('news_posts',
                 # who posted it and when
                 Field('poster_id', 'reference auth_user'),
                 Field('date_posted', 'date'),
-                Field('expired', 'boolean', default = False))
+                Field('admin_history','text'),
+                Field('hidden', 'boolean', default = False))
 
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)

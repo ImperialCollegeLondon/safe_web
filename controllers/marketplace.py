@@ -540,7 +540,7 @@ def help_request_details():
                    (db.project_members.project_id == db.project_id.id))
         
         # viewing permissions
-        if query.count() > 0 and record.admin_status != 'Submitted':
+        if (query.count() > 0 and record.admin_status != 'Submitted') or auth.has_membership('admin'):
             # coordinators can edit Approved and Rejected
             buttons = [TAG.BUTTON('Update and resubmit', _type="submit", _class="button btn btn-default",
                                    _style='padding: 5px 15px 5px 15px;', _name='update'), 

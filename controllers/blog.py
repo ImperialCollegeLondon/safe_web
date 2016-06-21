@@ -287,11 +287,6 @@ def administer_blogs():
 @auth.requires_membership('admin')
 def manage_blogs():
     
-    hide_glyph = SPAN('', _class="glyphicon glyphicon-eye-close")
-    visib_glyph = SPAN('', _class="glyphicon glyphicon-eye-open")
-    hide_style = "padding:3px 10px;background:darkred"
-    visib_style = "padding:3px 10px;background:darkgreen"
-    
     links = [dict(header = '', body = lambda row: A(IMG(_src = URL('default', 
                   'download', args = row.thumbnail_figure), _height = 100))),
              dict(header = '', 
@@ -299,11 +294,11 @@ def manage_blogs():
                                        SPAN('View'), _class="button btn btn-default", 
                                        _href=URL("blog","blog_details", args=[row.id], user_signature=True),
                                        _style='padding: 3px 5px 3px 5px;')),
-            dict(header = '', 
-                 body = lambda row: A(hide_glyph if row.hidden else visib_glyph,
-                                      _class="button btn btn-default", 
-                                      _href=URL("blog","blog_hide", args=[row.id], user_signature=True),
-                                      _style=hide_style if row.hidden else visib_style))] 
+             dict(header = '', 
+                  body = lambda row: A(hide_glyph if row.hidden else visib_glyph,
+                                       _class="button btn btn-default", 
+                                       _href=URL("blog","blog_hide", args=[row.id], user_signature=True),
+                                       _style=hide_style if row.hidden else visib_style))] 
     
     db.blog_posts.thumbnail_figure.readable=False
     db.blog_posts.hidden.readable=False
