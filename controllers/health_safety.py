@@ -32,13 +32,9 @@ def health_and_safety():
     #   and we have a right to view it (Admin or Project Coordinator)
     user_record = db.auth_user(uid)
     
-    if uid == auth.user.id:
+    if int(uid) == auth.user.id:
         if user_record.h_and_s_id is None:
-            # create a new record for this user and hard link to auth_user
-            hs_id = db.health_and_safety.insert(user_id = uid)
-            hs_record = db.health_and_safety(hs_id)
-            user_record.h_and_s_id = hs_id
-            user_record.update_record()
+            hs_record = None
         else:
             hs_record = db.health_and_safety(user_record.h_and_s_id)
         readonly = False
@@ -49,7 +45,7 @@ def health_and_safety():
                             (db.project_members.is_coordinator == 'T')).select()
         is_coordinator_for_user = any([auth.user.id == r.user_id for r in project_coords])
         
-        if not auth.has_membership('admin') or not is_coordinator_for_user:
+        if not auth.has_membership('admin') and not is_coordinator_for_user:
             session.flash = CENTER(B('You do not have access rights to the H&S record for this user', _style='color:red;'))
             redirect(URL('default','index'))
         
@@ -60,7 +56,8 @@ def health_and_safety():
             hs_record = db.health_and_safety(user_record.h_and_s_id)
         readonly = True
     
-    # lock the widget for user_id
+    # lock the widget for user_id and make it use the uid as a default
+    db.health_and_safety.user_id.default = uid
     db.health_and_safety.user_id.writable = False
     db.health_and_safety.date_last_edited.readable = False
     db.health_and_safety.date_last_edited.writable = False
@@ -78,11 +75,14 @@ def health_and_safety():
         #- this field is primarily to avoid a lookup to just to 
         #  populate links from visit and reservation details pages
         db(db.auth_user.id == auth.user.id).update(h_and_s_id = form.vars.id)
+        
         response.flash = CENTER(B('Thanks for updating your health and safety information.'), _style='color: green')
+        redirect(URL('health_safety','health_and_safety', args=uid))
     elif form.errors:
         response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
     else:
         pass
+    
     
     return dict(form=form)
 
@@ -94,6 +94,7 @@ def validate_health_and_safety(form):
     """
     form.vars.date_last_edited = datetime.date.today().isoformat()
 
+
 @auth.requires_membership('admin')
 def admin_view_health_and_safety():
     
@@ -101,15 +102,13 @@ def admin_view_health_and_safety():
     provides access to the health and safety information for admin
     """
     
-    user_id = request.args(0)
-        
-    # look for an existing record
-    rows = db(db.health_and_safety.user_id == user_id).select()
-    if len(rows) > 0:
-        # get the form with the existing or new record
-        form = SQLFORM(db.health_and_safety, record=user_id, 
-                       showid=False, labels={'user_id': 'Name'},
-                       readonly=True)
-    else:
-        form = None
+    # get the form with the existing or new record
+    form = SQLFORM.grid(db.health_and_safety.id == db.auth_user.h_and_s_id,
+                        fields = [db.auth_user.id, db.auth_user.last_name, db.auth_user.first_name],
+                        editable= False,
+                        create=False,
+                        deletable=False,
+                        viewargs = {'showid':False}
+                        )
+    
     return dict(form=form)
