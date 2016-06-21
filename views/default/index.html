@@ -31,7 +31,7 @@
 }(document, "script", "twitter-wjs"));</script>
 
 
-<div class="flash">{{=response.flash or session.flash or ' '}}</div>
+
 
 <div class='col-sm-8'>
 
@@ -43,12 +43,14 @@
 
 <ul>
 <li> {{=B(n_proj, ' projects ')}} completed, in progress or being developed at the SAFE Project.</li>
+<li> {{=B(len(ra_string), ' research areas ')}} that cover the breadth of research at the SAFE Project.</li>
+
 <li> {{=B(n_researchers, ' researchers ')}} participating in planning and carrying out these projects and hundreds more who have worked with the vital data collected at the SAFE Project.</li>
 <li> {{=B(n_outputs, ' recorded outputs ')}} that researchers have linked to from this site.</li>
 </ul>
 
 <h3>Recent news</h3>
-<p>For a full list of news from the SAFE Project see here: {{=A('test', _href=URL('news','news'))}}</p>
+<p>See {{=A('here', _href=URL('news','news'))}} for all the news from the SAFE Project.</p>
 
 {{=news_carousel}}
 
@@ -59,8 +61,8 @@
 
 
 <div class='col-sm-4'>
-<a href="https://twitter.com/safe_project" class="twitter-follow-button" data-show-count="false">Follow @safe_project</a>
-<div class="fb-follow" data-href="https://www.facebook.com/SAFEProjectMalaysia" data-width="300" data-layout="button" data-show-faces="true"></div>
+<!-- <a href="https://twitter.com/safe_project" class="twitter-follow-button" data-show-count="false">Follow @safe_project</a>
+<div class="fb-follow" data-href="https://www.facebook.com/SAFEProjectMalaysia" data-width="300" data-layout="button" data-show-faces="true"></div> -->
 
 <div class='well'>
 <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
@@ -77,8 +79,9 @@ Tweets from the @SAFE_project
 <div class="fb-page" data-href="https://www.facebook.com/SAFEProjectMalaysia" data-tabs="timeline" data-height="600" data-small-header="true" data-adapt-container-width="true" data-hide-cover="false" data-show-facepile="true"><blockquote cite="https://www.facebook.com/SAFEProjectMalaysia" class="fb-xfbml-parse-ignore"><a href="https://www.facebook.com/SAFEProjectMalaysia">SAFE Project</a></blockquote></div>
 </div>
 
-<div class='well'>
-<iframe src="https://www.flickr.com/photos/safeproject/10070040533/player/" frameborder="0" allowfullscreen webkitallowfullscreen mozallowfullscreen oallowfullscreen msallowfullscreen></iframe>
+<div class='well' style='padding: 5px 19px 19px 19px'>
+<h4 style='margin:5px'>SAFE Project on {{=A(IMG(_src=URL('static','images/white-flickr.png'), _width="60", _height="26"), _href='https://www.flickr.com/photos/safeproject/')}}</h4>
+<iframe src="https://www.flickr.com/photos/safeproject/10070040533/player/" frameborder="0" allowfullscreen webkitallowfullscreen mozallowfullscreen oallowfullscreen msallowfullscreen width=100%></iframe>
 </div>
 
 

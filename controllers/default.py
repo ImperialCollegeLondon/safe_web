@@ -4,7 +4,7 @@
 import datetime
 import dateutil.parser
 import requests
-# from collections import Counter
+from collections import Counter
 
 
 ## -----------------------------------------------------------------------------
@@ -16,7 +16,7 @@ from httplib2 import Http
 from apiclient.discovery import build
 
 ## -----------------------------------------------------------------------------
-## Static page controllers
+## Default page controllers
 ## -----------------------------------------------------------------------------
 
 def index():
@@ -25,13 +25,20 @@ def index():
     rendered by views/default/index.html or views/generic.html
     """
     
-    n_proj = db(db.project_id).count()
+    proj_query = db(db.project_id.project_details_id == db.project_details.id)
+    n_proj = proj_query.count()
+    research_areas = proj_query.select(db.project_details.research_areas)
     n_outputs = db(db.outputs).count()
     n_researchers = db(db.auth_user).count()
     
+    ra_list = [r.research_areas for r in research_areas]
+    ra_list = [item for sublist in ra_list for item in sublist]
+    ra_table = Counter(ra_list)
     
-    # BUILD a news carousel of most recent five posts
-    news = db(db.news_posts).select(orderby=~db.news_posts.date_posted, limitby=(0,5))
+    ra_string = [k + ' (' + str(v) + ')' for k, v in ra_table.iteritems()]
+    
+    # BUILD a news carousel of most recent non-hidden five posts
+    news = db(db.news_posts.hidden == 'F').select(orderby=~db.news_posts.date_posted, limitby=(0,5))
     
     items = []
     indicators =[]
@@ -44,31 +51,29 @@ def index():
         indicators.append(LI(**ind_args))
         items.append(DIV(TABLE(TR(TD(IMG(_src=URL('default', 'download', args = r.thumbnail_figure),
                                          _alt=r.title, _height='100px', _style='margin:auto')),
-                                  TD(H4(r.title), _style='padding:10px'))),
-                         _style='margin: auto;width:70%', **slides_args))
+                                  TD(A(H4(r.title), _href=URL('news','news_post', args=r.id)),
+                                    _style='padding:10px'))),
+                         _style='margin: auto;width:80%;overflow:hidden', **slides_args))
     
     news_carousel = DIV(#OL(indicators, _class="carousel-indicators"),
                         DIV(items, _class="carousel-inner", _role="listbox"),
                         A(SPAN(_class="glyphicon glyphicon-chevron-left"),
                           SPAN('Previous', _class='sr-only'),
                             **{'_class':"left carousel-control", '_href':"#newsCarousel",
-                               '_role':"button", '_data-slide':"prev"}),
+                               '_role':"button", '_data-slide':"prev",
+                               '_style':"background-image: none;background:grey;width:8%"}),
                         A(SPAN(_class="glyphicon glyphicon-chevron-right"),
                           SPAN('Next', _class='sr-only'),
                             **{'_class':"right carousel-control", '_href':"#newsCarousel",
-                               '_role':"button", '_data-slide':"next"}),
+                               '_role':"button", '_data-slide':"next",
+                               '_style':"background-image: none;background:grey;width:8%"}),
                         **{'_id': "newsCarousel", 
                            '_class':"carousel slide", 
                            '_style':"overflow:hidden",
                            '_data-ride':"carousel"})
-    
-    
-    print DIV(**{'_id': "newsCarousel", 
-                           '_class':"carousel slide", 
-                           '_data-ride':"carousel"})
-    
+   
     return dict(n_proj=n_proj, n_outputs=n_outputs, n_researchers=n_researchers,
-                news_carousel=news_carousel)
+                ra_string = ra_string, news_carousel=news_carousel)
 
 def todo():
     
