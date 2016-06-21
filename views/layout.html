@@ -159,6 +159,7 @@
       {{pass}} -->
 
       <div class="{{=middle_column}}">
+        <div class="flash">{{=response.flash or session.flash or ' '}}</div>
         {{block center}}
         {{include}}
         {{end}}
