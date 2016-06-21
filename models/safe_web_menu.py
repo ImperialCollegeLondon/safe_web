@@ -27,7 +27,8 @@ response.google_analytics_id = None
 response.menu = [
     (T('About'), True, None, [
         (T('Concept'), True, URL('info', 'concept'), []),
-        (T('Ecological Monitoring'), True, URL('info', 'ecological_monitoring'), []),
+        #(T('Ecological Monitoring'), True, URL('info', 'ecological_monitoring'), []),
+        (T('Research areas'), True, URL('info', 'research_areas'), []),
         (T('Contacts'), True, URL('people', 'contacts'), []),
         (T('The Project design'), True, URL('info', 'design'), []),
         (T('Funding and support'), True, URL('info', 'funders'), [])
@@ -123,6 +124,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (T('Manage contacts'), True, URL('people', 'manage_contacts'), []),
                         (T('Manage news'), True, URL('news', 'manage_news'), []),
                         (T('Manage blogs'), True, URL('blog', 'manage_blogs'), []),
+                        (T('Health and safety info'), True, URL('health_safety', 'admin_view_health_and_safety'), []),
                         LI(_class="divider"),
                         (B('Approvals'), False, None, None),
                         (CAT(SPAN(n['usr'], _class=badge_class['usr']),

@@ -27,6 +27,8 @@ if RESET:
     db.commit()
     
 
+admin_history = '[{}] David Orme\n ** Ported from old website'.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'))
+
 ## ------------------------------------------------------------------------
 ## LOAD EXISTING USERS
 ## NOTE - the serial id mechanism means that the web2py import regenerates id
@@ -39,7 +41,7 @@ if db(db.auth_user).count() == 0:
     
     # set up some groups
     db.auth_group.insert(role='admin',
-                         description='People who have access to the SAFE admin forms')
+                         description='People who have access to the SAFE admin functions')
     
     db.auth_group.insert(role='species_profiler',
                          description='People who can add and edit species profiles')
@@ -128,9 +130,10 @@ if db(db.project_details).count() == 0:
                                                    project_id = project_id,
                                                    version = 1,
                                                    title = row['title'],
-                                                   research_areas = row['tags'],
+                                                   research_areas = row['tags'].split('|')[1:-1],
                                                    start_date = row['start_date'],
                                                    end_date = row['end_date'],
+                                                   data_use = [],
                                                    rationale = row['methods'], # stupidly switched
                                                    methods = row['rationale'],
                                                    requires_ra = row['requires_ra'],
@@ -140,7 +143,8 @@ if db(db.project_details).count() == 0:
                                                    proposal_date = datetime.datetime.now(),
                                                    admin_status = 'Approved',
                                                    legacy_project_id = row['Code'],
-                                                   which_animal_taxa = '||')
+                                                   which_animal_taxa = '||',
+                                                   admin_history = admin_history)
             
             # link the project_id to the details
             details = db.project_details(details_id)
@@ -241,6 +245,7 @@ if db(db.outputs).count() == 0:
                               url = row['url'],
                               doi = row['doi'],
                               admin_status = 'Approved',
+                              admin_history = admin_history,
                               legacy_output_id = row['legacy_output_id'])
 
             db.commit()
@@ -387,7 +392,7 @@ if db(db.blog_posts).count() == 0:
                               date_posted = row['date_posted'],
                               admin_status = 'Approved',
                               user_id = user_id, 
-                              # admin_id = 1
+                              admin_history = admin_history 
                               )
             db.commit()
 
@@ -435,8 +440,34 @@ if db(db.news_posts).count() == 0:
                               content = row['content'],
                               date_posted = row['date_posted'],
                               poster_id = user_id,
+                              admin_history = admin_history 
                               )
             db.commit()
+
+    csvfile.close()
+
+## ------------------------------------------------------------------------
+## LOAD H AND S
+## ------------------------------------------------------------------------
+
+
+# try and load existing outputs
+if db(db.health_and_safety).count() == 0:
+
+    # load definition files
+    data_file = os.path.join(request.folder, 'private/db_preload_data/final_h_and_s.csv')
+    
+    # match up legacy IDs
+    with open(data_file) as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            
+            usr = db(db.auth_user.legacy_user_id == row['legacy_user_id']).select().first()
+
+            # now insert all the information
+            id = db.health_and_safety.insert(user_id = usr.id,
+                                             **db.health_and_safety._filter_fields(row))
+            usr.update_record(h_and_s_id = id)
 
     csvfile.close()
 
