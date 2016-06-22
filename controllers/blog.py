@@ -100,7 +100,7 @@ def blog_details():
                        fields=['thumbnail_figure','authors','title','content'], 
                        showid=False)
         
-        if form.process(onvalidation=validate_blog_post).accepted:
+        if form.validate(onvalidation=validate_blog_post):
             
             req_keys = request.vars.keys()
             
