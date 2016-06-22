@@ -10,7 +10,9 @@ This is the bitbucket repository for the code underlying the SAFE website. The w
 The overview is:
 
   1. Create and Amazon EC2 instance - the free tier options provide a reasonable processing and disk space
-  2. In order to make 
+  2. In order to enable SSH, we're using the LetsEncrypt software and certification authority.
+  3. The DB backend for the website is running in PostgreSQL on an Amazon RDS instance. This is so that the DB can be accessed by Earthcape as well as by the website, otherwise we could just run it from a local sqlite database.
+  4. Backup. Amazon Cloudwatch allows scheduling of snapshots of the volume. These are incremental, so daily backups are just a matter of creating a rule on Cloudwatch. However, because the DB is external, that also needs backup, so we need to schedule a db dump into the volume, which can then be backed up by the snapshot.
 
 
 ### Connecting to the EC2 instance by SSH ###
@@ -21,9 +23,11 @@ You'll get a PEM file from Amazon when you create the EC2 instance. This is a ke
     chmod 400 AWS_SAFE_Web.pem
     ssh -i AWS_SAFE_Web.pem ubuntu@ec2-52-51-38-168.eu-west-1.compute.amazonaws.com
 
+**Note that this file contains the keys to the whole server** - it should not be saved anywhere publically accessible or shared with people outside the project admin.
+
 ### Enabling HTTPS ###
 
-We're the LetsEncrypt open source certification. These commands install LetsEncrypt and load any required packages.
+We're  using the LetsEncrypt open source certification. These commands install LetsEncrypt and load any required packages.
 
     git clone https://github.com/letsencrypt/letsencrypt
     cd letsencrypt
@@ -188,7 +192,7 @@ or possibly, if you can't figure out what sets schema permissions
     WHERE pg_stat_activity.datname = 'safe_web2py'
       AND pid <> pg_backend_pid();
     -- recreate
-    \c template0
+    \c template1
     drop database safe_web2py;
     create database safe_web2py;
 

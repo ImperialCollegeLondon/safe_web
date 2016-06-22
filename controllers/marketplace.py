@@ -465,35 +465,35 @@ def new_help_request():
         else:
             pass
     
-    # package in controller
-    form.custom.widget.work_description['_rows'] = 4
-    form.custom.widget.start_date['_class'] = "form-control input-sm"
-    form.custom.widget.end_date['_class'] = "form-control input-sm"
+        # package in controller
+        form.custom.widget.work_description['_rows'] = 4
+        form.custom.widget.start_date['_class'] = "form-control input-sm"
+        form.custom.widget.end_date['_class'] = "form-control input-sm"
     
-    form = FORM(DIV(DIV(H5('Research visit details'), _class="panel-heading"),
-                    DIV(form.custom.begin, 
-                        DIV(LABEL('Project:', _class="control-label col-sm-2" ),
-                            DIV(form.custom.widget.project_id,  _class="col-sm-10"),
-                            _class='row', _style='margin:10px 10px'),
-                        DIV(LABEL('Work description:', _class="control-label col-sm-2" ),
-                            DIV(form.custom.widget.work_description,  _class="col-sm-10"),
-                            _class='row', _style='margin:10px 10px'),
-                        DIV(LABEL('Dates:', _class="control-label col-sm-2" ),
-                            DIV(DIV(form.custom.widget.start_date,
-                                    SPAN('to', _class="input-group-addon input-sm"),
-                                    form.custom.widget.end_date,
-                                    _class="input-daterange input-group", _id="help_datepicker"),
-                                _class='col-sm-10'),
-                            _class='row', _style='margin:10px 10px'),
-                        DIV(DIV(form.custom.submit,  _class="col-sm-10 col-sm-offset-2"),
-                            _class='row', _style='margin:10px 10px'),
-                        form.custom.end,
-                       _class='panel_body'),
-                    _class="panel panel-primary"),
-                    datepicker_script(id = 'help_datepicker',
-                                      autoclose = 'true',
-                                      startDate ='"+0d"',
-                                      endDate ='""'))
+        form = FORM(DIV(DIV(H5('Research visit details'), _class="panel-heading"),
+                        DIV(form.custom.begin, 
+                            DIV(LABEL('Project:', _class="control-label col-sm-2" ),
+                                DIV(form.custom.widget.project_id,  _class="col-sm-10"),
+                                _class='row', _style='margin:10px 10px'),
+                            DIV(LABEL('Work description:', _class="control-label col-sm-2" ),
+                                DIV(form.custom.widget.work_description,  _class="col-sm-10"),
+                                _class='row', _style='margin:10px 10px'),
+                            DIV(LABEL('Dates:', _class="control-label col-sm-2" ),
+                                DIV(DIV(form.custom.widget.start_date,
+                                        SPAN('to', _class="input-group-addon input-sm"),
+                                        form.custom.widget.end_date,
+                                        _class="input-daterange input-group", _id="help_datepicker"),
+                                    _class='col-sm-10'),
+                                _class='row', _style='margin:10px 10px'),
+                            DIV(DIV(form.custom.submit,  _class="col-sm-10 col-sm-offset-2"),
+                                _class='row', _style='margin:10px 10px'),
+                            form.custom.end,
+                           _class='panel_body'),
+                        _class="panel panel-primary"),
+                        datepicker_script(id = 'help_datepicker',
+                                          autoclose = 'true',
+                                          startDate ='"+0d"',
+                                          endDate ='""'))
     
     return dict(form=form)
 
