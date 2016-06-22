@@ -53,27 +53,25 @@ def new_topic():
                          fields = ['topic',
                                    'message'])
     
-    if form.process(onvalidation=validate_new_topic).accepted:
-        id = db.discussion_topics.insert(**db.discussion_topics._filter_fields(form.vars))
-        form.vars.topic_id = id
-
+    if form.process().accepted:
         
-        redirect(URL('discussion','discussion_board'))
+        # insert topic
+        date = datetime.datetime.utcnow().isoformat(),
+        topic = {'topic': form.vars.topic, 'topic_user_id': auth.user.id,
+                 'topic_date': date, 'n_views': 0, 'n_messages': 1}
+        id = db.discussion_topics.insert(**topic)
+        
+        # insert first message
+        msg =  {'topic_id': id, 'parent_id': None, 'depth': 0,
+                'message': form.vars.message, 'message_user_id': auth.user.id,
+                'message_date':date}
+
+        db.discussion_message.insert(**msg)
+        
+        redirect(URL('discussion','view_topic', args=id))
     
     return dict(form=form)
 
-
-def validate_new_topic(form):
-    
-    # input a bunch of housekeeping information
-    
-    form.vars.topic_user_id = auth.user.id
-    form.vars.message_user_id = auth.user.id
-    form.vars.topic_date = datetime.datetime.utcnow().isoformat()
-    form.vars.message_date = datetime.datetime.utcnow().isoformat()
-    form.vars.depth = 0
-    form.vars.n_views = 0
-    form.vars.n_messages = 1
 
 
 @auth.requires_login()
