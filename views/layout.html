@@ -43,84 +43,34 @@
     middle_column = {0: mc0, 1: mc1, 2: mc2}[
     (left_sidebar_enabled and 1 or 0)+(right_sidebar_enabled and 1 or 0)]
     }} -->
-<style type="text/css">
-
-.banner_image {
-    width: 100%;
-    height: 150px;
-    border: 1px solid green;
-}
-
-.banner_image img{
-    object-fit: cover;
-}
-
-.logo_image {
-    height: 50px;
-    border: 2px solid black;
-    position: absolute;
-    right: 20px;
-    top: 120px;
-}
-</style>
 
   </head>
   <body style='padding-top:0px;'>
     <!--[if lt IE 8]><p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p><![endif]-->
 
-<!-- TODO
-     - find out where the defined header lives and replace with the new one!
-     - Work out to fit the image into the div rather than stretching it horribly.
--->
 
     <!-- Masthead ===================================== -->
     <!-- {{block header}}
     {{end}} -->
     <!-- Main ========================================= -->
 
-	<!-- playing with rotating banners in a hacky way -->
-	{{banners = ['images/banners/download.jpg',
-			'images/banners/experiment.jpg',
-			'images/banners/funders.jpg',
-			'images/banners/home.jpg',
-			'images/banners/outputs.jpg',
-			'images/banners/personnel.jpg',
-			'images/banners/science.jpg',
-			'images/banners/working.jpg']}}
-	{{import random}}
-	{{this_banner= random.choice(banners)}}
+
+{{=H2('This is a beta version of the new website - any data entered is for testing purposes only and will be discarded before the site is relaunched. Not for live use!', _style='color:red;')}}
 
 
-	<!-- Similarly playing with header bar layout in a hacky  -->
-    {{=H2('This is a beta version of the new website - any data entered is for testing purposes only and will be discarded before the site is relaunched. Not for live use!', _style='color:red;')}}
-    <!-- <div class="container-fluid" > -->
-    <!-- <div class="nav-header"> -->
-    <div style="position: relative; left: 0; top: 0;">
-	<!-- playing with rotating banners in a hacky way -->
-	
-        {{=IMG(_src=URL('static', this_banner), _height='130px',
-                 _style="position: absolute; top: 0px; left: 0px; min-width:100%; flex-shrink:0;"),
-        }}
-        {{=A(IMG(_src=URL('static','images/SAFE_acronym_150.png'), _height='120px',
-               _style="position: relative; top: 10px; left: 83%;"),
-    	   _href=URL('default','index'))
-       }}
-    </div>
-    <!-- </div> -->
-    <!-- </div> -->
-    
-        <!-- Language handling code -->
-    {{lang='en'}}
-    {{en_URL = IMG(_src=URL('static','images/gb.svg'), _height='12px') + XML('&nbsp;')*2 + 'en'}}
-    {{my_URL = IMG(_src=URL('static','images/my.svg'), _height='12px') + XML('&nbsp;')*2 + 'my'}}
-    {{if lang == 'en': 
-        active_lang_html = en_URL 
-        inactive_lang_html = my_URL
-      elif lang == 'my':
-        inactive_lang_html = en_URL
-        active_lang_html = my_URL
-    }}
-    {{pass}}
+<!-- Code to  generate a header image with random banner image -->
+{{import os}}
+{{import random}}
+{{banner_dir = os.path.join(request.folder, 'static','images','banners')}}
+{{banners = [fn for fn in os.listdir(banner_dir)
+              if any(fn.endswith(ext) for ext in  ['jpg', 'bmp', 'png', 'gif'])]}}
+{{this_banner= URL('static', os.path.join('images','banners',random.choice(banners)))}}
+
+
+<div style="width:100%;min-height:100px;position:relative; background-image:url({{=this_banner}});padding:0px">
+{{=IMG(_src=URL('static','images/SAFE_acronym_150.png'), _height='85px', _style='position:absolute;right:3px;bottom:3px')}}
+</div>
+
     
     <!-- Navbar ======================================= -->
     <nav class="navbar navbar-default" role="navigation"> <!-- TODO think about navbar setup and navbar-fixed-top -->
@@ -136,8 +86,8 @@
         </div>
         <div class="collapse navbar-collapse navbar-ex1-collapse">
           <ul class="nav navbar-nav navbar-right">
-	    {{=MENU([(active_lang_html, True, None, [
-        	    	(inactive_lang_html, True, None, [])])],
+	    {{=MENU([('EN', True, None, [
+        	    	('MY', True, None, [])])],
 		 _class='nav navbar-nav',li_class='dropdown',ul_class='dropdown-menu')}}
             {{='auth' in globals() and auth.navbar('Welcome',mode='dropdown') or ''}}
           </ul>
