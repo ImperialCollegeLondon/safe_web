@@ -5,7 +5,7 @@ import datetime
 import dateutil.parser
 import requests
 from collections import Counter
-
+import random
 
 ## -----------------------------------------------------------------------------
 ## Used to access the Google Calendar API
@@ -37,23 +37,50 @@ def index():
     
     ra_string = [k + ' (' + str(v) + ')' for k, v in ra_table.iteritems()]
     
-    # BUILD a news carousel of most recent non-hidden five posts
-    news = db(db.news_posts.hidden == 'F').select(orderby=~db.news_posts.date_posted, limitby=(0,5))
+    # BUILD a carousel of recent stuff - 4 each of news, blog, project, outputs
+    n_items = 4
+    news = db(db.news_posts.hidden == 'F').select(orderby=~db.news_posts.date_posted, limitby=(0,n_items))
+    blog = db((db.blog_posts.hidden == 'F') &
+              (db.blog_posts.admin_status == 'Approved')).select(orderby=~db.blog_posts.date_posted, limitby=(0,n_items))
+    proj = db((db.project_id.project_details_id == db.project_details.id) &
+              (db.project_details.admin_status == 'Approved')).select(db.project_details.ALL, orderby=~db.project_details.start_date, limitby=(0,n_items))
+    outp = db(db.outputs.admin_status == 'Approved').select(orderby=~db.outputs.submission_date, limitby=(0,n_items))
     
-    items = []
-    indicators =[]
-    for i, r in enumerate(news):
-        ind_args = {'_data-target': "#newsCarousel", '_data-slide-to': str(i)} 
-        if i == 0:
-            ind_args['_class'] = 'active'
-        slides_args = {'_class':'item active'} if i == 0 else {'_class':'item'}
-        
-        indicators.append(LI(**ind_args))
-        items.append(DIV(TABLE(TR(TD(IMG(_src=URL('default', 'download', args = r.thumbnail_figure),
-                                         _alt=r.title, _height='100px', _style='margin:auto')),
-                                  TD(A(H4(r.title), _href=URL('news','news_post', args=r.id)),
-                                    _style='padding:10px'))),
-                         _style='margin: auto;width:80%;overflow:hidden', **slides_args))
+    # MERGE - need to extract an id number, a title and an image  and build a link for each
+    to_show = [proj, news, blog, outp]
+    
+    titles = [r.title for sublist in to_show for r in sublist]
+    
+    easy_ids = [r.id for sublist in to_show[1:] for r in sublist]
+    proj_ids = [r.project_id for r in proj]
+    ids = proj_ids + easy_ids
+    
+    cont = ['projects','news','blogs', 'outputs']
+    cont = [i for i in cont for _ in xrange(n_items)]
+    func = ['project_view','news_post', 'blog_post', 'view_output']
+    func = [i for i in func for _ in xrange(n_items)]
+    kind = ['Project: ','News: ','Blog: ', 'Output: ']
+    kind = [i for i in kind for _ in xrange(n_items)]
+    
+    link_url = [URL(c,r, args=i) for c,r,i in zip(cont, func, ids)]
+    
+    thumb_url = [URL('default', 'download', args = r.thumbnail_figure) for sublist in to_show for r in sublist]
+    
+    # ind = range(4 * n_items)
+    #
+    # ind_args = [{'_data-target': "#newsCarousel", '_data-slide-to': str(i)} for i in ind]
+    # ind_args[0]['_class'] = 'active'
+    # indicators = [LI(**args) for args in ind_args]
+    
+    slides_args = [{'_class':'item'}] * 4 * n_items
+    slides_args[0] = {'_class':'item active'}
+    
+    items = [DIV(DIV(IMG(_src=th, _height='100px'), _class='col-sm-3'),
+                 DIV(A(H4(kn,ti), _href=ln), _class='col-sm-9'),
+                 _style='margin: auto;width:85%;overflow:hidden', **args)
+             for th, kn, ti, ln, args in zip(thumb_url, kind, titles, link_url, slides_args)]
+    
+    random.shuffle(items)
     
     news_carousel = DIV(#OL(indicators, _class="carousel-indicators"),
                         DIV(items, _class="carousel-inner", _role="listbox"),
@@ -74,6 +101,8 @@ def index():
    
     return dict(n_proj=n_proj, n_outputs=n_outputs, n_researchers=n_researchers,
                 ra_string = ra_string, news_carousel=news_carousel)
+
+
 
 def todo():
     
@@ -314,5 +343,3 @@ def call():
     supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv
     """
     return service()
-
-
