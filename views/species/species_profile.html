@@ -53,22 +53,30 @@ hr {
 
 
 <hr>
-{{=TABLE(TR(TD(IMG(_src=species.image_link, _height='85px'), 
-	       _rowspan=2, _style='width:130px', ),
-	    TD(H3(species.common_name)),
-	    TD(IMG(_src=URL('static', rlist[species.iucn_status]), _height='85'), 
-	       _rowspan=2, _style='text-align:right')),
-	 TR(TD(H4(I(species.binomial)))),_width='100%')}}
+{{=DIV(DIV(IMG(_src=species.image_link, _height='85px'), _class='col-sm-3'),
+       DIV(H3(species.common_name), H4(I(species.binomial)), _class='col-sm-7'),
+       DIV(IMG(_src=URL('static', rlist[species.iucn_status]), _height='85'), _class='col-sm-2'),
+       _class='row')}}
+
 <hr>
 
-
-{{=TABLE(TR(TD('Global populations'), TD('Local abundance'), TD('In plantations'), TD('In logged areas'), T('In primary forest')),
-         TR(TD(IMG(_src=URL('static', tlist[species.global_population]), _height='85px')),
-            TD(IMG(_src=URL('static', alist[species.local_abundance]),_height='85px')),
-	    TD(IMG(_src=URL('static', palmlist[str(species.in_plantation)]),_height='85px')),
-	    TD(IMG(_src=URL('static', loglist[str(species.in_logged)]),_height='85px')),
-	    TD(IMG(_src=URL('static', prilist[str(species.in_primary)]),_height='85px'))),
-	    _style='text-align:center; table-layout: fixed', _width='100%')}}
+{{=DIV(DIV(CENTER(H5('Global populations'), 
+           IMG(_src=URL('static', tlist[species.global_population]), _height='85px')), 
+           _class='col-sm-2 col-sm-offset-1'),
+       DIV(CENTER(H5('Local abundance'), 
+                  IMG(_src=URL('static', alist[species.local_abundance]), _height='85px')), 
+                  _class='col-sm-2'),
+       DIV(CENTER(H5('In plantations'), 
+                  IMG(_src=URL('static', palmlist[str(species.in_plantation)]), _height='85px')), 
+                  _class='col-sm-2'),
+       DIV(CENTER(H5('In logged areas'), 
+                  IMG(_src=URL('static', loglist[str(species.in_logged)]), _height='85px')), 
+                  _class='col-sm-2'),
+       DIV(CENTER(H5('In primary forest'), 
+                  IMG(_src=URL('static', prilist[str(species.in_primary)]), _height='85px')), 
+                  _class='col-sm-2'),
+       _class='row')
+}}
 
 <hr>
 
@@ -99,15 +107,16 @@ hr {
 
 
 <br>
+{{=H4('Search for this species on:')}}
 
 
 <br>
-{{=TABLE(TR(TD(A(IMG(_src=URL('static', 'images/species/Google_scholar.png'), _height='50px'), _href=species.google_scholar_link)),
-            TD(A(IMG(_src=URL('static', 'images/species/Wikipedia.png'), _height='50px'), _href=species.wikipedia_link)),
-            TD(A(IMG(_src=URL('static', 'images/species/eol.png'), _height='50px'), _href=species.eol_link)),
-            TD(A(IMG(_src=URL('static', 'images/species/iucn.png'), _height='50px'), _href=species.iucn_link)),
-            TD(A(IMG(_src=URL('static', 'images/species/arkive.png'), _height='50px'), _href=species.arkive_link)),
-            TD(A(IMG(_src=URL('static', 'images/species/gbif.png'), _height='50px'), _href=species.gbif_link))), 
+{{=TABLE(TR(TD(A(IMG(_src=URL('static', 'images/species/Google_scholar.png'), _height='50px'), _href=species.google_scholar_link, _target='_blank')),
+            TD(A(IMG(_src=URL('static', 'images/species/Wikipedia.png'), _height='50px'), _href=species.wikipedia_link, _target='_blank')),
+            TD(A(IMG(_src=URL('static', 'images/species/eol.png'), _height='50px'), _href=species.eol_link, _target='_blank')),
+            TD(A(IMG(_src=URL('static', 'images/species/iucn.png'), _height='50px'), _href=species.iucn_link, _target='_blank')),
+            TD(A(IMG(_src=URL('static', 'images/species/arkive.png'), _height='50px'), _href=species.arkive_link, _target='_blank')),
+            TD(A(IMG(_src=URL('static', 'images/species/gbif.png'), _height='50px'), _href=species.gbif_link, _target='_blank'))), 
             _style='text-align:center; table-layout: fixed', _width='100%')}}
             
 <br>
