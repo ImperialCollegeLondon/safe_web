@@ -45,16 +45,16 @@ def projects():
     db.project_details.data_sharing.readable = False 
     db.project_details.legacy_project_id.readable = False 
     
-    # hide picture link - we need it in the fields, to use it in the links
+    # hide thumbnail_figure link - we need it in the fields, to use it in the links
     # but we don't want to show the field itself
-    db.project_details.picture.readable = False
+    db.project_details.thumbnail_figure.readable = False
     
     # create a links list that:
     # 1) displays a thumbnail of the  project image
     # 2) creates a custom button to pass the row id to a custom view 
     
-    links = [dict(header = '', body = lambda row: IMG(_src = URL('static', 'images/default_thumbnails/missing_project.png') if row.project_details.picture in [None,''] else 
-                                                             URL('default', 'download', args = row.project_details.picture),
+    links = [dict(header = '', body = lambda row: IMG(_src = URL('static', 'images/default_thumbnails/missing_project.png') if row.project_details.thumbnail_figure in [None,''] else 
+                                                             URL('default', 'download', args = row.project_details.thumbnail_figure),
                                                         _height = 100)),
              dict(header = '', 
                   body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
@@ -68,9 +68,10 @@ def projects():
     
     form = SQLFORM.grid(db.project_id.project_details_id == db.project_details.id, csv=False, 
                         fields=[db.project_details.title,
-                                # db.project_details.start_date, 
+                                db.project_details.start_date, 
                                 # db.project_details.end_date, 
-                                db.project_details.picture],
+                                db.project_details.thumbnail_figure],
+                        orderby = ~ db.project_details.start_date, 
                         maxtextlength=250,
                         deletable=False,
                         editable=False,
@@ -109,10 +110,10 @@ def project_view():
         # return a set of panels showing the content of the records links
         
         # build the view in controller and pass over to the view as a single object
-        if project_details.picture in [None, '']:
+        if project_details.thumbnail_figure in [None, '']:
             pic = URL('static', 'images/default_thumbnails/missing_project.png')
         else:
-            pic = URL('default','download', args = project_details.picture)
+            pic = URL('default','download', args = project_details.thumbnail_figure)
         
         rationale = XML(project_details.rationale.replace('\n', '<br />'), sanitize=True, permitted_tags=['br/'])
         methods = XML(project_details.methods.replace('\n', '<br />'), sanitize=True, permitted_tags=['br/'])
@@ -408,7 +409,7 @@ def project_details():
         
             form = SQLFORM(db.project_details, 
                            record = details, 
-                           fields =  ['picture', 'title', 
+                           fields =  ['thumbnail_figure', 'title', 
                                       'research_areas', 'start_date', 'end_date', 'data_use',
                                       'rationale', 'methods', 'which_animal_taxa',
                                       'destructive_sampling','destructive_sampling_info',
@@ -479,7 +480,7 @@ def project_details():
                     
                     # signal success and load the newly created record in a details page
                     session.flash = CENTER(B('SAFE project draft created.'), _style='color: green')
-                    redirect(URL('projects', 'project_details', args=[project_id, version_id]))
+                    redirect(URL('projects', 'project_details', args=[project_id, 1]))
                 else:
                     # i) update the history
                     hist_str = '[{}] {} {}\\n -- Proposal updated\\n'
@@ -510,11 +511,11 @@ def project_details():
             form.custom.widget.start_date['_class'] = "form-control input-sm"
             form.custom.widget.end_date['_class'] = "form-control input-sm"
             
-            # picture
-            if (details is None) or (details.picture in [None, '']):
+            # thumbnail_figure
+            if (details is None) or (details.thumbnail_figure in [None, '']):
                 pic = URL('static', 'images/default_thumbnails/missing_project.png')
             else:
-                pic = URL('default','download', args = details.picture)
+                pic = URL('default','download', args = details.thumbnail_figure)
             
             # - now package the widgets
             form = CAT(form.custom.begin, 
@@ -525,7 +526,7 @@ def project_details():
                                             DIV(form.custom.widget.title,  _class="col-sm-10"),
                                             _class='row'),
                                         DIV(LABEL('Picture:', _class="control-label col-sm-2" ),
-                                            DIV(form.custom.widget.picture,  _class="col-sm-10"),
+                                            DIV(form.custom.widget.thumbnail_figure,  _class="col-sm-10"),
                                             _class='row'),
                                         DIV(LABEL('Dates:', _class="control-label col-sm-2" ),
                                              DIV(DIV(form.custom.widget.start_date,
@@ -651,11 +652,11 @@ def project_details():
             
             resources = DIV(resources, _class='row', _style='margin:10px 10px;')
             
-            # picture
-            if details.picture in [None, '']:
+            # thumbnail_figure
+            if details.thumbnail_figure in [None, '']:
                 pic = URL('static', 'images/default_thumbnails/missing_project.png')
             else:
-                pic = URL('default','download', args = details.picture)
+                pic = URL('default','download', args = details.thumbnail_figure)
             
             # funding
             if details.funding in [None, '']:

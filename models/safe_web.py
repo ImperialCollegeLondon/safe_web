@@ -136,7 +136,7 @@ db.define_table('project_details',
     Field('uuid', length=64, default=uuid.uuid4),
     Field('project_id', 'reference project_id'),
     Field('version', 'integer'),
-    Field('picture','upload', uploadfolder= os.path.join(request.folder, 'uploads/images/projects')),
+    Field('thumbnail_figure','upload', uploadfolder= os.path.join(request.folder, 'uploads/images/projects')),
     Field('title','string', notnull=True),
     Field('research_areas', type='list:string',
           requires=IS_IN_SET(research_tags, multiple=True), 
@@ -206,7 +206,7 @@ db.define_table('project_link_pairs',
 
 
 db.define_table('outputs',
-    Field('picture','upload', uploadfolder= request.folder+'/uploads/images/outputs'),
+    Field('thumbnail_figure','upload', uploadfolder= request.folder+'/uploads/images/outputs'),
     Field('file','upload', uploadfolder= request.folder+'/uploads/files/outputs'),
     Field('title','string', notnull=True,
           represent = lambda value, row: A(row.title, _href=URL('outputs', 'view_output', args=row.id))

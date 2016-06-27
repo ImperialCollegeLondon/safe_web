@@ -13,18 +13,19 @@ def outputs():
     
     # create a link object that associates a row with the image uploaded for it
     links = [dict(header = '', body = lambda row: IMG(_src = URL('default', 
-                  'download', args = row.picture), _width = 100, _height = 100))]
+                  'download', args = row.thumbnail_figure), _width = 100, _height = 100))]
     
-    # we need the picture field in the fields fetched, in order to look up
-    # the picture to display as a row using links, but we don't want to actually 
+    # we need the thumbnail_figure field in the fields fetched, in order to look up
+    # the thumbnail_figure to display as a row using links, but we don't want to actually 
     # show the field itself, so:
-    db.outputs.picture.readable = False
+    db.outputs.thumbnail_figure.readable = False
     
     # subset down to approved projects
     query = (db.outputs.admin_status == 'Approved')
     
+    # we're letting the default link display for the title take us to view_output
     form = SQLFORM.grid(query = query, csv=False, 
-                        fields=[db.outputs.picture, db.outputs.title, db.outputs.format],
+                        fields=[db.outputs.thumbnail_figure, db.outputs.title, db.outputs.format],
                         maxtextlength=250,
                         deletable=False,
                         editable=False,
@@ -48,10 +49,11 @@ def view_output():
     output = db(db.outputs.id == output_id).select().first()
     
     # build the view in controller and pass over to the view as a single object
-    if output.picture not in [None, 'NA', '']:
-        pic = URL('static', 'images/default_thumbnails/missing_output.png')
+    print output.thumbnail_figure
+    if output.thumbnail_figure not in [None, 'NA', '']:
+        pic = URL('default','download', args = output.thumbnail_figure)
     else:
-        pic = URL('default','download', args = output.picture)
+        pic = URL('static', 'images/default_thumbnails/missing_output.png')
     
     if output.url not in [None, 'NA', '']:
         url = DIV(DIV(B('Output URL:'), _class='col-sm-2'), 
@@ -178,7 +180,7 @@ def output_details():
         
         # create the form
         form =  SQLFORM(db.outputs, record = output_id,
-                        fields = ['picture','file','title','description',
+                        fields = ['thumbnail_figure','file','title','description',
                                  'format', 'citation', 'doi','url'],
                         readonly=readonly,
                         showid=False,
@@ -217,11 +219,11 @@ def output_details():
         
         # now repackage the form as a more attractive DIV
         if record is not None:
-            # - picture
-            if (record is None) or (record.picture in [None, 'NA', '']):
+            # - thumbnail_figure
+            if (record is None) or (record.thumbnail_figure in [None, 'NA', '']):
                 pic = URL('static', 'images/default_thumbnails/missing_output.png')
             else:
-                pic = URL('default','download', args = record.picture)
+                pic = URL('default','download', args = record.thumbnail_figure)
         
             # - file
             if record.file not in [None, 'NA', '']:
@@ -246,16 +248,16 @@ def output_details():
                                          DIV(form.custom.widget.title,  _class="col-sm-10"),
                                          _class='row'),
                             DIV(DIV(DIV(LABEL('Upload Thumbnail:', _class="control-label col-sm-4" ),
-                                        DIV(form.custom.widget.picture,  _class="col-sm-8"),
+                                        DIV(form.custom.widget.thumbnail_figure,  _class="col-sm-8"),
                                         _class='row'),
                                     DIV(LABEL('Current Thumbnail:', _class="control-label col-sm-4" ),
                                         DIV(IMG(_src=pic, _height='100px'), _class='col-sm-8'),
                                          _class='row'),
                                     _class='col-sm-6'),
-                                DIV(DIV(LABEL('Upload File:', _class="control-label col-sm-4" ),
+                                DIV(DIV(LABEL('Upload Output File:', _class="control-label col-sm-4" ),
                                         DIV(form.custom.widget.file,  _class="col-sm-8"),
                                         _class='row'),
-                                    DIV(LABEL('Current File:', _class="control-label col-sm-4" ),
+                                    DIV(LABEL('Current Output File:', _class="control-label col-sm-4" ),
                                         DIV(dfile, _class='col-sm-8'),
                                          _class='row'),
                                     _class='col-sm-6'),
@@ -357,7 +359,9 @@ def output_details():
                      P('Please use the form below to submit a new research output to the SAFE project. ',
                        'Your submitted output will first be screened by an administrator. You will get an ',
                        'email to confirm that you have submitted an output and then another email to confirm ',
-                       'whether the output has been accepted or not.'))
+                       'whether the output has been accepted or not.'),
+                     P('Once you have submitted your output details, you will then be able to ', 
+                       B('link your output '), 'to existing projects.'))
     else:
         header = H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)
     
