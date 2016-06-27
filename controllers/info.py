@@ -48,13 +48,40 @@ def biosecurity():
 
 def funders():
     
-    return response.render()
-
-def ecological_monitoring():
+    """
+    Apart from Sime Darby at the top, the funder information is stored in a JSON
+    file that provides rows of sets of funders. Each row contains a number of image/link pairs,
+    and an overall row height. The code below packages them into bootstrap rows of DIVs with 
+    centred, containing, non-repeating background images. 
+    The number of links in a row should pack into the bootstrap 12 column grid!
+    """
     
-    return response.render()
+    
+    # load funders from the json data
+    f = os.path.join(request.folder, 'private','content/en/info/funders.json')
+    content = simplejson.load(open(f))
+    
+    funders = []
+    
+    for r in content:
+        
+        row_class = 'col-sm-' + str(12/len(r['links']))
+        
+        links = [A(DIV(_style='background-image:url(' +  URL('static', str(ln['image'])) + ');' + 
+                              'background-size:contain;background-repeat: no-repeat;background-position:center;' +
+                              'height:' + r['height'], _class=row_class),
+                       _href=ln['url']) for ln in r['links']]
+        funders.append(DIV(*links, _class='row', _style='padding:10px;'))
+    
+    return dict(funders=funders)
+
 
 def research_areas():
+    
+    """
+    Loads an image and some blurb from a JSON file for each research area
+    and looks up the number of projects associated with each area
+    """
     
     proj_query = db(db.project_id.project_details_id == db.project_details.id)
     research_areas = proj_query.select(db.project_details.research_areas)
@@ -72,7 +99,7 @@ def research_areas():
                     IMG(_src=URL('static', str(content[k]['image'])), 
                         _width=150, _align='left', 
                         _style='margin:0px 15px 15px 0px'),
-                    P(content[k]['text']),
+                    P(XML(content[k]['text'])),
                     P(B(ra_table[k], ' projects'), ' are currently tagged with this research area. See them ',
                       A('here', _href=URL('projects','projects', 
                         vars={'keywords':'project_details.research_areas contains "' + k + '"'}))))
