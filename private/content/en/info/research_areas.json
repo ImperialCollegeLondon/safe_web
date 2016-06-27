@@ -1,11 +1,11 @@
 {
 	"Biodiversity": {
 		"text": "Biologists are tracking changes in the abundance and diversity of thousands of species. Researchers are examining the effects of forest modification on important invertebrate groups such as beetles and ants, distinctive and charismatic species as hornbills and orang utans, the trees that form the structural base of a forest, fish within rivers and even blood parasites and the dreaded leeches.",
-		"image": "images/ecol_mon/biodiversity_fmt_200px.jpg"
+		"image": "images/ecol_mon/biodiversity.jpg"
 	},
 	"Water Resources": {
 		"text":  "Clean water is an essential ecosystem service that many forests provide for people, but maintaining that supply when forests are modified is a difficult task. Hydrologists at the SAFE Project are continuously monitoring water flows, sediment loads, and the nitrate and phosphate pollution from agricultural fertilisers that make it into streams and rivers. We are linking rainfall patterns to erosion from newly cleared land, and looking to see how the very shape of stream beds change when forests are modified. The findings will help scientists to quantify the level of deforestation that maintains agricultural revenues without compromising the provision of clean water supplies.",
-		"image": "images/ecol_mon/biodiversity_fmt_200px.jpg"
+		"image": "images/ecol_mon/water_resources.jpg"
 	},
 	"Infectious Diseases": {
 		"text":  "Converting forests to agriculture brings people into contact with wildlife, and this can promote the transmission of disease. To understand the magnitude of this threat, ecologists at the SAFE Project are examining how the abundance of common disease vectors such as mosquitoes changes during forest modification, and tracking the prevalence of diseases in some of the primate populations. The findings will help medical authorities manage environmental change to minimize the negative impacts on people.",
@@ -13,7 +13,7 @@
 	},
 	"Agriculture": {
 		"text":  "The primary reason behind tropical deforestation is to create land for agriculture, so it is imperative to understand the success of those agricultural enterprises and to determine what role forests might play in supporting agricultural production. Soil is an essential component of both forest and agricultural ecosystems, and at the SAFE Project we will try to understand how the conversion of forest to agriculture changes soil properties. Ecologists will monitor changes to soil structure, soil fertility, the nutrients contained within soils and how fast those nutrients are cycling. Some forest species directly benefit plantations, and we are determining which of those species play roles in controlling agricultural pests and pollinating crops, while keeping one eye on any species that might damage the crops. The findings will help scientists to quantify the level of deforestation that ensures the long term viability of agriculture is not compromised.",
-		"image": "images/ecol_mon/agriculture_fmt_200px.jpg"
+		"image": "images/ecol_mon/agriculture.jpg"
 	},
 	"Meterology and Atmospheric Science": {
 		"text":  "What happens inside a forest depends heavily on the climate, but the climate itself depends heavily on the ecology of the forest below. Climatologists and ecosystem scientists are joining forces to understand these interactions between the earth and atmosphere systems at the SAFE Project. The work involves understanding how forest structure influences forest microclimate, investigating how intact rainforest canopies buffer temperature and humidity at ground level and in the soil, as well as tracking changes in the stocks and flows of carbon in the modified forests. This includes measuring carbon dioxide emissions to the atmosphere from forest clearance and from the soils following deforestation, how rapidly the growing trees remove carbon from the atmosphere, and right down to the 'breathing rates' of individual trees. The findings will help scientists to design better strategies for minimising carbon emissions from forest modification.",
@@ -24,40 +24,40 @@
 		"image": "images/ecol_mon/ecosystem-processes-fmt_200px.jpg"
 	},
 	"Riparian": {
-		"text":  "Description to be added",
-		"image": "images/ecol_mon/biodiversity_fmt_200px.jpg"
+		"text":  "Riparian buffers are corridors of preserved forest running alongside streams and other waterways. In Sabah, riparian corridors 20 metres wide are mandated by law for all but the most minor waterways and these are thought to be important in maintaining water quality, in providing a conservation refuge, in acting as a corridor for dispersal and in providing ecosystem services to surrounding plantations. At the SAFE Project we have a designed manipulation to look at the effects of riparian buffer width and our researchers are conducting vital research on  the intrinsic value of riparian buffers and how buffer width affects that value.",
+		"image": "images/ecol_mon/riparian.jpg"
 	},
 	"Freshwater Biology": {
-		"text":  "Description to be added",
-		"image": "images/ecol_mon/biodiversity_fmt_200px.jpg"
+		"text":  "Freshwater habitats - predominantly streams and rivers - are a distinct and important part of forest ecosystems. They contain  distinctive animal and plant communities not found elsewhere in the forest and form a vital part of the life cycles of many key forest invertebrate species. Land clearance for plantation results in marked changes to runoff into streams and rivers, resulting in greater silt load and higher variance in stream throughput. Research at the SAFE project is establishing baseline data on natural freshwater communities and monitoring the effects these communities from land conversion.",
+		"image": "images/ecol_mon/freshwater.jpg"
 	},
 	"Microclimate": {
-		"text":  "Description to be added", 
-		"image": "images/ecol_mon/biodiversity_fmt_200px.jpg"
+		"text":  "Climatic conditions have profound effects on the distribution and behaviour of all species and considerable scientific attention has focussed on  the effects of large scale anthropogenic shifts in climate. However, local topography and vegetation structure generate wide variation in climatic conditions that affect species distributions and behaviour at small scales. Research at SAFE aims to measure these small scale patterns in climatic across a range of habitats and observe how they shape biological communities.",
+		"image": "images/ecol_mon/microclimate.jpg"
 	},
 	"Policy": {
-		"text": "Description to be added", 
-		"image": "images/ecol_mon/biodiversity_fmt_200px.jpg"
+		"text": "The ecological changes studied at the SAFE Project are driven by the pressing need to develop natural resources to benefit human communities. A fundamental principle of research at SAFE is to understand how such development affects ecosystem services and functions in order to provide robust scientific recommendations to policy makers on best practices for future development and the management of current projects. Research at SAFE is strongly supported by local industry and government and represents a unique partnership between biological researchers, policy makers and industry and community stakeholders.", 
+		"image": "images/ecol_mon/policy.jpg"
 	},
 	"Plant Science": {
-		"text": "Description to be added", 
-		"image": "images/ecol_mon/biodiversity_fmt_200px.jpg"
+		"text": "Plants are the fundamental organisms of both natural rainforest and converted oil palm across the SAFE landscape. They dictate both the turnover and storage of nutrients and water, form the primary food source underlying the tropic ecology of habitats and create much of the physical structure of the landscape. Tropical plants also have very high diversity in both species richness and in life form, supporting a wide range of mutualisms and specialisms in animal communities. Research at SAFE examines both the underlying diversity of plant life across altered habitats and the ecological processes and structure derived from plant communities.", 
+		"image": "images/ecol_mon/plant_sciences.jpg"
 	},
 	"Soil Science": {
-		"text":  "Description to be added",
-		"image": "images/ecol_mon/biodiversity_fmt_200px.jpg"
+		"text":  "Soils and their underlying geology are crucial to the ecology of terrestrial habitats, governing the provision of nutrients for plant growth, setting the hydrological properties of a landscape and acting as a fundamental component of carbon and nitrogen cycles. Soils also support vital bacterial, fungal and invertebrate communities which drive nutrient turnover and availability. Research at SAFE is quantifying these processes across a range of habitats to observe how land conversion affects the structure and function of soils. ",
+		"image": "images/ecol_mon/soil_science.jpg"
 	},
 	"Invasive Species": {
-		"text":  "Description to be added", 
+		"text":"Land conversion and increased human movement are generating unprecendented opportunities for invasive species to expand into rainforest habitats. The best known are invasive mammals such as the black rat (<i>Rattus rattus</i>) and domestic cats and dogs, but invasive plants such as kudzu (<i>Pueraria</i> spp.) and soapbush (<i>Clidemia hirta</i>) are also widespread in the SAFE Project landscape. Such species  disrupt natural communities and invasive plants can also lead to marked structural change in forest habitats by smothering native vegetation. Research at SAFE looks at establishing the prevalance of invasive species, changes in their population size and the effects of invasive species on natural communities.", 
 		"image": "images/ecol_mon/biodiversity_fmt_200px.jpg"
 	},
 	"Zoology": {
-		"text": "Description to be added", 
-		"image": "images/ecol_mon/biodiversity_fmt_200px.jpg"
+		"text": "Rainforest habitats are home to a highly diverse set of animal species, ranging from charismatic megafauna such as elephants and deer down to the tiniest of insects and microscopic aquatic invertebrates. Research at the SAFE Project is quantifying the diversity of animals both across different habitats and across the range of animal groups and looking at the interactions and behaviour of animal species and whether anthropogenic change is leading to ecological and evolutionary changes in animal communities.", 
+		"image": "images/ecol_mon/zoology.jpg"
 	},
 	"Biogeochemistry": {
-		"text": "Description to be added",
-		"image": "images/ecol_mon/biodiversity_fmt_200px.jpg"
+		"text": "Biogeochemistry describes the cycling of chemical substances through the atmosphere, soils, rivers and living organisms. This research area brings together research across soil science, plant science, microclimate and freshwater biology to examine how land conversion transforms the ways in which carbon, water and nitrogen flow through the ecosystems at the SAFE Project.",
+		"image": "images/ecol_mon/biogeochemistry.jpg"
 	}
 }
 
