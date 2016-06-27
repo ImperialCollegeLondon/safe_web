@@ -118,7 +118,7 @@ if db(db.project_details).count() == 0:
                 img_in = os.path.join(request.folder, img_dir, row['img_file'])
                 short_fn = os.path.splitext(row['img_file'])
                 short_fn = short_fn[0][:50] + short_fn[1]
-                img_st = db.project_details.picture.store(open(img_in, 'rb'), short_fn)
+                img_st = db.project_details.thumbnail_figure.store(open(img_in, 'rb'), short_fn)
             else:
                 img_st = None
             
@@ -126,7 +126,7 @@ if db(db.project_details).count() == 0:
             project_id = db.project_id.insert()
             
             # now insert all the information
-            details_id = db.project_details.insert(picture = img_st,
+            details_id = db.project_details.insert(thumbnail_figure = img_st,
                                                    project_id = project_id,
                                                    version = 1,
                                                    title = row['title'],
@@ -219,7 +219,7 @@ if db(db.outputs).count() == 0:
             # get the two file objects
             if row['picture'] != 'NA':
                 img_in = os.path.join(request.folder, img_dir, row['picture'])
-                img_st = db.outputs.picture.store(open(img_in, 'rb'), row['picture'])
+                img_st = db.outputs.thumbnail_figure.store(open(img_in, 'rb'), row['picture'])
             else:
                 img_st = None
             
@@ -234,7 +234,7 @@ if db(db.outputs).count() == 0:
             a = auth_rows.first()
             
             # now insert all the information
-            db.outputs.insert(picture = img_st,
+            db.outputs.insert(thumbnail_figure = img_st,
                               file = file_st,
                               title = row['title'],
                               format = row['format'],

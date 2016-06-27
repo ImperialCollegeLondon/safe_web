@@ -52,91 +52,68 @@ def user_details():
     record = db.auth_user(record_id)
     
     
-    groups = record.auth_membership.select()
-    if len(groups) > 0:
+    if record_id is None or record is None:
+        
+        # avoid unknown outputs
+        session.flash = B(CENTER('Invalid user id'), _style='color:red;')
+        redirect(URL('people','users'))
     
-        group_names = [g.group_id.role for g in groups]
-        group_names = ", ".join(set(group_names))
-        groups = DIV(LABEL('Web groups:', _class="control-label col-sm-2" ),
-                            DIV(group_names, _class="col-sm-10"),
-                            _class='row', _style='margin:10px 10px')
     else:
-        groups = DIV()
     
-    if record is not None:
+        groups = record.auth_membership.select()
+        if len(groups) > 0:
+    
+            group_names = [g.group_id.role for g in groups]
+            group_names = ", ".join(set(group_names))
+            groups = DIV(LABEL('Web groups:', _class="control-label col-sm-2" ),
+                                DIV(group_names, _class="col-sm-10"),
+                                _class='row', _style='margin:10px 10px')
+        else:
+            groups = DIV()
         
-        # optional fields
-        if record.alternative_email is None or record.alternative_email == "":
-            alt_email = DIV()
+    
+        # avoid incomplete fields
+        if auth.is_logged_in():
+            flds = ['nationality', 'academic_status','supervisor_id',  'institution', 'institution_address',
+                    'institution_phone', 'phone', 'mobile_phone', 'email', 'alternative_email', 'orcid']
+            footer = DIV("Download contact details ", A('here', _href=URL('vcard', args=record_id)), _class="panel-footer")
         else:
-            alt_email = DIV(LABEL('Alternative email:', _class="control-label col-sm-2" ),
-                            DIV(A(record.alternative_email, 
-                                  _href="mailto:" + record.alternative_email), 
-                                _class="col-sm-10"),
-                            _class='row', _style='margin:10px 10px')
+            flds = ['nationality', 'academic_status','supervisor_id', 'institution', 'institution_address']
+            footer = ''
+            
+        fld_names  = {'nationality':'Nationality', 'academic_status':'Academic Status','supervisor_id':'Supervisor',
+                'institution':'Academic institution', 'institution_address':'Institutional Address',
+                'institution_phone':'Institutional Phone','phone':'Phone number', 'mobile_phone': 'Mobile phone', 
+                'email':'Email', 'alternative_email':'Alternative Email', 'orcid':'ORCiD'}
         
-        if record.phone is None or record.phone == "":
-            phone = DIV()
-        else:
-            phone = DIV(LABEL('Phone:', _class="control-label col-sm-2" ),
-                        DIV(record.phone, _class="col-sm-10"),
-                        _class='row', _style='margin:10px 10px')
+        content = []
         
-        if record.mobile_phone is None or record.mobile_phone == "":
-            mobile_phone = DIV()
-        else:
-            mobile_phone = DIV(LABEL('Mobile:', _class="control-label col-sm-2" ),
-                               DIV(record.mobile_phone, _class="col-sm-4"),
-                               _class='row', _style='margin:10px 10px')
-        
-        if record.institution_phone is None or record.institution_phone == "":
-            inst_phone = DIV()
-        else:
-            inst_phone = DIV(LABEL('Institution Phone:', _class="control-label col-sm-2" ),
-                             DIV(record.institution_phone, _class="col-sm-4"),
-                             _class='row', _style='margin:10px 10px')
-
-        if record.supervisor_id is None or record.supervisor_id == "":
-            supervisor = DIV()
-        else:
-            supervisor = DIV(LABEL('Supervisor:', _class="control-label col-sm-2" ),
-                             DIV(A(" ".join((record.supervisor_id.title, 
-                                           record.supervisor_id.first_name, 
-                                           record.supervisor_id.last_name)),
-                                   _href=URL('people', 'user_details', args=record.supervisor_id)),
-                                 _class="col-sm-10"),
-                             _class='row', _style='margin:10px 10px')
+        for f in flds:
+            
+            if record[f] not in [None, ""]:
+                
+                if f in ['email', 'alternative_email']:
+                    row_content = A(record[f], _href='mailto:'+record[f])
+                elif f == 'supervisor_id':
+                    supe = db.auth_user(record[f])
+                    row_content = A(supe.first_name + " " + supe.last_name, _href = URL('people', 'user_details', args=record[f]))
+                else:
+                    row_content = record[f]
+                
+                content.append(DIV(LABEL(fld_names[f], _class="control-label col-sm-3"),
+                                   DIV(row_content, _class="col-sm-9"),
+                                   _class='row', _style='margin:10px 10px'))
         
         usr = DIV(DIV(H5(" ".join(('' if record.title is None else record.title, record.first_name, record.last_name))), 
                   _class="panel-heading"),
-                  # DIV(LABEL('User:', _class="control-label col-sm-2" ),
-                  #     DIV(record.last_name + ", " + record.first_name, _class="col-sm-10"),
-                  #     _class='row', _style='margin:10px 10px'),
-                  DIV(LABEL('Academic Status:', _class="control-label col-sm-2" ),
-                      DIV(record.academic_status, _class="col-sm-4"),
-                      _class='row', _style='margin:10px 10px'),
-                  DIV(LABEL('Institution:', _class="control-label col-sm-2" ),
-                      DIV(record.institution, _class="col-sm-4"),
-                      _class='row', _style='margin:10px 10px'),
-                  DIV(LABEL('Institution Address:', _class="control-label col-sm-2" ),
-                      DIV(record.institution_address, _class="col-sm-10"),
-                      _class='row', _style='margin:10px 10px'),
-                  DIV(LABEL('Email:', _class="control-label col-sm-2" ),
-                      DIV(A(record.email, _href="mailto:" + record.email), _class="col-sm-4"),
-                      _class='row', _style='margin:10px 10px'),
-                  alt_email, phone, mobile_phone, inst_phone,
-                  supervisor, groups, 
-                  DIV("Download contact details ", A('here', _href=URL('vcard', args=record_id)),
-                      _class="panel-footer"),
+                  DIV(*content, _class='panel-body'),
+                  footer,
                   _class="panel panel-primary")
-    else:
-        session.flash = CENTER(B('Invalid volunteer record number.'), _style='color: red')
-        redirect(URL('people', 'users'))
-    
-    # pass components to the view
-    return dict(usr=usr)
+        
+        # pass components to the view
+        return dict(usr=usr)
 
-
+@auth.requires_login()
 def vcard():
     
     # is a specific visit requested?
@@ -180,8 +157,6 @@ def vcard():
         raise HTTP(200, content,
                    **{'Content-Type':'text/vcard',
                       'Content-Disposition':attachment + ';'})
-
-
 
 
 
@@ -248,11 +223,12 @@ def administer_new_users():
     
     return dict(form=form)
 
+
 @auth.requires_membership('admin')
 def approve_new_user():
     
     """
-    Rejects a new user from the approve new members form
+    Approves a new user from the approve new members form
     """
     
     # TODO - add emailer to user?

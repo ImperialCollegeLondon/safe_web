@@ -26,33 +26,35 @@ response.google_analytics_id = None
 
 response.menu = [
     (T('About'), True, None, [
+        (T('Home'), True, URL('default', 'index'), []),
         (T('Concept'), True, URL('info', 'concept'), []),
-        #(T('Ecological Monitoring'), True, URL('info', 'ecological_monitoring'), []),
+        (T('The Project design'), True, URL('info', 'design'), []),
         (T('Research areas'), True, URL('info', 'research_areas'), []),
         (T('Contacts'), True, URL('people', 'contacts'), []),
-        (T('The Project design'), True, URL('info', 'design'), []),
+
         (T('Funding and support'), True, URL('info', 'funders'), [])
     ]),
     (T('From the field'), True, None, [
         (T('Research Projects'), True, URL('projects', 'projects'), []),
         (T('News'), True, URL('news', 'news'), []),
-        (T('Blog'), True, URL('blog', 'blogs'), []),
+        (T('Blog'), True, URL('blogs', 'blogs'), []),
         (T('Species profiles'), True, URL('species', 'species'), []),
         (T('Outputs'), True, URL('outputs', 'outputs'), []),
         (T('SAFE Newsletter'), True, URL('info', 'newsletter'), []),
-        (T('SAFE Mailing list'), True, URL('info', 'mailing_list'), []),
     ]),
     (T('Working at SAFE'), True, None, [
         (T('Overview'), True, URL('info', 'steps_to_follow'), []),
+        (T('Register as a new user'), True, URL('user', 'register'), []),
         (T('Research Requirements'), True, URL('info', 'requirements'), []),
-        (T('Submitting proposals'), True, URL('info', 'submitting_proposals'), []),
-        (T('Biosecurity'), True, URL('info', 'biosecurity'), []),
-        (T('Health and Safety'), True, URL('info', 'health_and_safety'), []),
         (T('Data policy'), True, URL('info', 'data_policy'), []),
-        (T('SAFE Calendars'), True, URL('info', 'calendars'), []),
+        (T('Research proposals'), True, URL('info', 'submitting_proposals'), []),
         (T('Logistics and costs'), True, URL('info', 'logistics'), []),
+        (T('Health and Safety'), True, URL('info', 'health_and_safety'), []),
+        (T('Biosecurity'), True, URL('info', 'biosecurity'), []),
+        (T('SAFE Calendars'), True, URL('info', 'calendars'), []),
         (A('FAQs and SAFE wiki', _href='http://beta.safeproject.net/dokuwiki/start', _target='_blank'), False, None, []),
         (T('Bed availability at SAFE'), True, URL('research_visits', 'safe_bed_availability'), []),
+        (T('SAFE Mailing list'), True, URL('info', 'mailing_list'), []),
         LI(_class="divider"),
         (T('Volunteers available'), True, URL('marketplace', 'volunteers'), []),
         (T('Help sought at SAFE'), True, URL('marketplace', 'help_requests'), []),
@@ -85,7 +87,7 @@ user_actions = [(T('Registered users'), True, None, [
 
 
 if auth.has_membership('bloggers'):
-    user_actions[0][3].append((T('Create a blog post'), True,URL('blog', 'blog_details'),[]))
+    user_actions[0][3].append((T('Create a blog post'), True,URL('blogs', 'blog_details'),[]))
 
 if auth.has_membership('species_profiler'):
     user_actions[0][3].append((T('Manage species profiles'), True,URL('species', 'manage_species'),[]))
@@ -123,7 +125,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (T('Manage users'), True, URL('people', 'manage_users'), []),
                         (T('Manage contacts'), True, URL('people', 'manage_contacts'), []),
                         (T('Manage news'), True, URL('news', 'manage_news'), []),
-                        (T('Manage blogs'), True, URL('blog', 'manage_blogs'), []),
+                        (T('Manage blogs'), True, URL('blogs', 'manage_blogs'), []),
                         (T('Health and safety info'), True, URL('health_safety', 'admin_view_health_and_safety'), []),
                         LI(_class="divider"),
                         (B('Approvals'), False, None, None),
@@ -140,7 +142,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                              URL('research_visits', 'research_visits', 
                                  vars=dict(keywords = 'research_visit.admin_status = "Pending"')), []),
                         (CAT(SPAN(n['blg'], _class=badge_class['blg']),
-                             T('  Blog posts')), True, URL('blog', 'administer_blogs'), []),
+                             T('  Blog posts')), True, URL('blogs', 'administer_blogs'), []),
                         (CAT(SPAN(n['vol'], _class=badge_class['vol']),
                              T('  Volunteers')), True, URL('marketplace', 'administer_volunteers'), []),
                         (CAT(SPAN(n['hlp'], _class=badge_class['hlp']),

@@ -127,6 +127,7 @@ auth.define_tables(username=False, signature=False)
 
 # dont show the user the UUID field
 db.auth_user.uuid.readable = False
+db.auth_user.uuid.writable = False
 
 ## suppress the legacy_user_id field as a general rule
 db.auth_user.legacy_user_id.readable = False
