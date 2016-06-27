@@ -50,7 +50,7 @@ def blog_post():
     
     if blog_post is None or blog_post.hidden or blog_post.admin_status != 'Approved':
         session.flash = CENTER(B('Blog post id not available.'), _style='color: red')
-        redirect(URL('blog','blogs'))
+        redirect(URL('blogs','blogs'))
     
     return dict(blog_post = blog_post)
 
@@ -79,7 +79,7 @@ def blog_details():
     if blog_id is not None and record is None:
         # avoid unknown blogs
         session.flash = B(CENTER('Invalid blog id'), _style='color:red;')
-        redirect(URL('blog','blogs'))
+        redirect(URL('blogs','blogs'))
         
     elif record is None or record.user_id == auth.user.id or auth.has_membership('admin'):
         
@@ -123,7 +123,7 @@ def blog_details():
                 pass
             
             session.flash = msg
-            redirect(URL('blog','blog_details', args=form.vars.id))
+            redirect(URL('blogs','blog_details', args=form.vars.id))
             
         elif form.errors:
             response.flash = CENTER(B('Problems with the form, check below.'), _style='color: red')
@@ -175,7 +175,7 @@ def blog_details():
     else: 
         # security doesn't allow people editing other users blogs
         session.flash = CENTER(B('You do not have permission to edit this blog post.'), _style='color: red')
-        redirect(URL('blog','blog_post', args=blog_id))
+        redirect(URL('blogs','blog_post', args=blog_id))
     
     # admin history display
     if record is not None and record.admin_history is not None:
@@ -223,7 +223,7 @@ def blog_details():
             else:
                 pass
             
-            redirect(URL('blog','administer_blogs'))
+            redirect(URL('blogs','administer_blogs'))
             session.flash = msg
             
         elif admin.errors:
@@ -292,12 +292,12 @@ def manage_blogs():
              dict(header = '', 
                   body = lambda row: A(SPAN('',_class="glyphicon glyphicon-zoom-in"),
                                        SPAN('View'), _class="button btn btn-default", 
-                                       _href=URL("blog","blog_details", args=[row.id], user_signature=True),
+                                       _href=URL("blogs","blog_details", args=[row.id], user_signature=True),
                                        _style='padding: 3px 5px 3px 5px;')),
              dict(header = '', 
                   body = lambda row: A(hide_glyph if row.hidden else visib_glyph,
                                        _class="button btn btn-default", 
-                                       _href=URL("blog","blog_hide", args=[row.id], user_signature=True),
+                                       _href=URL("blogs","blog_hide", args=[row.id], user_signature=True),
                                        _style=hide_style if row.hidden else visib_style))] 
     
     db.blog_posts.thumbnail_figure.readable=False
@@ -339,5 +339,5 @@ def blog_hide():
     
     record.update_record()
     
-    redirect(URL('blog', 'manage_blogs'))
+    redirect(URL('blogs', 'manage_blogs'))
         
