@@ -198,12 +198,12 @@ or possibly, if you can't figure out what sets schema permissions
 
 2) In the file system the upload directory contains copies of files loaded in. These won't be purged by deleting the DB content, so avoid duplicating them on reload:
 
-    cd uploads
+    cd /home/www-data/web2py/applications/safe_web/uploads
     sudo find . -type f -delete
  
  3) Kill the databases files - they need to be regenerated when the DB is brought back up
  
-    cd databases
+    cd /home/www-data/web2py/applications/safe_web/databases
     sudo rm *.table
     sudo rm sql.log
 

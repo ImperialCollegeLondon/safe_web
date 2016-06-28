@@ -1006,7 +1006,7 @@ for( i in seq_along(url)){
 					at$src<- base
 				}
 				
-				at$src <- file.path('/SAFE_web/static/images/blog_legacy', at$src)
+				at$src <- file.path('/safe_web/static/images/blog_legacy', at$src)
 				html <- c(html, 	paste("<img src='", at$src, "' width='", at$width, "' height='", at$height, "'>", sep=''))
 				
 			})
@@ -1121,7 +1121,7 @@ for( i in seq_along(url)){
 	
 	# sub in new image links - doesn't handle other links, which aren't as easy to fix
 	pattern <- 'http://www.safeproject.net/wp-content/uploads/[0-9]+/[0-9]+/'
-	html_out[i] <- gsub(pattern, '/SAFE_web/static/images/news_legacy/', html)
+	html_out[i] <- gsub(pattern, '/safe_web/static/images/news_legacy/', html)
 	
 }
 

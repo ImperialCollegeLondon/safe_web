@@ -551,6 +551,7 @@ setwd('/users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/private/db
 									   first_name = cb_fld(first_name.x, first_name.y),
 									   last_name = cb_fld(last_name.x, last_name.y),
 									   institution = cb_fld(institution.x, institution.y),
+									   instutition_address = address,
 									   email = cb_fld(email.x, email.y),
 									   alt_email = alt_email,
 									   website = website,
