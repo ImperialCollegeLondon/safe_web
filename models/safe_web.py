@@ -387,27 +387,6 @@ db.define_table('species_profile',
     Field('updated_by', 'reference auth_user'),
     Field('updated_on', 'date'))
 
-
-## -----------------------------------------------------------------------------
-## CONTACTS
-## - this is purely used to populate the contact table and to provide an admin
-##   interface to maintaining it.
-## -----------------------------------------------------------------------------
-
-db.define_table('safe_contacts',
-                Field('display_name', 'string'), # i.e. Title etc
-                Field('contact_type', 'string', 
-                      requires=IS_IN_SET(['Management Team', 'Science Advisory Committee',
-                                          'Malaysian Collaborators','Field Team'])),
-                Field('role', 'string'),
-                Field('picture','upload', uploadfolder= request.folder+'/uploads/images/contacts'),
-                Field('institution', 'string'),
-                Field('address', 'string'),
-                Field('email', 'string', requires=IS_NULL_OR(IS_EMAIL())),
-                Field('website', 'string', requires=IS_NULL_OR(IS_URL())),
-                Field('taxonomic_speciality', 'string'))
-                
-
 ## -----------------------------------------------------------------------------
 ## BLOG
 ## -- a simple table to get blog posts into the website
