@@ -109,6 +109,16 @@ visib_style = "padding:3px 10px;background:darkgreen"
 ## -----------------------------------------------------------------------------
 
 
+## -----------------------------------------------------------------------------
+## CONTACTS - a simple table to map users to contacts roles
+## -----------------------------------------------------------------------------
+
+db.define_table('contacts',
+    Field('user_id', 'reference auth_user'),
+    Field('contacts_group', 'string', 
+          requires=IS_IN_SET(['Management Team', 'Science Advisory Committee',
+                              'Malaysian Collaborators','Field Team'])),
+    Field('contacts_role', 'string'))
 
 ## -----------------------------------------------------------------------------
 ## PROJECTS:

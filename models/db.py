@@ -15,6 +15,7 @@ from gluon.contrib.appconfig import AppConfig
 # from gluon.tools import Recaptcha
 
 import base64
+import os
 
 ## once in production, remove reload=True to gain full speed
 myconf = AppConfig(reload=True)
@@ -120,33 +121,31 @@ auth.settings.extra_fields['auth_user']= [
     Field('alternative_email', 'string', requires=IS_EMPTY_OR(IS_EMAIL())),
     Field('orcid', 'string'),
     Field('website', 'string', requires=IS_EMPTY_OR(IS_URL())),
-    Field('thumbnail_figure', 'upload', uploadfolder= request.folder + '/uploads/images/user_thumbnails'),
+    Field('thumbnail_picture', 'upload', uploadfolder= request.folder + '/uploads/images/user_thumbnails'),
     Field('biography', 'text'),
     Field('taxonomic_expertise', type='string'),
     Field('legacy_user_id','integer'),
-    Field('contact_group', 'string', 
-          requires=IS_IN_SET(['Management Team', 'Science Advisory Committee',
-                              'Malaysian Collaborators','Field Team'])),
-    Field('contact_role', 'string'),
     Field('h_and_s_id', 'integer')]
 
 ## create auth tables 
 auth.define_tables(username=False, signature=False)
 
-# dont show the user the UUID field
+# dont show the user the UUID field or legacy user or H&S
 db.auth_user.uuid.readable = False
 db.auth_user.uuid.writable = False
-
-## suppress the legacy_user_id field as a general rule
 db.auth_user.legacy_user_id.readable = False
 db.auth_user.legacy_user_id.writable = False
-
-# don't let users edit the link to H&S
 db.auth_user.h_and_s_id.readable = False
 db.auth_user.h_and_s_id.writable = False
 
-# turn user emails into email links
+# set a default image for the picture
+db.auth_user.thumbnail_picture.default = os.path.join(request.folder, 'static', 'images/default_thumbnails/missing_person.png')
+
+# turn user emails and websites into  links
 db.auth_user.email.represent = lambda value, row: A(value, _href='mailto:{}'.format(value))
+db.auth_user.website.represent = lambda value, row: A(value, _href=value)
+
+
 
 # provide links to user directory for logged in users
 # set a string formatting for representing user ID

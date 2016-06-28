@@ -26,7 +26,7 @@ def users():
     form = SQLFORM.grid(query = db.auth_user, csv=False,
                         fields=[db.auth_user.last_name,
                                 db.auth_user.first_name, 
-                                db.auth_user.email,
+                                db.auth_user.institution,
                                ], 
                         maxtextlength=250,
                         deletable=False,
@@ -42,7 +42,8 @@ def users():
 def user_details():
     
     """
-    Custom user view - displays the user details
+    Custom user view - displays the user details, but only give some details
+    to non-logged in visitors
     """
     
     # retrieve the record id from the page arguments passed by the button
@@ -72,19 +73,22 @@ def user_details():
             groups = DIV()
         
     
-        # avoid incomplete fields
+        # avoid incomplete fields and restrict what can be seen by anonymous visitors
         if auth.is_logged_in():
             flds = ['nationality', 'academic_status','supervisor_id',  'institution', 'institution_address',
-                    'institution_phone', 'phone', 'mobile_phone', 'email', 'alternative_email', 'orcid']
+                    'institution_phone', 'phone', 'mobile_phone', 'email', 'alternative_email', 
+                    'website', 'orcid', 'biography', 'taxonomic_expertise']
             footer = DIV("Download contact details ", A('here', _href=URL('vcard', args=record_id)), _class="panel-footer")
         else:
-            flds = ['nationality', 'academic_status','supervisor_id', 'institution', 'institution_address']
+            flds = ['nationality', 'academic_status','supervisor_id', 'institution', 'institution_address',
+                    'biography', 'taxonomic_expertise']
             footer = ''
             
         fld_names  = {'nationality':'Nationality', 'academic_status':'Academic Status','supervisor_id':'Supervisor',
                 'institution':'Academic institution', 'institution_address':'Institutional Address',
                 'institution_phone':'Institutional Phone','phone':'Phone number', 'mobile_phone': 'Mobile phone', 
-                'email':'Email', 'alternative_email':'Alternative Email', 'orcid':'ORCiD'}
+                'email':'Email', 'alternative_email':'Alternative Email', 'orcid':'ORCiD',
+                'website': 'Website', 'taxonomic_expertise':'Taxonomic Expertise'}
         
         content = []
         
@@ -100,13 +104,31 @@ def user_details():
                 else:
                     row_content = record[f]
                 
-                content.append(DIV(LABEL(fld_names[f], _class="control-label col-sm-3"),
-                                   DIV(row_content, _class="col-sm-9"),
+                content.append(DIV(LABEL(fld_names[f], _class="control-label col-sm-4"),
+                                   DIV(row_content, _class="col-sm-8"),
                                    _class='row', _style='margin:10px 10px'))
+        
+        # put the user thumbnail on the left
+        if record.thumbnail_picture is None:
+            img = URL('static', 'images/default_thumbnails/missing_person.png')
+        else:
+            img = URL('default', 'download', args = record.thumbnail_picture)
+        
+        # look up contact roles
+        if record.contacts.count() > 0:
+            
+            contact_info = record.contacts.select()
+            for r in contact_info:
+                content.append(DIV(LABEL('Role', _class="control-label col-sm-4"),
+                                       DIV(r.contacts_role + ' (' + r.contacts_group + ')', _class="col-sm-8"),
+                                       _class='row', _style='margin:10px 10px'))
+        
+        # package content
+        content = DIV(DIV(IMG(_src=img, _height=100), _class='col-sm-2'), DIV(*content,_class='col-sm-10'), _class='panel-body')
         
         usr = DIV(DIV(H5(" ".join(('' if record.title is None else record.title, record.first_name, record.last_name))), 
                   _class="panel-heading"),
-                  DIV(*content, _class='panel-body'),
+                  content,
                   footer,
                   _class="panel panel-primary")
         
@@ -115,6 +137,10 @@ def user_details():
 
 @auth.requires_login()
 def vcard():
+    
+    """
+    Download a vcard of a users details
+    """
     
     # is a specific visit requested?
     record_id = request.args(0)
@@ -169,12 +195,16 @@ def manage_users():
      - allowing admin users to view and edit user details
      - but not delete as this breaks downstream references to projects
     """
-
+    
+    
+    # don't let the admin touch passwords and expose the contact group/role
+    db.auth_user.password.readable = False
+    db.auth_user.password.writable = False
+    
     form = SQLFORM.grid(query = db.auth_user, csv=True,
                         fields=[db.auth_user.last_name,
                                 db.auth_user.first_name, 
                                 db.auth_user.email,
-                                #db.auth_user.id.represent
                                ],
                         maxtextlength=250,
                         deletable=False,
@@ -272,83 +302,69 @@ def reject_new_user():
 ## CONTACTS DATABASE 
 ## -- moved out of static content to facilitate admin updating
 ## -- provide an anonymously accessible view of contacts
-## -- provide a management interface
 ## -----------------------------------------------------------------------------
 
 def contacts():
     
-    """
-    Controller to show contacts and expose links to details.
-    """
+    # what groups can be selected
+    groups = ["Management Team", "Science Advisory Committee", "Malaysian Collaborators", "Field Team"]
+    ids = {"Management Team":'manage', "Science Advisory Committee":'sac', "Malaysian Collaborators":'local', "Field Team":'field'}
     
     # using the 'group' argument to switch between different sets of contacts
     # default to management but switch using some URLs on the view
-    if request.vars.group is None:
-        contact_type = 'Management Team'
+    if request.vars.group is None or request.vars.group not in groups:
+        requested_group = 'manage'
     else:
-        contact_type=request.vars.group
+        requested_group = ids[request.vars.group]
     
-    # create a link to show the pictures
-    links = [dict(header = '', body = lambda row: IMG(_src = URL('default', 'download', args = row.picture) if row.picture is not None else
-                                                             URL('static', 'images/default_thumbnails/missing_person.png'),
-                                                      _height = 100))]
+    # Loop over the options, populating tables for each grid of results
+    grids = {}
+    for k in groups:
+        
+        # select the rows
+        rows = db((db.auth_user.id == db.contacts.user_id) &
+                  (db.contacts.contacts_group == k)).select()
+        
+        # build a table row containing the display name with a URL link
+        rows = [TR( TD(IMG(_src = URL('static', 'images/default_thumbnails/missing_person.png')
+                                  if r.auth_user.thumbnail_picture is None else
+                                  URL('default', 'download', args = r.auth_user.thumbnail_picture,),
+                            _height='100px')),
+                    TD(A(" ".join(['' if r.auth_user.title is None else r.auth_user.title, r.auth_user.first_name, r.auth_user.last_name]),
+                        _href= URL('people', 'user_details', args=[r.auth_user.id]))),
+                      TD(r.contacts.contacts_role))
+                   for r in rows]
+            
+        # package into a table
+        grids[k] = TABLE(*rows, _class='table table-striped', _style='width:100%')
     
-    # set a default image for the picture
-    db.safe_contacts.picture.default = os.path.join(request.folder, 'static', 'images/default_thumbnails/missing_person.png')
+    # build the HTML programatically - have to include some args indirectly because
+    # they contain hyphens
+    ul_tags = {'_class':"nav nav-tabs nav-justified", '_data-tabs':"tabs"}
+    a_tags = {'_data-toggle':"tab"}
     
+    # need a UL defining the tabs and a DIV containing tab contents as tab pane DIVs .
+    tabs = UL([LI(A(k, _href='#' + ids[k] , **a_tags), _role='presentation', _name=ids[k]) for k in groups], **ul_tags)
+    content = DIV([DIV(grids[k], _class="tab-pane", _id=ids[k]) for k in groups], _class="tab-content")
     
-    # need picture in the fields list to allow the links to be created 
-    # but don't want to actually show them in the grid
-    db.safe_contacts.picture.readable=False
+    # amend the tabs and content to make one active on load
+    tabs.element('li[name=' + requested_group + ']')['_class'] = 'active'
+    content.element('#' + requested_group)['_class'] += ' active'
     
-    members = SQLFORM.grid(query=(db.safe_contacts.contact_type == contact_type), csv=False, 
-                        fields=[db.safe_contacts.display_name, 
-                                #db.safe_contacts.contact_type, 
-                                db.safe_contacts.role,
-                                db.safe_contacts.picture
-                                ],
-                        maxtextlength=100,
-                        create=False,
-                        deletable=False,
-                        editable=False,
-                        searchable=False,
-                        formargs={'showid':False},
-                        links=links,
-                        links_placement='left')
-    
-    # suppress the counter for the table
-    members.element('.web2py_counter', replace=None)
-    
-    return dict(members=members)
+    return dict(grids = CAT(tabs, content))
 
 
-@auth.requires_membership('admin')
 def manage_contacts():
     
-    """
-    Controller to allow admin to edit contacts
-    """
-    
-    links = [dict(header = '', body = lambda row: A(IMG(_src = URL('default', 
-                  'download', args = row.picture), _height = 100)))]
-    # need these three fields in the fields list to allow the links
-    # to be created but don't want to actually show them in the grid
-    db.safe_contacts.picture.readable=False
-    
-    form = SQLFORM.grid(db.safe_contacts, csv=False, 
-                        fields=[db.safe_contacts.display_name, 
-                                db.safe_contacts.contact_type, 
-                                db.safe_contacts.role,
-                                db.safe_contacts.picture
-                                ],
-                        maxtextlength=100,
-                        create=True,
+    form = SQLFORM.grid(query = db.contacts,
+                        csv=False,
+                        maxtextlength=250,
                         deletable=True,
                         editable=True,
-                        details=False,
-                        # searchable=False,
-                        formargs={'showid':False},
-                        links=links,
-                        links_placement='left')
+                        create=True,
+                        details=True,
+                        formargs={'showid': False}, 
+                    )
     
     return dict(form=form)
+    

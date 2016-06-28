@@ -519,10 +519,58 @@ setwd('/users/dorme/Research/SAFE/Web2Py/web2py/applications/SAFE_web/private/db
 	project_outputs_new <- merge(project_outputs, projects, by='legacy_project_id')
 	project_outputs_new <- merge(project_outputs_new, outputs, by='legacy_output_id')
 
+# FINALLY MERGE THE UPDATED CONTACT LIST INTO THE USERS
+
+	contacts <- read.csv('db_safe_contacts.csv', stringsAsFactors=FALSE)
+	mail_match <- match(contacts$email, liv_user_data$Email)
+	name_match <- match(contacts$last_name, liv_user_data$LastName)
+	matches <- ifelse(is.na(mail_match), ifelse(is.na(name_match), NA, name_match), mail_match)
+
+	# ryan gray is not claudia gray  - all other look ok.
+	matches[3] <- NA
+	combine <- cbind(contacts, liv_user_data[matches,])
+	combine[, c('first_name','last_name', 'FirstName','LastName', 'legacy_user_id')]
+
+
+	# match up names and insert new fields from contacts
+	liv_user_data$Person <- NULL
+	names(liv_user_data) <- c('first_name','last_name','institution','email', 'legacy_user_id', 'alt_email')
+	contacts$legacy_user_id <- liv_user_data$legacy_user_id[matches]
+	liv_user_data <- merge(contacts, liv_user_data, by='legacy_user_id', all=TRUE)
+
+	# combine fields
+	cb_fld <- function(x,y){
+		x <- ifelse(x == '', NA, x)
+		y <- ifelse(y == '', NA, y)
+		ret <- ifelse(is.na(x), ifelse(is.na(y), NA, y), x)
+		return(ret)
+	}
+	
+	final_user_data <- with(liv_user_data, 
+							data.frame(title = title,
+									   first_name = cb_fld(first_name.x, first_name.y),
+									   last_name = cb_fld(last_name.x, last_name.y),
+									   institution = cb_fld(institution.x, institution.y),
+									   email = cb_fld(email.x, email.y),
+									   alt_email = alt_email,
+									   website = website,
+									   taxonomic_expertise = taxonomic_expertise,
+									   thumbnail_picture = thumbnail_picture,
+									   legacy_user_id  = legacy_user_id,
+									   contacts_group  = contacts_group,
+									   contacts_role = contacts_role))
+	
+	contacts_data <- final_user_data[,c('legacy_user_id','contacts_group','contacts_role')]
+	contacts_data <- na.omit(contacts_data)
+	
+	final_user_data <- subset(final_user_data, select= -11:-12)
+	
+	
 # OK - put together the final DB inserts
 
 	write.csv(projects, file='final_projects.csv', row.names=FALSE)
-	write.csv(liv_user_data, file='final_users.csv', row.names=FALSE)
+	write.csv(final_user_data, file='final_users.csv', row.names=FALSE, na='')
+	write.csv(contacts_data, file='final_contacts.csv', row.names=FALSE, na='')
 	members <- subset(members, select=c(Project, legacy_user_id, Position, coord))
 	write.csv(members, file='final_project_members.csv', row.names=FALSE)
 	write.csv(outputs, file='final_outputs.csv', row.names=FALSE)

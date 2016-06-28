@@ -53,22 +53,36 @@ if db(db.auth_user).count() == 0:
                          description='People who can edit the wiki')
     
     
-    # insert 'users' from previous website: people associated with projects
+    # insert 'users' from previous website: people associated with projects and contacts of varying kinds
+    
     # load definition files
     data_file = os.path.join(request.folder, 'private/db_preload_data/final_users.csv')
+    img_dir = 'private/db_preload_data/images/contacts'
     
-    with open(data_file, 'rU') as csvfile:
-        
+    with open(data_file) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             
-            # insert the information
-            details_id = db.auth_user.insert(first_name = row['FirstName'],
-                                            last_name = row["LastName"],
-                                            institution = row["Affiliation"],
-                                            email = row['Email'],
-                                            alternative_email = row['alt_email'],
-                                            legacy_user_id = row['legacy_user_id'])
+            # get the images
+            if row['thumbnail_picture'] != '':
+                img_in = os.path.join(request.folder, img_dir, row['thumbnail_picture'])
+                img_st = db.auth_user.thumbnail_picture.store(open(img_in, 'rb'), row['thumbnail_picture'])
+            else:
+                img_st = None
+            
+            # now insert all the information
+            db.auth_user.insert(title = row['title'],
+                                first_name = row['first_name'],
+                                last_name = row['last_name'],
+                                institution = row['institution'],
+                                email = row['email'],
+                                alternative_email = row['alt_email'],
+                                website = row['website'],
+                                taxonomic_expertise = row['taxonomic_expertise'],
+                                thumbnail_picture = img_st,
+                                legacy_user_id  = row['legacy_user_id'])
+    
+    csvfile.close()
     
     # add the developer to the admin group
     rows = db(db.auth_user.email == 'd.orme@imperial.ac.uk').select()
@@ -90,6 +104,28 @@ if db(db.auth_user).count() == 0:
     auth.add_membership('admin', r.id)
     auth.add_membership('bloggers', r.id)
 
+
+## ------------------------------------------------------------------------
+## LOAD CONTACTS
+## ------------------------------------------------------------------------
+
+if db(db.contacts).count() == 0:
+    
+    # load definition files
+    data_file = os.path.join(request.folder, 'private/db_preload_data/final_contacts.csv')
+    
+    with open(data_file, 'rU') as csvfile:
+    
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            
+            user_record = db(db.auth_user.legacy_user_id == row['legacy_user_id']).select().first()
+            
+            db.contacts.insert(user_id = user_record.id,
+                               contacts_group = row['contacts_group'],
+                               contacts_role = row['contacts_role'])
+    
+    csvfile.close()
 
 ## ------------------------------------------------------------------------
 ## LOAD EXISTING PROJECTS
@@ -301,53 +337,6 @@ if db(db.species_profile).count() == 0:
     # e.g. rcuk_tags.level,rcuk_tags.subject,rcuk_tags.topic,rcuk_tags.tag
     db.species_profile.import_from_csv_file(open(data_file, 'rb'))
     db.commit()
-
-
-## ------------------------------------------------------------------------
-## LOAD CONTACTS
-## - which requires a more sophisticated loading approach, 
-##   as there are images to link up 
-## ------------------------------------------------------------------------
-
-
-# try and load existing outputs
-if db(db.safe_contacts).count() == 0:
-
-    # load definition files
-    data_file = os.path.join(request.folder, 'private/db_preload_data/contacts_table.csv')
-
-    # can't just use import_from_csv() here because of the image and file links
-    # so need to insert programatically to file everything correctly
-    # db.outputs.import_from_csv_file(open(data_file, 'rb'))
-
-    img_dir = 'private/db_preload_data/images/contacts'
-    
-    with open(data_file) as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            
-            # get the images
-            if row['picture'] != '':
-                img_in = os.path.join(request.folder, img_dir, row['picture'])
-                img_st = db.safe_contacts.picture.store(open(img_in, 'rb'), row['picture'])
-            else:
-                img_st = None
-            
-            # now insert all the information
-            db.safe_contacts.insert(picture = img_st,
-                              display_name = row['display_name'],
-                              contact_type = row['contact_type'], 
-                              role = row['role'],
-                              institution = row['institution'],
-                              address = row['address'],
-                              email = row['email'],
-                              website = row['website'],
-                              taxonomic_speciality = row['taxonomic_speciality'])
-            
-            db.commit()
-
-    csvfile.close()
-
 
 ## ------------------------------------------------------------------------
 ## LOAD BLOG POSTS

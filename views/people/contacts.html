@@ -22,17 +22,7 @@
 <p>Details and contact information for all of these groups can be found by following the links below.</p>
 
 
-<!-- Simple table of links to pages of different contact types-->
-<table width=100% class='fake_button_table'>
-<tr><td class='fake_button_cell'> <a href="{{=URL('people','contacts', vars=dict(group='Management Team'))}}" col='grey'><strong>Management Team</strong></a> </td> 
-    <td class='fake_button_cell'> <a href="{{=URL('people','contacts', vars=dict(group='Science Advisory Committee'))}}" col='grey'><strong>Science Advisory Committee</strong></a> </td>
-    <td class='fake_button_cell'> <a href="{{=URL('people','contacts', vars=dict(group='Malaysian Collaborators'))}}" col='grey'><strong>Malaysian Collaborators</strong></a> </td>
-    <td class='fake_button_cell'> <a href="{{=URL('people','contacts', vars=dict(group='Field Team'))}}" col='grey'><strong>Field Team</strong></a> </td> </tr>
-</table>
-
-<br>
-
-{{=members}}
+{{=grids}}
 
 
 <br>

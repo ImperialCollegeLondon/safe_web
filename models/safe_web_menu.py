@@ -31,7 +31,7 @@ response.menu = [
         (T('The Project design'), True, URL('info', 'design'), []),
         (T('Research areas'), True, URL('info', 'research_areas'), []),
         (T('Contacts'), True, URL('people', 'contacts'), []),
-
+        (T('Researchers'), True, URL('people', 'users'), []),
         (T('Funding and support'), True, URL('info', 'funders'), [])
     ]),
     (T('From the field'), True, None, [
@@ -72,7 +72,6 @@ response.menu = [
 user_actions = [(T('Registered users'), True, None, [
                 (T('My SAFE Project'), True, URL('default', 'my_safe'), []),
                 (T('My health and safety info'), True, URL('health_safety', 'health_and_safety'), []),
-                (T('User directory'), True, URL('people', 'users'), []),
                 (T('View research visits'), True, URL('research_visits', 'research_visits'), []),
                 (T('Discussion board'), True, URL('discussion', 'discussion_board'), []),
                 LI(_class="divider"),
