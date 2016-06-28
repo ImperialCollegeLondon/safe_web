@@ -14,7 +14,7 @@ def blogs():
                   body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
                                        SPAN('View', _class="buttontext button"),
                                        _class="button btn btn-default", 
-                                       _href=URL("blog","blog_post", args=[row.id], user_signature=True),
+                                       _href=URL("blogs","blog_post", args=[row.id], user_signature=True),
                                        _style='padding: 3px 5px 3px 5px;'))] 
     
     db.blog_posts.thumbnail_figure.readable=False

@@ -6,7 +6,6 @@ import datetime
 ## -- also provides a mechanism to validate new users
 ## -----------------------------------------------------------------------------
 
-@auth.requires_login()
 def users():
     
     """
