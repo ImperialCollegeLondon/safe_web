@@ -406,7 +406,8 @@ def help_requests():
                         fields=[db.help_request.project_id,
                                 db.help_request.start_date,
                                 db.help_request.end_date,
-                                db.help_request.work_description], 
+                                db.help_request.work_description,
+                                db.help_request.paid_position], 
                         headers = {'help_request.project_id': 'Project link'},
                         maxtextlength=250,
                         links=links,
@@ -452,7 +453,9 @@ def new_help_request():
                         fields =['project_id',
                                 'start_date',
                                 'end_date',
-                                'work_description'])
+                                'work_description',
+                                'paid_position',
+                                'url'])
     
         if form.process(onvalidation=validate_new_help_request).accepted:
             # Signal success and email the proposer
@@ -470,7 +473,7 @@ def new_help_request():
         form.custom.widget.start_date['_class'] = "form-control input-sm"
         form.custom.widget.end_date['_class'] = "form-control input-sm"
     
-        form = FORM(DIV(DIV(H5('Research visit details'), _class="panel-heading"),
+        form = FORM(DIV(DIV(H5('Project Help Request'), _class="panel-heading"),
                         DIV(form.custom.begin, 
                             DIV(LABEL('Project:', _class="control-label col-sm-2" ),
                                 DIV(form.custom.widget.project_id,  _class="col-sm-10"),
@@ -484,6 +487,15 @@ def new_help_request():
                                         form.custom.widget.end_date,
                                         _class="input-daterange input-group", _id="help_datepicker"),
                                     _class='col-sm-10'),
+                                _class='row', _style='margin:10px 10px'),
+                            HR(),
+                            DIV(P('If this is a paid position, please check the box and provide a URL for any application details.'),
+                                _class='row', _style='margin:10px 10px'),
+                            DIV(LABEL(form.custom.widget.paid_position, 'Paid Position', 
+                                _class="control-label col-sm-2 col-sm-offset-2"),
+                                _class='row', _style='margin:10px 10px'),
+                            DIV(LABEL('Website for details', _class="control-label col-sm-2" ),
+                                DIV(form.custom.widget.url,  _class="col-sm-10"),
                                 _class='row', _style='margin:10px 10px'),
                             DIV(DIV(form.custom.submit,  _class="col-sm-10 col-sm-offset-2"),
                                 _class='row', _style='margin:10px 10px'),
@@ -566,7 +578,7 @@ def help_request_details():
         
         # get a SQLFORM to edit the record
         form = SQLFORM(db.help_request,
-                        fields = ['start_date','end_date','work_description'],
+                        fields = ['start_date','end_date','work_description', 'paid_position','url'],
                         record=record,
                         buttons=buttons,
                         readonly=readonly)
@@ -624,6 +636,12 @@ def help_request_details():
                              _class='row', _style='margin:10px 10px'),
                         DIV(LABEL('Work description:', _class="control-label col-sm-2" ),
                             DIV(form.custom.widget.work_description,  _class="col-sm-10"),
+                            _class='row', _style='margin:10px 10px'),
+                        DIV(LABEL(form.custom.widget.paid_position, 'Paid Position', 
+                            _class="control-label col-sm-2 col-sm-offset-2"),
+                            _class='row', _style='margin:10px 10px'),
+                        DIV(LABEL('Website for details', _class="control-label col-sm-2" ),
+                            DIV(form.custom.widget.url,  _class="col-sm-10"),
                             _class='row', _style='margin:10px 10px'),
                         DIV('Contact details', _class='panel-footer'),
                         DIV(LABEL('Project contact:', _class="control-label col-sm-2" ),

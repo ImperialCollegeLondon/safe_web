@@ -27,11 +27,11 @@ myconf = AppConfig(reload=True)
 ## ----------------------------------------------------------------------------
 
 # PG LOCAL setup
-# connection = "postgres://test:test@localhost/safe_web2py"
+connection = "postgres://test:test@localhost/safe_web2py"
 
 # PG REMOTE setup
 # - this is a link to an AWS RDS instance, which could then be shared by Earthcape
-connection = "postgres://safe_admin:Safe2016@earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com/safe_web2py"
+# connection = "postgres://safe_admin:Safe2016@earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com/safe_web2py"
 
 # # MYSQL database on python_anywhere testing environment
 # connection = "mysql://DavidOrme:MonteCarloOrBust@DavidOrme.mysql.pythonanywhere-services.com/DavidOrme$safe_web2py"
