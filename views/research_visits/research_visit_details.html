@@ -1,7 +1,5 @@
 {{extend 'layout.html'}}
 
-{{=session.flash or response.flash}}
-
 {{=H2('Research visit planning')}}
 
 {{=P('In order to work in the field, you will need to put together a research visit proposal. This will tell us who is in the field and allow you to book accomodation, transport between locations and research assistant support. Follow the steps below:')}}
@@ -30,17 +28,19 @@
 
 {{=DIV(B('Warning!'), ' All details below are provisional until your research visit proposal has been submitted and approved by an administrator. If conditions in the field change, even approved reservations may have to be changed with little or no notice.', _class="alert alert-info", _style='background:grey', _role="alert")}}
 
+{{=admin_warning}}
+
 {{=visit}}
 
 {{=instructions}}
 
-{{=session.flash}}
+{{=session.flash or response.flash}}
 
 {{=console}}
 
 {{=history}}
 
-{{=admin_panel}}
+{{=admin}}
 
 
 {{=BR()}}

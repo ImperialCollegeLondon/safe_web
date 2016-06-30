@@ -133,6 +133,9 @@ def research_visit_details():
     elif (record.project_id in available_project_ids):
         # this proposal is in the set that the user is a coordinator for
         readonly = False
+    elif record.project_id is None and auth.user.id == record.proposer_id:
+        # The proposer is editing his own look see visit.
+        readonly = False
     else:
         # just a random viewer, so no right access
         readonly = True
@@ -192,7 +195,7 @@ def research_visit_details():
         
         # process the visit form to create hidden fields and to process input
         if visit.process(onvalidation=validate_research_visit_details, formname='visit').accepted:
-        
+            
             if visit.submit:
             
                 # i) update the history, change the status and redirect
@@ -205,18 +208,14 @@ def research_visit_details():
                                      admin_history = new_history)
             
                 # ii) email the proposer
-                template = 'email_templates/research_visit_submitted.html'
-                message =  response.render(template,
-                                           {'name': auth.user.first_name,
-                                            'url': URL('research_visits', 'research_visit_details', args=[rv_id], scheme=True, host=True)})
-            
-                msg_status = mail.send(to=auth.user.email,
-                                       subject='SAFE research visit proposal submitted',
-                                       message=message)
+                SAFEmailer(to=auth.user.email,
+                           subject='SAFE: research visit proposal submitted',
+                           template =  'research_visit_submitted.html',
+                           template_dict = {'name': auth.user.first_name,
+                                            'url': URL('research_visits', 'research_visit_details', args=[visit.vars.id], scheme=True, host=True)})
                 
                 session.flash = CENTER(B('Research visit proposal submitted.'), _style='color: green')
-                redirect(URL('research_visits', 'research_visit_details', args=[rv_id]))
-        
+                
             else:
                 
                 # if this is a new proposal then need to insert the project_id, which isn't
@@ -224,8 +223,21 @@ def research_visit_details():
                 if rv_id is None and new_rv_project_requested != '0':
                     db.research_visit(visit.vars.id).update_record(project_id = new_rv_project_requested)
                 
-                session.flash = 'Research visit proposal created/update'
-                redirect(URL('research_visits','research_visit_details', args=[rv_id]))
+                # if this is a new draft, email the proposer the link for the page
+                if rv_id is None:
+                    SAFEmailer(to=auth.user.email,
+                               subject='SAFE: draft research visit proposal created',
+                               template =  'research_visit_created.html',
+                               template_dict = {'name': auth.user.first_name,
+                                                'url': URL('research_visits', 'research_visit_details', args=[visit.vars.id], scheme=True, host=True)})
+                    
+                    db.research_visit(visit.vars.id).update_record(admin_status = 'Draft')
+                    session.flash = CENTER(B('Research visit proposal created'), _style='color: green')
+                    
+                else:
+                    session.flash = CENTER(B('Research visit proposal updated'), _style='color: green')
+                
+            redirect(URL('research_visits','research_visit_details', args=visit.vars.id))
         else:
         
             pass
@@ -239,17 +251,20 @@ def research_visit_details():
             visit.custom.widget.departure_date['_class'] = "form-control input-sm"
         
         # get the project details
-        if new_rv_project_requested == '0' or (record is not None and record.project_id is None):
-            project_details = None
-            proj_title = 'Look see visit'
-        else:
-            if rv_id is None:
-                pid = new_rv_project_requested
-            else:
+        if (record is not None and record.project_id is not None) or (new_rv_project_requested != '0'):
+            
+            if new_rv_project_requested != '0':
+                pid = int(new_rv_project_requested)
+            elif record.project_id is not None:
                 pid = record.project_id
+
             proj_row = db((db.project_id.id == pid) & (db.project_id.project_details_id == db.project_details.id))
             project_details = proj_row.select().first()
             proj_title = project_details.project_details.title
+            
+        else:
+            project_details = None
+            proj_title = 'Look see visit'
         
         proj_row = DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
                        DIV(proj_title, _class="col-sm-10"),
@@ -292,7 +307,17 @@ def research_visit_details():
                                     startDate ='"' + visit_start_min + '"',
                                     endDate ='"' + visit_end_max + '"')
         
-        visit = FORM(DIV(DIV(H5('Research visit details'), _class="panel-heading"),
+        # status flag
+        if record is not None:
+            status = DIV(approval_icons[record.admin_status], XML('&nbsp'),
+                         'Status: ', XML('&nbsp'), record.admin_status, 
+                         _class='col-sm-3',
+                         _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
+        else:
+            status = DIV()
+        
+        visit = FORM(DIV(DIV(DIV(H5('Project details', _class='col-sm-9'), status, _class='row', _style='margin:0px 0px'),
+                            _class="panel-heading"),
                         DIV(visit.custom.begin, proj_row,
                             DIV(LABEL('Visit title:', _class="control-label col-sm-2" ),
                                 DIV(visit.custom.widget.title,  _class="col-sm-10"),
@@ -361,7 +386,7 @@ def research_visit_details():
                            SPAN(_class="glyphicon glyphicon-plus-sign"))
     
     if readonly or rv_id is None:
-        instructions = ""
+        instructions = DIV()
     else:
         instructions = CAT(H3('Research visit console'),
                             P('The panels below allow you to add members of your research visit and to book '
@@ -409,8 +434,6 @@ def research_visit_details():
    
     if rv_id is None:
         console = DIV()
-        history = DIV()
-        admin = DIV()
     else:
         # Define common elements shared across tables:
         # -  an extra column in tables when not readonly to insert delete buttons
@@ -1001,14 +1024,14 @@ def research_visit_details():
                                         site_time = console.vars.ra_site_time,
                                         work_type = console.vars.ra_work_type)
                                     
-                    new_history.append(' -- RA booked {} from {} to {}\\n'.format(
-                                             console.vars.ra_site_time, console.vars.arrival_date,
-                                             console.vars.departure_date))
+                    new_history.append(' -- RA booked: {} from {} to {}\\n'.format(
+                                             console.vars.ra_site_time, console.vars.ra_start,
+                                             console.vars.ra_end))
                 
                 else:
                     # datechange causes a processing event that doesn't do anything
                     pass
-            
+                
                 # update the RV record to catch history changes
                 if len(new_history) > 0:
                     history_update = '[{}] {} {}\\n'.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
@@ -1017,60 +1040,83 @@ def research_visit_details():
                     history_update += ''.join(new_history)
                     history_update += record.admin_history
                     record.update_record(admin_history = history_update)
-            
+                
                 # reload the page to update changes
                 redirect(URL('research_visit_details', args=rv_id, anchor='console'))
-        
+                
             elif console.errors:
-                print console.errors
-                pass
+                
+                session.flash = console.errors
         
-        
-        # return the visit history
-        if record.admin_history is not None:
-            history = XML(record.admin_history.replace('\\n', '<br />'), sanitize=True, permitted_tags=['br/'])
-            history = CAT(A(_name='history'),
-                          DIV(DIV(H5('Research visit history'), _class="panel-heading"),
-                              DIV(history, _class='panel_body', _style='margin:10px 10px;height:100px;overflow-y:scroll'),
-                              DIV(_class='panel-footer'),
-                              _class="panel panel-primary"))
-        else:
-            history = DIV()
+    # return the visit history
+    if rv_id is not None and record.admin_history is not None:
+        history = XML(record.admin_history.replace('\\n', '<br />'), sanitize=True, permitted_tags=['br/'])
+        history = CAT(A(_name='history'),
+                      DIV(DIV(H5('Research visit history'), _class="panel-heading"),
+                          DIV(history, _class='panel_body', _style='margin:10px 10px;height:100px;overflow-y:scroll'),
+                          DIV(_class='panel-footer'),
+                          _class="panel panel-primary"))
+    else:
+        history = DIV()
         
     # If the visit record has been created and an admin is viewing, expose the 
     # decision panel
-    if rv_id is not None and auth.has_membership('admin') :
+    if rv_id is not None and auth.has_membership('admin') and record.admin_status == 'Submitted':
         
-        admin_form = SQLFORM(db.research_visit, record=rv_id, 
-                             fields = ['admin_status', 'admin_notes'],
-                             showid = False)
+        admin = admin_decision_form(selector_options=['Resubmit', 'Approved'])
         
-        admin_panel = DIV(DIV(H5('Admin Decision'),_class="panel-heading"),
-                         DIV('Provide brief notes supporting your decision:',
-                             admin_form,
-                             _class='panel-body', _style='margin:0px 10px'),
-                         _class="panel panel-primary")
-    
-    else:
-        admin_panel = DIV()
-    
-    if rv_id is not None and auth.has_membership('admin') and admin_form.process(formname='admin_form').accepted:
-        
-        new_history = '[{}] {} {}\\n ** Admin decision {}: {}\\n'.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+        if admin.process(formname='admin').accepted:
+            
+            # update record with decision
+            admin_str = '[{}] {} {}\\n ** Decision: {}\\n ** Comments: {}\\n'
+            new_history = admin_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
                                            auth.user.first_name,
-                                           auth.user.last_name, 
-                                           admin_form.vars.admin_status,
-                                           admin_form.vars.admin_notes) + record.admin_history 
+                                           auth.user.last_name,
+                                           admin.vars.decision,
+                                           admin.vars.comment) + record.admin_history
+            
+            record.update_record(admin_status = admin.vars.decision,
+                                  admin_history = new_history)
+            
+            # Email decision
+            proposer = record.proposer_id
+            template_dict = {'name': proposer.first_name, 
+                             'url': URL('research_visits', 'research_visit_details', args=[rv_id], scheme=True, host=True),
+                             'admin': auth.user.first_name + ' ' + auth.user.last_name}
+            
+            # pick an decision
+            if admin.vars.decision == 'Approved':
+                
+                SAFEmailer(to=auth.user.email,
+                           subject='SAFE: research visit proposal approved',
+                           template =  'research_visit_approved.html',
+                           template_dict = template_dict)
+                
+            elif admin.vars.decision == 'Resubmit':
+                
+                SAFEmailer(to=auth.user.email,
+                           subject='SAFE: research visit proposal requires resubmission',
+                           template =  'research_visit_resubmit.html',
+                           template_dict = template_dict)
+            
+            # reload the page to update changes
+            redirect(URL('research_visits','research_visit_details', args=rv_id, anchor='history'))
         
-        record.update_record(admin_status = admin_form.vars.admin_status,
-                             admin_history = new_history)
-        
-        # reload the page to update changes
-        redirect(URL('research_visit_details', args=rv_id, anchor='history'))
+    else:
+        admin = DIV()
     
+    # Stick up a warning for when admins book stuff!
+    if auth.has_membership('admin'):
+        admin_warning = DIV(B('Warning!'), ' You are an administrator for the SAFE website. This allows you to',
+                            ' edit all research visit proposals and to ignore the usual 14 days notice',
+                            ' and SAFE bed limits. Be careful not to accidentally abuse this privilege when booking '
+                            ' your own research visits!', _class="alert alert-info", _style='background:darkred', _role="alert")
+    else:
+        admin_warning = DIV()
+        
     
     return dict(visit_record = record, visit=visit, instructions = instructions,
-                console=console, history=history, admin_panel=admin_panel)
+                console=console, history=history, admin=admin, admin_warning=admin_warning)
 
 
 def uname(uid, rowid):
@@ -1111,7 +1157,7 @@ def validate_research_visit_details(form):
     
     # check the arrival date is more than a fortnight away
     deadline = datetime.date.today() + datetime.timedelta(days=14)
-    if form.vars.arrival_date < deadline:
+    if form.vars.arrival_date < deadline and not auth.has_membership('admin'):
         form.errors.arrival_date = '14 days notice required. Arrival date must be later than {}.'.format(deadline.isoformat())
     
     # check the departure date is after the arrival date
