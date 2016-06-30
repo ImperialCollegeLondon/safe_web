@@ -221,7 +221,8 @@ db.define_table('outputs',
     Field('title','string', notnull=True,
           represent = lambda value, row: A(row.title, _href=URL('outputs', 'view_output', args=row.id))
     ),
-    Field('description','text', notnull=True),
+    Field('abstract','text', notnull=True),
+    Field('lay_summary','text'),
     Field('format','string', requires=IS_IN_SET(output_formats), notnull=True),
     Field('citation','string', length=1024),
     Field('doi','string', requires=IS_EMPTY_OR(IS_URL())),
@@ -232,7 +233,6 @@ db.define_table('outputs',
     Field('submission_date','date'),
     # The fields below are to handle approval of new records
     Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Pending'), 
-    Field('admin_notes','text'),
     Field('admin_history','text'),
     format='%(title)s') # set the way the row is represented in foreign tables
 

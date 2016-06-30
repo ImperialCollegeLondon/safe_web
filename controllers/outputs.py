@@ -25,7 +25,9 @@ def outputs():
     
     # we're letting the default link display for the title take us to view_output
     form = SQLFORM.grid(query = query, csv=False, 
-                        fields=[db.outputs.thumbnail_figure, db.outputs.title, db.outputs.format],
+                        fields=[db.outputs.thumbnail_figure, db.outputs.title,
+                                db.outputs.submission_date, db.outputs.format],
+                        orderby = ~ db.outputs.submission_date,
                         maxtextlength=250,
                         deletable=False,
                         editable=False,
@@ -34,7 +36,7 @@ def outputs():
                         links=links,
                         links_placement='left',
                         formargs= {'fields': ['title', 'citation','format', 'file',
-                                              'description','doi', 'url'],
+                                              'abstract', 'lay_summary','doi', 'url'],
                                    'showid': False})
    
     return dict(form=form)
@@ -49,7 +51,6 @@ def view_output():
     output = db(db.outputs.id == output_id).select().first()
     
     # build the view in controller and pass over to the view as a single object
-    print output.thumbnail_figure
     if output.thumbnail_figure not in [None, 'NA', '']:
         pic = URL('default','download', args = output.thumbnail_figure)
     else:
@@ -82,6 +83,14 @@ def view_output():
 
     
     # output details panel
+    if output.lay_summary not in ['', None]:
+        lay_summary =   CAT(local_hr,
+                            DIV(LABEL('Lay Summary:', _class="control-label col-sm-2" ),
+                                DIV(output.lay_summary,  _class="col-sm-10"),
+                                _class='row'))
+    else:
+        lay_summary=''
+
     output_panel = CAT(DIV(DIV(H4(output.title), _class='col-sm-10'),
                         DIV(DIV(IMG(_src=pic, _width='100px'), _class= 'pull-right'), _class='col-sm-2'),
                                 _class='row', _style='margin:10px 10px;'), 
@@ -92,10 +101,12 @@ def view_output():
                                         _class='pull-right', _style='color:white'),
                                     _class="panel-heading"),
                                 DIV(url, doi, dfile, 
+                                    lay_summary, 
                                     local_hr,
-                                    DIV(DIV(XML(output.description.replace('\n', '<br />'),
+                                    DIV(LABEL('Abstract:', _class="control-label col-sm-2" ),
+                                        DIV(XML(output.abstract.replace('\n', '<br />'),
                                             sanitize=True, permitted_tags=['br/']),
-                                            _class='col-sm-12'),
+                                            _class='col-sm-10'),
                                         _class='row'),
                                     _class='panel-body',
                                     _style='margin:10px 10px'),
@@ -154,10 +165,15 @@ def output_details():
     
     if output_id is not None:
         record = db.outputs(output_id)
-        button = 'Save edits'
+        buttons = [TAG.button('Save edits',_type="submit", 
+                                      _name='save', _style='padding: 5px 15px 5px 15px;'), 
+                   XML('&nbsp;')*5,
+                   TAG.button('Submit output',_type="submit", 
+                              _name='submit', _style='padding: 5px 15px 5px 15px;')]
     else:
         record = None
-        button = 'Submit output'
+        buttons = [TAG.button('Create output',_type="submit", 
+                              _name='create', _style='padding: 5px 15px 5px 15px;')]
         
     if output_id is not None and record is None:
         
@@ -172,41 +188,78 @@ def output_details():
         
     else:
         
-        # allow admins to view but not edit existing records
-        if (record is not None) and (record.user_id <> auth.user.id):
+        # allow admins to view but not edit existing records and lock submitted versions
+        if (record is not None) and ((record.user_id <> auth.user.id) or (record.admin_status == 'Submitted')):
             readonly=True
         else:
             readonly=False
         
         # create the form
         form =  SQLFORM(db.outputs, record = output_id,
-                        fields = ['thumbnail_figure','file','title','description',
+                        fields = ['thumbnail_figure','file','title','abstract', 'lay_summary',
                                  'format', 'citation', 'doi','url'],
                         readonly=readonly,
                         showid=False,
-                        submit_button = button)
+                        buttons = buttons)
         
         # now intercept and parse the various inputs
         if form.process(onvalidation=validate_output_details, formname='outputs').accepted:
             
-            # Signal success and email the proposer
-            mail.send(to=auth.user.email,
-               subject='SAFE project output created/edited',
-               message='Many thanks for uploading your output')
-            session.flash = CENTER(B('SAFE project output created/edited.'), _style='color: green')
-            
-            # add a comment to the history
-            new_history = '[{} {}, {}, {}]\\n'.format(auth.user.first_name,
-                           auth.user.last_name, datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
-                           'Output created' if output_id is None else "Output edited")
-            
             # reload the record
             output_record = db.outputs(form.vars.id)
+            
+            template_dict = {'name': auth.user.first_name,
+                             'url': URL('outputs', 'output_details', args=[output_record.id], scheme=True, host=True)}
+            
+            if form.submit:
+                
+                # Submit button pressed: Signal success and email the proposer
+                SAFEmailer(to=auth.user.email,
+                           subject='SAFE: project output submitted',
+                           template =  'output_submitted.html',
+                           template_dict = template_dict)
+            
+                session.flash = CENTER(B('SAFE project output submitted.'), _style='color: green')
+                
+                # create a comment to add to the history
+                history_text = 'Output submitted'
+                
+                # update the status
+                output_record.update_record(submission_date=datetime.date.today(),
+                                            admin_status = 'Submitted')
+            
+            else:
+                # is this brand new? If so send a link
+                if record is None:
+                    SAFEmailer(to=auth.user.email,
+                               subject='SAFE: project output draft created',
+                               template =  'output_created.html',
+                               template_dict = template_dict)
+                    
+                    session.flash = CENTER(B('SAFE project output draft created.'), _style='color: green')
+                    
+                    # create a comment to add to the history
+                    history_text = 'Output draft created'
+                    
+                else:
+                    history_text = 'Output draft edited'
+                    session.flash = CENTER(B('SAFE project output draft created.'), _style='color: green')
+                    
+                    # create a comment to add to the history
+                    history_text = 'Output edited'
+                    
+                # update the status - takes output back from approved
+                output_record.update_record(admin_status = 'Draft')
+                
+            new_history = '[{}] {} {}\\n -- {}\\n'.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                       auth.user.first_name,
+                                                       auth.user.last_name,
+                                                       history_text)
             
             if output_record.admin_history is None or output_record.admin_history == '':
                 output_record.update_record(admin_history = new_history)
             else:
-                output_record.update_record(admin_history = output_record.admin_history + '\\n' + new_history)
+                output_record.update_record(admin_history =  new_history + output_record.admin_history)
             
             # now send to the output_details page for the form we've just created
             redirect(URL('outputs', 'output_details', args=form.vars.id))
@@ -262,8 +315,11 @@ def output_details():
                                          _class='row'),
                                     _class='col-sm-6'),
                                 _class='row'),
-                            DIV(LABEL('Description:', _class="control-label col-sm-2" ),
-                                DIV(form.custom.widget.description,  _class="col-sm-10"),
+                            DIV(LABEL('Scientific Abstract:', _class="control-label col-sm-2" ),
+                                DIV(form.custom.widget.abstract,  _class="col-sm-10"),
+                                _class='row'),
+                            DIV(LABEL('Lay Summary or Press Release:', _class="control-label col-sm-2" ),
+                                DIV(form.custom.widget.lay_summary,  _class="col-sm-10"),
                                 _class='row'),
                             DIV(LABEL('Format:', _class="control-label col-sm-2" ),
                                 DIV(form.custom.widget.format,  _class="col-sm-10"),
@@ -356,63 +412,64 @@ def output_details():
     # header text
     if record is None:
         header = CAT(H2('New Output Submission'), 
-                     P('Please use the form below to submit a new research output to the SAFE project. ',
-                       'Your submitted output will first be screened by an administrator. You will get an ',
+                     P('Please use the form below to create a new draft research output for the SAFE project. ',
+                       'Once you have created the draft you will then be able to ', B('link your output '),
+                       'to existing projects, make further edits and submit the completed outputs to the administrators.'),
+                     P('Once you submit your output it will first be screened by an administrator. You will get an ',
                        'email to confirm that you have submitted an output and then another email to confirm ',
-                       'whether the output has been accepted or not.'),
-                     P('Once you have submitted your output details, you will then be able to ', 
-                       B('link your output '), 'to existing projects.'))
+                       'whether the output has been accepted or not.'))
     else:
-        header = H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title)
+        header = CAT(H2(approval_icons[record.admin_status] + XML('&nbsp;')*3 + record.title),
+                    P('Please use the form to edit your draft output and ', B('link your output '),
+                      'to existing projects. When you have finished, click Submit.'),
+                    P('Once you submit your output it will first be screened by an administrator. You will get an ',
+                      'email to confirm that you have submitted an output and then another email to confirm ',
+                      'whether the output has been accepted or not.'))
     
     # Add an admin interface
     if record is not None and auth.has_membership('admin'):
         
-        selector = SELECT('Resubmit', 'Approved',  _class="generic-widget form-control", _name='decision')
-        comments = TEXTAREA(_type='text', _class="form-control string", _rows=2, _name='comment')
-        submit = TAG.BUTTON('Submit', _type="submit", _class="button btn btn-default",
-                            _style='padding: 3px 5px 3px 5px;')
-        
-        admin = FORM(DIV(DIV(H5('Admin Decision', ), _class="panel-heading"),
-                        DIV(DIV(DIV(LABEL('Select decision', _class='row'),
-                                DIV(selector, _class='row'),
-                                DIV(submit,  _class='row'),
-                                _class='col-sm-2'),
-                            DIV(LABEL('Comments', _class='row'),
-                                DIV(comments, _class='row'),
-                                _class='col-sm-10'),
-                            _class='row',_style='margin:10px 10px'),
-                            _class = 'panel_body', _style='margin:10px 10px'),
-                        DIV(_class="panel-footer"),
-                        _class='panel panel-primary'))
+        admin = admin_decision_form(selector_options=['Resubmit', 'Approved'])
         
         if admin.process(formname='admin').accepted:
             
             # add info to the history string
-            new_history = '[{} {}, {}, {}]\\n{}\\n'.format(auth.user.first_name,
-                           auth.user.last_name, datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
-                           admin.vars.decision, admin.vars.comment)
+            admin_str = '[{}] {} {}\\n ** Decision: {}\\n ** Comments: {}\\n'
+            new_history = admin_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                           auth.user.first_name,
+                                           auth.user.last_name,
+                                           admin.vars.decision,
+                                           admin.vars.comment)
             
             # update the admin history
-            if record.admin_history in [None, '']:
-                record.update_record(admin_status=admin.vars.decision,
-                                     admin_history = new_history)
-            else:
-                record.update_record(admin_status=admin.vars.decision,
-                                     admin_history = record.admin_history + '\\n' + new_history)
-    
+            record.update_record(admin_status=admin.vars.decision,
+                                 admin_history = new_history + record.admin_history)
+            
             # set a flash message
             flash_message  = CENTER(B('Decision emailed to project member at {}.'.format(record.user_id.email)), _style='color: green')
-    
+            
+            # email the submitter
+            admin_template_dict = {'name': record.user_id.first_name, 
+                                   'url': URL('outputs', 'output_details', args=[record.id], scheme=True, host=True),
+                                   'public_url': URL('outputs', 'view_output', args=[record.id], scheme=True, host=True),
+                                   'admin': auth.user.first_name + ' ' + auth.user.last_name}
+            
             if admin.vars.decision == 'Approved':
-                mail.send(to=record.user_id.email,
-                          subject='SAFE output submission',
-                          message='Dear {},\n\nLucky template\n\n {}'.format(record.user_id.first_name, admin.vars.comment))
+                
+                SAFEmailer(to=record.user_id.email,
+                           subject='SAFE: project output approved',
+                           template =  'output_approved.html',
+                           template_dict = admin_template_dict)
+                
                 session.flash = flash_message
+                
             elif admin.vars.decision == 'Resubmit':
-                mail.send(to=record.user_id.email,
-                          subject='SAFE output submission',
-                          message='Dear {},\n\nUnlucky template\n\n {}'.format(record.user_id.first_name, admin.vars.comment))
+                
+                SAFEmailer(to=record.user_id.email,
+                           subject='SAFE: resubmit project output',
+                           template =  'output_resubmit.html',
+                           template_dict = admin_template_dict)
+                
                 session.flash = flash_message
             else:
                 pass
@@ -428,17 +485,19 @@ def output_details():
 def validate_output_details(form):
     
     """
-    Add uploader id and date and (re)set the approval status
+    Add uploader id and check whether the submit button has been pressed
     TODO -  could check the file isn't ridiculously big but once it is at this 
             point, in this controller, it has already been uploaded. So dim to 
             block it here.
     """
     
-    form.vars.user_id = auth.user_id
-    form.vars.submission_date =  datetime.date.today().isoformat()
+    # capture if the request is a submission
+    if 'submit' in request.vars.keys():
+        form.submit = True
+    else:
+        form.submit = False
     
-    # update the record admin status to make it Pending
-    form.vars.admin_status='Pending'
+    form.vars.user_id = auth.user_id
 
 # @auth.requires_login()
 # def remove_project():
@@ -483,7 +542,7 @@ def administer_outputs():
      - a link to the details page, which will provide an admin decision box
     """
     
-    rows = db(db.outputs.admin_status == 'Pending').select()
+    rows = db(db.outputs.admin_status == 'Submitted').select()
 
     if len(rows) > 0:
         table_rows = [TR(TD(A(r.title, _href=URL('outputs', 'output_details', args=r.id)))) for r in rows]

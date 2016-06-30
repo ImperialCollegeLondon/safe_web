@@ -272,7 +272,7 @@ if db(db.outputs).count() == 0:
                               title = row['title'],
                               format = row['format'],
                               citation = row['citation'],
-                              description = row['description'],
+                              abstract = row['description'],
                               user_id = a.id, 
                               submission_date = datetime.datetime.now(),
                               url = row['url'],
