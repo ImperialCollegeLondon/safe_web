@@ -1,4 +1,7 @@
 import os
+import html2text
+import datetime
+from gluon.contrib import simplejson
 
 ## -----------------------------------------------------------------------------
 ## PREDEFINED LISTS OF VALUES
@@ -22,7 +25,7 @@ volunteer_type = ['Voluntary experience', 'Undergraduate Honours project', 'Othe
 
 research_tags = ["Water Resources", "Biodiversity", "Plant Science", "Zoology", "Ecology", 
                  "Freshwater Biology", "Agriculture", "Infectious Diseases", "Soil Science", 
-                 "Meterology and Atmospheric Science", "Biogeochemistry", "Microclimate", 
+                 "Meteorology and Atmospheric Science", "Biogeochemistry", "Microclimate", 
                  "Policy", "Other", "Riparian", "Invasive Species"]
 
 data_use_set = ['Undergraduate Project','Masters Project', 'PhD Thesis','Research Grant','Other']
@@ -478,6 +481,23 @@ db.define_table('discussion_message',
 
 db.discussion_message.parent_id.requires=IS_NULL_OR(IS_IN_DB(db, 'discussion_message.id'))
 
+## -----------------------------------------------------------------------------
+## Email log
+## - db table just to record who got emailed what and when. Doesn't record message
+##   content since these emails are all from templates - record the template and
+##   the dictionary of info used to fill out the template to save bits.
+## -----------------------------------------------------------------------------
+
+db.define_table('safe_web_email_log',
+                Field('subject', 'string'),
+                Field('email_to', 'text'),
+                Field('email_cc', 'text'),
+                Field('template','string'),
+                Field('template_dict','json'),
+                Field('status', 'string'),
+                Field('message_date','datetime'))
+
+
 
 ## Define a general function to power the datepicker widgets. Not sure if this is the best location for it.
 
@@ -529,4 +549,29 @@ def admin_decision_form(selector_options):
                     _class='panel panel-primary'))
     
     return admin
+
+
+def SAFEmailer(subject, to, template, template_dict, cc=None):
     
+    """
+    Takes a template name, fills it in from the template dictionary
+    and then sends it
+    """
+    
+    # get the html version, strip it down to text and combine
+    html_msg = response.render('email_templates/' + template, template_dict)
+    txt_msg = html2text.html2text(html_msg)
+    msg = (txt_msg, html_msg)
+    
+    # send the mail
+    msg_status = mail.send(to=to, subject=subject, message=msg,
+                           cc=cc, reply_to='info@safeproject.net')
+    
+    # log it in the database
+    db.safe_web_email_log.insert(email_to=to, 
+                                 subject=subject, 
+                                 template=template,
+                                 template_dict=simplejson.dumps(template_dict),
+                                 email_cc=cc,
+                                 status = 'sent' if msg_status else 'failed',
+                                 message_date=datetime.datetime.now())

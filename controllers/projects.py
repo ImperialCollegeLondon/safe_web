@@ -433,24 +433,23 @@ def project_details():
                                           admin_history = new_history)
                     
                     # ii) email the proposer
-                    template =  'email_templates/project_submitted.html'
-                    message =  response.render(template,
-                                               {'name': auth.user.first_name,
+                    SAFEmailer(to=auth.user.email,
+                               subject='SAFE: project proposal submitted',
+                               template =  'project_submitted.html',
+                               template_dict = {'name': auth.user.first_name,
                                                 'url': URL('projects', 'project_details', args=[project_id, version_id], scheme=True, host=True)})
                     
-                    msg_status = mail.send(to=auth.user.email,
-                                           subject='SAFE project draft submitted',
-                                           message=message)
-                                           
                     session.flash = CENTER(B('SAFE project proposal submitted.'), _style='color: green')
                     redirect(URL('projects', 'project_details', args=[project_id, version_id]))
                 
                 elif details is None:
                     # if a new project (no existing details) then:
                     # i) link to a new project_id
+                    
                     new_details = db.project_details(form.vars.id)
                     project_id = db.project_id.insert(project_details_id = new_details.id,
                                                       project_details_uuid = new_details.uuid)
+                                                      
                     # ii) set it up as a Draft version and initialise the history
                     hist_str = '[{}] {} {}\\n -- New proposal created\\n'
                     new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
@@ -469,14 +468,11 @@ def project_details():
                                               is_coordinator = True)
                     
                     # iv) email the proposer
-                    template =  'email_templates/project_submitted.html'
-                    message =  response.render(template,
-                                               {'name': auth.user.first_name,
-                                                'url': URL('projects', 'project_details', args=[project_id, version_id], scheme=True, host=True)})
-                    
-                    msg_status = mail.send(to=auth.user.email,
-                                           subject='SAFE project draft proposal draft created',
-                                           message=message)
+                    SAFEmailer(to=auth.user.email,
+                               subject='SAFE: draft project proposal created',
+                               template =  'project_draft_created.html',
+                               template_dict = {'name': auth.user.first_name,
+                                                'url': URL('projects', 'project_details', args=[project_id, 1], scheme=True, host=True)})
                     
                     # signal success and load the newly created record in a details page
                     session.flash = CENTER(B('SAFE project draft created.'), _style='color: green')
@@ -939,23 +935,7 @@ def project_details():
         ## ADMIN INTERFACE
         if project_id is not None and auth.has_membership('admin') and details.admin_status in ['Submitted', 'In Review']:
             
-            selector = SELECT('Resubmit', 'Approved', 'In Review', _class="generic-widget form-control", _name='decision')
-            comments = TEXTAREA(_type='text', _class="form-control string", _rows=2, _name='comment')
-            submit = TAG.BUTTON('Submit', _type="submit", _class="button btn btn-default",
-                                _style='padding: 3px 5px 3px 5px;')
-        
-            admin = FORM(DIV(DIV(H5('Admin Decision', ), _class="panel-heading"),
-                            DIV(DIV(DIV(LABEL('Select decision', _class='row'),
-                                    DIV(selector, _class='row'),
-                                    DIV(submit,  _class='row'),
-                                    _class='col-sm-2'),
-                                DIV(LABEL('Comments', _class='row'),
-                                    DIV(comments, _class='row'),
-                                    _class='col-sm-10'),
-                                _class='row',_style='margin:10px 10px'),
-                                _class = 'panel_body', _style='margin:10px 10px'),
-                            DIV(_class="panel-footer"),
-                            _class='panel panel-primary'))
+            admin = admin_decision_form(selector_options=['Resubmit', 'Approved', 'In Review'])
             
             if admin.process(formname='admin').accepted:
                 
@@ -976,31 +956,68 @@ def project_details():
                     id_record.update_record(project_details_id = details.id,
                                             project_details_uuid = details.uuid)
                 
-                # TODO - think about who gets emailed. Just the proposer or all members
+                # Email decision
                 proposer = details.proposer_id
+                template_dict = {'name': proposer.first_name, 
+                                 'url': URL('projects', 'project_details', args=[project_id, version_id], scheme=True, host=True),
+                                 'public_url': URL('projects', 'project_view', args=[project_id], scheme=True, host=True),
+                                 'overview_url': URL('info', 'steps_to_follow', scheme=True, host=True),
+                                 'rv_url': URL('research_visits','research_visit_details', scheme=True, host=True),
+                                 'hs_url': URL('health_safety','health_and_safety', scheme=True, host=True),
+                                 'output_url': URL('outputs','output_details', scheme=True, host=True),
+                                 'group_url': URL('groups','group_request', scheme=True, host=True),
+                                 'email_url': URL('info','mailing_list', scheme=True, host=True),
+                                 'admin': auth.user.first_name + ' ' + auth.user.last_name}
                 
                 # pick an decision
                 if admin.vars.decision == 'Approved':
-                    mail.send(to=proposer.email,
-                              subject='SAFE project submission',
-                              message='Dear {},\n\nLucky template\n\n {}'.format(proposer.first_name, admin.vars.comment))
+                    
+                    SAFEmailer(to=auth.user.email,
+                               subject='SAFE: project proposal approved',
+                               template =  'project_approved.html',
+                               template_dict = template_dict)
+                    
                     redirect(URL('projects','administer_projects'))
+                    
                 elif admin.vars.decision == 'Resubmit':
-                    mail.send(to=proposer.email,
-                              subject='SAFE project resubmission',
-                              message='Dear {},\n\nChanges needed\n\n {}'.format(proposer.first_name, admin.vars.comment))
+                    
+                    SAFEmailer(to=auth.user.email,
+                               subject='SAFE: project proposal requires resubmission',
+                               template =  'project_resubmit.html',
+                               template_dict = template_dict)
+                    
                     redirect(URL('projects','administer_projects'))
                 elif admin.vars.decision == 'In Review':
-                    mail.send(to=proposer.email,
-                              subject='SAFE project in review',
-                              message='Dear {},\n\nSent to reviewers\n\n {}'.format(proposer.first_name, admin.vars.comment))
-                    # TODO - send email to review panel
+                    
+                    # Email the proposer
+                    SAFEmailer(to=auth.user.email,
+                               subject='SAFE: project proposal sent for review',
+                               template =  'project_in_review.html',
+                               template_dict = template_dict)
+                    
+                    # collect the people to email - coordinators of projects that have end dates less than a year ago
+                    coords = db((db.project_details.end_date > datetime.date.today() - datetime.timedelta(days=365)) &
+                                (db.project_details.project_id == db.project_members.project_id) &
+                                (db.project_members.is_coordinator == 'T') &
+                                (db.auth_user.id == db.project_members.user_id)).select(db.auth_user.email)
+                    
+                    
+                    # TODO TODO TODO - make this live! Sub in to email below.
+                    coords = set([r.email for r in coords])
+                    coords = ['d.orme@imperial.ac.uk']
+                    
+                    # Email the review panel
+                    SAFEmailer(to = coords,
+                               subject='SAFE Project Proposal Review (' + str(project_id) + ')',
+                               template =  'project_to_review.html',
+                               template_dict = template_dict)
+                    
                     redirect(URL('projects','administer_projects'))
-                elif admin.vars.decision == 'Rejected':
-                    mail.send(to=proposer.email,
-                              subject='SAFE project submission',
-                              message='Dear {},\n\nUnlucky template\n\n {}'.format(proposer.first_name, admin.vars.comment))
-                    redirect(URL('projects','administer_projects'))
+                # elif admin.vars.decision == 'Rejected':
+                #     mail.send(to=proposer.email,
+                #               subject='SAFE project submission',
+                #               message='Dear {},\n\nUnlucky template\n\n {}'.format(proposer.first_name, admin.vars.comment))
+                #     redirect(URL('projects','administer_projects'))
                 else:
                     pass
                 
