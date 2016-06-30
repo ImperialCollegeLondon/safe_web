@@ -414,8 +414,7 @@ def project_details():
                                       'rationale', 'methods', 'which_animal_taxa',
                                       'destructive_sampling','destructive_sampling_info',
                                       'ethics_approval_required','ethics_approval_details',
-                                      'funding', 'requires_ra',
-                                      'requires_vehicle','resource_notes', 'data_sharing'],
+                                      'funding', 'data_sharing'],
                            buttons = buttons)
             
             # Process the form first to add hidden fields etc or to capture submitted values
@@ -574,16 +573,6 @@ def project_details():
                                     DIV(B('Animal taxa'), form.custom.widget.which_animal_taxa ,_class="col-sm-4"),
                                     _class='row', _style='margin:10px 10px'),
                                 local_hr,
-                                DIV(H4('Project resource requirements'), P('Please indicate if your project will need research assistant support',
-                                     ' or the use of vehicles to access sites by checking the boxes and provide a brief description of RA, vehicle'
-                                     ' and any other resources that the project will require.'),
-                                    _class='row', _style='margin:10px 10px;'),
-                                DIV(DIV(LABEL(form.custom.widget.requires_ra, 'Research Assistant time required', _class="control-label"),
-                                        LABEL(form.custom.widget.requires_vehicle, 'Vehicle transport required', _class="control-label"),
-                                        _class="col-sm-4"),
-                                    DIV(LABEL('Resource notes'), form.custom.widget.resource_notes,_class="col-sm-8"),
-                                    _class='row', _style='margin:10px 10px'),
-                                local_hr,
                                 DIV(H4('Funding and data sharing'), P('The SAFE Project requires that you deposit a copy of any primary '
                                       'field data you collect in the SAFE central database, and to provide metadata for that data.'),
                                     _class='row', _style='margin:10px 10px;'),
@@ -636,18 +625,6 @@ def project_details():
                 ethics = DIV(P('Ethical approval is not required for this work'), animals,
                              _class='row', _style='margin:10px 10px;')
             
-            # package resource use notes
-            ra_time = P('This project will require research assistant support.') if details.requires_ra else ''
-            vehicle_use = P('This project will require vehicle transport to sites.') if details.requires_vehicle else ''
-            resource_notes = CAT(P('The following resource notes have been provided:'), DIV(details.resource_notes, _class='well')) if details.resource_notes != '' else ''
-            
-            resources = CAT(ra_time, vehicle_use, resource_notes)
-            
-            if resources.components == ['', '', '']:
-                resources = 'No resource requests have been recorded for this project'
-            
-            resources = DIV(resources, _class='row', _style='margin:10px 10px;')
-            
             # thumbnail_figure
             if details.thumbnail_figure in [None, '']:
                 pic = URL('static', 'images/default_thumbnails/missing_project.png')
@@ -695,9 +672,6 @@ def project_details():
                                 local_hr,
                                 DIV(H4('Animal research and ethics'), _class='row', _style='margin:10px 10px;'),
                                 ethics,
-                                local_hr,
-                                DIV(H4('Project resource requirements'), _class='row', _style='margin:10px 10px'),
-                                resources,
                                 local_hr,
                                 DIV(H4('Funding and data sharing'), 
                                     P('The project coordinators ',B('have confirmed '), 'that this project will provide primary field data and metadata to the SAFE project.'),
@@ -1186,94 +1160,3 @@ def administer_projects():
                          )
     
     return dict(form=form)
-
-# @auth.requires_membership('admin')
-# def administer_project_details():
-#
-#     """
-#     Custom project view - shows the members and details of a project
-#     and allows the admin to approve or reject the project
-#     """
-#
-#     # look for an existing record, otherwise a fresh start with an empty record
-#     project_id = request.args(0)
-#
-#     if project_id is None or (project_id is not None and db.project(project_id) is None):
-#         # avoid unknown projects
-#         session.flash = B(CENTER('Invalid or missing project id'), _style='color:red;')
-#         redirect(URL('projects','administer_projects'))
-#     else:
-#
-#         # get project members
-#         members = db(db.project_members.project_id == project_id).select()
-#         record = db.project(project_id)
-#
-#         # pass the admin fields through as a field and the rest as a record
-#         form = SQLFORM(db.project, record = project_id, showid=False,
-#                        fields = ['admin_status', 'admin_notes'],
-#                        submit_button = 'Submit decision')
-#
-#         # process the form and handle actions
-#         if form.process(onvalidation=validate_administer_projects).accepted:
-#
-#             # retrieve the whole form record to get at the creator details
-#             # TODO - think about who gets emailed. Just the proposer or all members
-#             proposer = record.proposer_id
-#
-#             # set a flash message
-#             flash_message  = CENTER(B('Decision emailed to project proposer at {}.'.format(proposer.email)), _style='color: green')
-#
-#             # pick an decision
-#             if form.vars.admin_status == 'Approved':
-#                 mail.send(to=proposer.email,
-#                           subject='SAFE project submission',
-#                           message='Dear {},\n\nLucky template\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
-#                 session.flash = flash_message
-#                 redirect(URL('projects','administer_projects'))
-#             elif form.vars.admin_status == 'Resubmit':
-#                 mail.send(to=proposer.email,
-#                           subject='SAFE project resubmission',
-#                           message='Dear {},\n\nChanges needed\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
-#                 session.flash = flash_message
-#                 redirect(URL('projects','administer_projects'))
-#             elif form.vars.admin_status == 'In Review':
-#                 mail.send(to=proposer.email,
-#                           subject='SAFE project in review',
-#                           message='Dear {},\n\nSent to reviewers\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
-#                 # TODO - send email to review panel
-#                 session.flash = flash_message
-#                 redirect(URL('projects','administer_projects'))
-#             elif form.vars.admin_status == 'Rejected':
-#                 mail.send(to=proposer.email,
-#                           subject='SAFE project submission',
-#                           message='Dear {},\n\nUnlucky template\n\n {}'.format(proposer.first_name, form.vars.admin_notes))
-#                 session.flash = flash_message
-#                 redirect(URL('projects','administer_projects'))
-#             else:
-#                 pass
-#         elif form.errors:
-#             response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
-#         else:
-#             pass
-#
-#
-#         # pass components to the view
-#         return dict(record=record, members=members, form=form)
-#
-# def validate_administer_projects(form):
-#
-#     # validation handles any checking (none here) and also any
-#     # amendments to the form variable  - adding admin user, date of admin decision
-#     # and decision
-#     form.vars.admin_id = auth.user.id
-#     today = datetime.date.today().isoformat()
-#     form.vars.admin_decision_date = today
-#
-#     # update the history
-#     new_history = '[{} {}, {}, {}]\\n {}'.format(auth.user.first_name,
-#                    auth.user.last_name, today, form.vars.admin_status,
-#                    form.vars.admin_notes)
-#     if form.vars.admin_history is None:
-#         form.vars.admin_history = new_history
-#     else:
-#         form.vars.admin_history += new_history

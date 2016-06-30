@@ -172,9 +172,6 @@ if db(db.project_details).count() == 0:
                                                    data_use = [],
                                                    rationale = row['methods'], # stupidly switched
                                                    methods = row['rationale'],
-                                                   requires_ra = row['requires_ra'],
-                                                   requires_vehicle = row['requires_vehicle'],
-                                                   resource_notes = row['resource_notes'],
                                                    data_sharing = True,
                                                    proposal_date = datetime.datetime.now(),
                                                    admin_status = 'Approved',
