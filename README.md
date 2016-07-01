@@ -145,6 +145,7 @@ I didn't muck around with virtualenv for packages as these ones should probably 
     sudo pip install --upgrade google-api-python-client
     sudo pip install openpyxl
     sudo pip install fs
+    sudo pip install html2text
 
 #### Deploying the web2py application from a bitbucket repo ####
 

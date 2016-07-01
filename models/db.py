@@ -108,7 +108,7 @@ academic_status_set = ['Undergraduate', 'Masters Student',
 titles_set = [None, 'Dr','Prof', 'Assist. Prof', 'Assoc. Prof']
 
 auth.settings.extra_fields['auth_user']= [
-    Field('uuid', length=64, default=uuid.uuid4), # user OID
+    Field('oid', length=64, default=uuid.uuid4), # user OID
     Field('title', 'string', requires=IS_IN_SET(titles_set)), 
     Field('nationality', 'string'),
     Field('academic_status', 'string', requires=IS_IN_SET(academic_status_set)),
@@ -131,8 +131,8 @@ auth.settings.extra_fields['auth_user']= [
 auth.define_tables(username=False, signature=False)
 
 # dont show the user the UUID field or legacy user or H&S
-db.auth_user.uuid.readable = False
-db.auth_user.uuid.writable = False
+db.auth_user.oid.readable = False
+db.auth_user.oid.writable = False
 db.auth_user.legacy_user_id.readable = False
 db.auth_user.legacy_user_id.writable = False
 db.auth_user.h_and_s_id.readable = False

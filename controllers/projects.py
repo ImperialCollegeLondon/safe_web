@@ -447,7 +447,7 @@ def project_details():
                     
                     new_details = db.project_details(form.vars.id)
                     project_id = db.project_id.insert(project_details_id = new_details.id,
-                                                      project_details_uuid = new_details.uuid)
+                                                      project_details_oid = new_details.oid)
                                                       
                     # ii) set it up as a Draft version and initialise the history
                     hist_str = '[{}] {} {}\\n -- New proposal created\\n'
@@ -698,9 +698,9 @@ def project_details():
                                               auth.user.first_name,
                                               auth.user.last_name) + details.admin_history
                 
-                # get the new record updated with the new status, version number and uuid
+                # get the new record updated with the new status, version number and oid
                 db.project_details(new_draft_id).update_record(admin_status='Draft',
-                                                               uuid = uuid.uuid4(),
+                                                               oid = uuid.uuid4(),
                                                                version=details.version + 1,
                                                                admin_history = new_history)
                                                                
@@ -731,7 +731,9 @@ def project_details():
                 if members.process(onvalidation=validate_new_project_member, formname='members').accepted:
                     
                     # i) lookup the new member details to get a reference to auth and update the history
+                    # and link the OIDs up 
                     new_member = db.project_members(members.vars.id)
+                    print new_member
                     
                     hist_str = '[{}] {} {}\\n -- Project members added/updated: {} {}, {} {}\\n'
                     new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
@@ -928,7 +930,7 @@ def project_details():
                 if admin.vars.decision == 'Approved':
                     id_record = db.project_id(project_id)
                     id_record.update_record(project_details_id = details.id,
-                                            project_details_uuid = details.uuid)
+                                            project_details_oid = details.oid)
                 
                 # Email decision
                 proposer = details.proposer_id
@@ -1063,46 +1065,6 @@ def validate_new_project_member(form):
     
     for r in existing_record:
         db.project_members(r.id).delete_record()
-    
-
-# @auth.requires_login()
-# def remove_member():
-#
-#     """
-#     Removes a row from the project_member table and as such needs careful safeguarding
-#     against use by non-authorised people - must be a logged in user who is a coordinator
-#     for the project
-#     """
-#
-#     # get the row id
-#     row_id = request.args(0)
-#     record = db.project_members(row_id)
-#
-#     if record is not None:
-#
-#         # get a set of users who have the right to access this interface for the row
-#         project_coords = db((db.project_members.project_id == record.project_id) &
-#                             (db.project_members.is_coordinator == 'True')).select()
-#         project_coord_id = [r.user_id for r in project_coords]
-#
-#         # if the user is a member then check it makes sense to delete and do so.
-#         if  auth.user.id in project_coord_id:
-#
-#             # are we removing the last coordinator?
-#             if len(project_coord_id) == 1 and int(row_id) == project_coords.first().id:
-#                  session.flash =  CENTER(B('You may not remove the last coordinator from a project'), _style='color: red')
-#                  redirect(URL('projects','project_details', args=record.project_id))
-#             else:
-#                 # TODO - notify the member that they're being removed?
-#                 session.flash =  CENTER(B('Project member removed'), _style='color: green')
-#                 db(db.project_members.id == row_id).delete()
-#                 redirect(URL('projects','project_details', args=record.project_id))
-#         else:
-#             session.flash =  CENTER(B('Unauthorised use of projects/remove_member'), _style='color: red')
-#             redirect(URL('projects','projects'))
-#     else:
-#         session.flash = CENTER(B('Unknown row ID in projects/remove_member'), _style='color: red')
-#         redirect(URL('projects','projects'))
 
 
 ## -----------------------------------------------------------------------------

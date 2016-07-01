@@ -140,13 +140,13 @@ db.define_table('contacts',
 
 
 db.define_table('project_id', 
-    Field('uuid', length=64, default=uuid.uuid4),
+    Field('oid', length=64, default=uuid.uuid4),
     Field('project_details_id', 'integer'),
-    Field('project_details_uuid', length=64))
+    Field('project_details_oid', length=64))
 
 
 db.define_table('project_details',
-    Field('uuid', length=64, default=uuid.uuid4),
+    Field('oid', length=64, default=uuid.uuid4),
     Field('project_id', 'reference project_id'),
     Field('version', 'integer'),
     Field('thumbnail_figure','upload', uploadfolder= os.path.join(request.folder, 'uploads/images/projects')),
@@ -192,8 +192,11 @@ db.define_table('project_details',
 
 
 db.define_table('project_members',
+    Field('oid', length=64, default=uuid.uuid4),
     Field('project_id', 'reference project_id', notnull=True),
+    Field('project_id_oid', length=64, notnull=True),
     Field('user_id', 'reference auth_user', notnull=True),
+    Field('user_id_oid', length=64, notnull=True),
     Field('project_role', requires=IS_IN_SET(project_roles), notnull=True),
     Field('is_coordinator','boolean', notnull=True, default=False))
 

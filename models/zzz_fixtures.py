@@ -78,7 +78,7 @@ if db(db.auth_user).count() == 0:
                                 email = row['email'],
                                 alternative_email = row['alt_email'],
                                 website = row['website'],
-                                taxonomic_expertise = row['taxonomic_expertise'],
+                                scientific_expertise = row['taxonomic_expertise'],
                                 thumbnail_picture = img_st,
                                 legacy_user_id  = row['legacy_user_id'])
     
@@ -183,7 +183,7 @@ if db(db.project_details).count() == 0:
             details = db.project_details(details_id)
             id_record = db.project_id(project_id)
             id_record.update_record(project_details_id=details.id,
-                                    project_details_uuid=details.uuid)
+                                    project_details_oid=details.oid)
     
     csvfile.close()
 
@@ -218,7 +218,10 @@ if db(db.project_members).count() == 0:
             
             # now insert all the information
             db.project_members.insert(project_id = r.project_id,
+                                      project_id_oid = r.oid,
                                       user_id = a.id,
+                                      user_id_oid = a.oid,
+                                      oid = uuid.uuid4(),
                                       project_role = row['Position'],
                                       is_coordinator = True if row['coord'] == 'TRUE' else False)
     
