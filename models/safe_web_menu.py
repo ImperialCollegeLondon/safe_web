@@ -78,8 +78,8 @@ user_actions = [(T('Registered users'), True, None, [
                 (T('Propose a project'), True, URL('projects', 'project_details'), []),
                 (T('Submit a new output'), True, URL('outputs', 'output_details'), []),
                 (T('Propose a research visit'), True, URL('research_visits', 'research_visit_details'), []),
-                (T('Volunteer at SAFE'), True, URL('marketplace', 'new_volunteer'), []),
-                (T('Request project help'), True, URL('marketplace', 'new_help_request'), []),
+                (T('Volunteer at SAFE'), True, URL('marketplace', 'volunteer_details'), []),
+                (T('Request project help'), True, URL('marketplace', 'help_request_details'), []),
                 LI(_class="divider"),
                 (T('Request to join web group'), True, URL('groups', 'group_request'), []),
                ])]
