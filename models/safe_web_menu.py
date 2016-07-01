@@ -80,13 +80,11 @@ user_actions = [(T('Registered users'), True, None, [
                 (T('Propose a research visit'), True, URL('research_visits', 'research_visit_details'), []),
                 (T('Volunteer at SAFE'), True, URL('marketplace', 'volunteer_details'), []),
                 (T('Request project help'), True, URL('marketplace', 'help_request_details'), []),
+                (T('Create a blog post'), True,URL('blogs', 'blog_details'),[]),
                 LI(_class="divider"),
                 (T('Request to join web group'), True, URL('groups', 'group_request'), []),
                ])]
 
-
-if auth.has_membership('bloggers'):
-    user_actions[0][3].append((T('Create a blog post'), True,URL('blogs', 'blog_details'),[]))
 
 if auth.has_membership('species_profiler'):
     user_actions[0][3].append((T('Manage species profiles'), True,URL('species', 'manage_species'),[]))

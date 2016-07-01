@@ -939,7 +939,7 @@ def project_details():
                                  'rv_url': URL('research_visits','research_visit_details', scheme=True, host=True),
                                  'hs_url': URL('health_safety','health_and_safety', scheme=True, host=True),
                                  'output_url': URL('outputs','output_details', scheme=True, host=True),
-                                 'group_url': URL('groups','group_request', scheme=True, host=True),
+                                 'blog_url': URL('blogs','blog_details', scheme=True, host=True),
                                  'email_url': URL('info','mailing_list', scheme=True, host=True),
                                  'admin': auth.user.first_name + ' ' + auth.user.last_name}
                 

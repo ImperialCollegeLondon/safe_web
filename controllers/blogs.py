@@ -59,7 +59,7 @@ def blog_post():
 ## - controller to allow bloggers to create new posts and edit existing ones
 ## -----------------------------------------------------------------------------
 
-@auth.requires_membership('bloggers')
+@auth.requires_login()
 def blog_details():
     
     """
@@ -263,7 +263,7 @@ def blog_details():
     return dict(form=form,  admin_history=admin_history, admin=admin)
 
 
-@auth.requires_membership('bloggers')
+@auth.requires_login()
 def validate_blog_post(form):
     
     # validation handles any checking and also any 

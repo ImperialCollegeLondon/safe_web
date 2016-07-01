@@ -46,8 +46,8 @@ if db(db.auth_user).count() == 0:
     db.auth_group.insert(role='species_profiler',
                          description='People who can add and edit species profiles')
     
-    db.auth_group.insert(role='bloggers',
-                         description='People who can add blog posts')
+    #db.auth_group.insert(role='bloggers',
+    #                     description='People who can add blog posts')
     
     db.auth_group.insert(role='wiki_user',
                          description='People who can edit the wiki')
@@ -89,20 +89,20 @@ if db(db.auth_user).count() == 0:
     r = rows.first()
     r.update_record(password=db.auth_user.password.requires('password23')[0])
     auth.add_membership('admin', r.id)
-    auth.add_membership('bloggers', r.id)
+    #auth.add_membership('bloggers', r.id)
     
     # add test users to the admin group
     rows = db(db.auth_user.last_name == 'Ewers').select()
     r = rows.first()
     r.update_record(password=db.auth_user.password.requires('password23')[0])
     auth.add_membership('admin', r.id)
-    auth.add_membership('bloggers', r.id)
+    #auth.add_membership('bloggers', r.id)
     
     rows = db(db.auth_user.email == 'olivia.daniel08@imperial.ac.uk').select()
     r = rows.first()
     r.update_record(password=db.auth_user.password.requires('password23')[0])
     auth.add_membership('admin', r.id)
-    auth.add_membership('bloggers', r.id)
+    #auth.add_membership('bloggers', r.id)
 
 
 ## ------------------------------------------------------------------------
