@@ -84,7 +84,7 @@ def blog_details():
     elif record is None or record.user_id == auth.user.id or auth.has_membership('admin'):
         
         if record is None:
-            buttons =  [TAG.BUTTON('Create', _type="submit", _class="button btn btn-default",
+            buttons =  [TAG.BUTTON('Submit', _type="submit", _class="button btn btn-default",
                                    _style='padding: 5px 15px 5px 15px;', _name='create')]
             readonly = False
         else:
@@ -114,16 +114,28 @@ def blog_details():
             if 'update' in req_keys:
                 id = record.update_record(admin_history = new_history + record.admin_history,
                                           **db.blog_posts._filter_fields(form.vars))
+                id = id.id
                 msg = CENTER(B('Blog post updated and resubmitted for approval.'), _style='color: green')
             elif 'create' in req_keys:
                 id = db.blog_posts.insert(admin_history=new_history, 
                                           **db.blog_posts._filter_fields(form.vars))
+                print id
                 msg = CENTER(B('Blog post created and submitted for approval.'), _style='color: green')
             else:
                 pass
             
+            # Email the link
+            template_dict = {'name': auth.user.first_name, 
+                             'url': URL('blogs', 'blog_details', args=[blog_id], scheme=True, host=True),
+                             'submission_type': 'blog post'}
+            
+            SAFEmailer(to=auth.user.email,
+                       subject='SAFE: blog post submitted',
+                       template =  'generic_submitted.html',
+                       template_dict = template_dict)
+            
             session.flash = msg
-            redirect(URL('blogs','blog_details', args=form.vars.id))
+            redirect(URL('blogs','blog_details', args=[id]))
             
         elif form.errors:
             response.flash = CENTER(B('Problems with the form, check below.'), _style='color: red')
@@ -209,17 +221,31 @@ def blog_details():
             # pick an decision
             poster = record.user_id
             
+            template_dict = {'name': poster.first_name, 
+                             'url': URL('blogs', 'blog_details', args=[blog_id], scheme=True, host=True),
+                             'public_url': URL('blogs', 'blog_post', args=[blog_id], scheme=True, host=True),
+                             'admin': auth.user.first_name + ' ' + auth.user.last_name,
+                             'submission_type': 'blog post'}
+            
             # pick an decision
             if admin.vars.decision == 'Approved':
-                mail.send(to=poster.email,
-                          subject='SAFE blog post',
-                          message='Dear {},\n\nLucky template\n\n {}'.format(poster.first_name, admin.vars.comments))
+                
+                SAFEmailer(to=poster.email,
+                           subject='SAFE: blog post approved',
+                           template =  'generic_approved.html',
+                           template_dict = template_dict)
+                
                 msg = CENTER(B('Blog approval emailed to poster at {}.'.format(poster.email)), _style='color: green')
+            
             elif admin.vars.decision == 'Resubmit':
-                mail.send(to=poster.email,
-                          subject='SAFE blog post',
-                          message='Dear {},\n\nUnlucky template\n\n {}'.format(poster.first_name, admin.vars.comments))
+
+                SAFEmailer(to=poster.email,
+                           subject='SAFE: blog post requires resubmission',
+                           template =  'generic_resubmit.html',
+                           template_dict = template_dict)
+                
                 msg = CENTER(B('Blog resubmission emailed to poster at {}.'.format(poster.email)), _style='color: green')
+            
             else:
                 pass
             

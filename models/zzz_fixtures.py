@@ -367,8 +367,9 @@ if db(db.blog_posts).count() == 0:
             else:
                 img_st = None
             
-            # DO assuming ownership
-            user_id = db(db.auth_user.email == 'd.orme@imperial.ac.uk').select().first().id
+            # Ownership
+            auth_rows = db(db.auth_user.legacy_user_id == row['legacy_user_id']).select()
+            a = auth_rows.first()
             
             # now insert all the information
             db.blog_posts.insert(thumbnail_figure = img_st,
@@ -377,7 +378,7 @@ if db(db.blog_posts).count() == 0:
                               content = row['content'],
                               date_posted = row['date_posted'],
                               admin_status = 'Approved',
-                              user_id = user_id, 
+                              user_id = a.id, 
                               admin_history = admin_history 
                               )
             db.commit()
