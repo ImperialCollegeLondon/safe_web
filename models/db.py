@@ -123,7 +123,7 @@ auth.settings.extra_fields['auth_user']= [
     Field('website', 'string', requires=IS_EMPTY_OR(IS_URL())),
     Field('thumbnail_picture', 'upload', uploadfolder= request.folder + '/uploads/images/user_thumbnails'),
     Field('biography', 'text'),
-    Field('taxonomic_expertise', type='string'),
+    Field('scientific_expertise', type='string'),
     Field('legacy_user_id','integer'),
     Field('h_and_s_id', 'integer')]
 

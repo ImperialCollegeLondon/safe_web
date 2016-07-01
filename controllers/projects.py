@@ -916,10 +916,10 @@ def project_details():
                 # update record with decision
                 admin_str = '[{}] {} {}\\n ** Decision: {}\\n ** Comments: {}\\n'
                 new_history = admin_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
-                                                           auth.user.first_name,
-                                                           auth.user.last_name,
-                                                           admin.vars.decision,
-                                                           admin.vars.comment) + details.admin_history
+                                               auth.user.first_name,
+                                               auth.user.last_name,
+                                               admin.vars.decision,
+                                               admin.vars.comment) + details.admin_history
                 
                 details.update_record(admin_status = admin.vars.decision,
                                       admin_history = new_history)
@@ -951,8 +951,6 @@ def project_details():
                                template =  'project_approved.html',
                                template_dict = template_dict)
                     
-                    redirect(URL('projects','administer_projects'))
-                    
                 elif admin.vars.decision == 'Resubmit':
                     
                     SAFEmailer(to=auth.user.email,
@@ -960,7 +958,6 @@ def project_details():
                                template =  'project_resubmit.html',
                                template_dict = template_dict)
                     
-                    redirect(URL('projects','administer_projects'))
                 elif admin.vars.decision == 'In Review':
                     
                     # Email the proposer
@@ -986,7 +983,6 @@ def project_details():
                                template =  'project_to_review.html',
                                template_dict = template_dict)
                     
-                    redirect(URL('projects','administer_projects'))
                 # elif admin.vars.decision == 'Rejected':
                 #     mail.send(to=proposer.email,
                 #               subject='SAFE project submission',
@@ -996,6 +992,7 @@ def project_details():
                     pass
                 
                 session.flash = CENTER(B('Decision emailed to project proposer at {}.'.format(proposer.email)), _style='color: green')
+                redirect(URL('projects','administer_projects'))
                 
             elif form.errors:
                 response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')

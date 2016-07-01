@@ -152,7 +152,7 @@ def my_safe():
                        'blogs':    {'query': (db.blog_posts.user_id == auth.user.id),
                                     'select': [db.blog_posts.id, db.blog_posts.title, db.blog_posts.admin_status],
                                     'none': 'You have not created any blog posts',
-                                    'cntr': 'blog', 'view': 'blog_details',
+                                    'cntr': 'blogs', 'view': 'blog_details',
                                     'display': db.blog_posts.title,
                                     'url_args': [db.blog_posts.id],
                                     'status': db.blog_posts.admin_status,

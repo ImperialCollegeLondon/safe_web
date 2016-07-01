@@ -119,14 +119,14 @@ def blog_details():
             elif 'create' in req_keys:
                 id = db.blog_posts.insert(admin_history=new_history, 
                                           **db.blog_posts._filter_fields(form.vars))
-                print id
+                
                 msg = CENTER(B('Blog post created and submitted for approval.'), _style='color: green')
             else:
                 pass
             
             # Email the link
             template_dict = {'name': auth.user.first_name, 
-                             'url': URL('blogs', 'blog_details', args=[blog_id], scheme=True, host=True),
+                             'url': URL('blogs', 'blog_details', args=[id], scheme=True, host=True),
                              'submission_type': 'blog post'}
             
             SAFEmailer(to=auth.user.email,

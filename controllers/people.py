@@ -76,18 +76,18 @@ def user_details():
         if auth.is_logged_in():
             flds = ['nationality', 'academic_status','supervisor_id',  'institution', 'institution_address',
                     'institution_phone', 'phone', 'mobile_phone', 'email', 'alternative_email', 
-                    'website', 'orcid', 'biography', 'taxonomic_expertise']
+                    'website', 'orcid', 'biography', 'scientific_expertise']
             footer = DIV("Download contact details ", A('here', _href=URL('vcard', args=record_id)), _class="panel-footer")
         else:
             flds = ['nationality', 'academic_status','supervisor_id', 'institution', 'institution_address',
-                    'biography', 'taxonomic_expertise']
+                    'biography', 'scientific_expertise']
             footer = ''
             
         fld_names  = {'nationality':'Nationality', 'academic_status':'Academic Status','supervisor_id':'Supervisor',
                 'institution':'Academic institution', 'institution_address':'Institutional Address',
                 'institution_phone':'Institutional Phone','phone':'Phone number', 'mobile_phone': 'Mobile phone', 
                 'email':'Email', 'alternative_email':'Alternative Email', 'orcid':'ORCiD',
-                'website': 'Website', 'taxonomic_expertise':'Taxonomic Expertise'}
+                'website': 'Website', 'scientific_expertise':'Areas of Expertise'}
         
         content = []
         

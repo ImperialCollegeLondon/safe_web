@@ -1087,14 +1087,14 @@ def research_visit_details():
             # pick an decision
             if admin.vars.decision == 'Approved':
                 
-                SAFEmailer(to=auth.user.email,
+                SAFEmailer(to=proposer.email,
                            subject='SAFE: research visit proposal approved',
                            template =  'research_visit_approved.html',
                            template_dict = template_dict)
                 
             elif admin.vars.decision == 'Resubmit':
                 
-                SAFEmailer(to=auth.user.email,
+                SAFEmailer(to=proposer.email,
                            subject='SAFE: research visit proposal requires resubmission',
                            template =  'research_visit_resubmit.html',
                            template_dict = template_dict)
