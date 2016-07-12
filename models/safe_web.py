@@ -140,13 +140,13 @@ db.define_table('contacts',
 
 
 db.define_table('project_id', 
-    Field('oid', length=64, default=uuid.uuid4),
+    Field('oid', length=64, default=uuid.uuid4, rname='"Oid"'),
     Field('project_details_id', 'integer'),
     Field('project_details_oid', length=64))
 
 
 db.define_table('project_details',
-    Field('oid', length=64, default=uuid.uuid4),
+    Field('oid', length=64, default=uuid.uuid4, rname='"Oid"'),
     Field('project_id', 'reference project_id'),
     Field('version', 'integer'),
     Field('thumbnail_figure','upload', uploadfolder= os.path.join(request.folder, 'uploads/images/projects')),
@@ -187,12 +187,17 @@ db.define_table('project_details',
     Field('admin_status','string', requires=IS_IN_SET(project_status_set), default='Pending'), 
     Field('admin_history','text', writable=False), 
     # set the way the row is represented in foreign tables
-    format='%(title)s'
+    format='%(title)s',
+    # And now, Earthcape needs this table to be called Project as a quoted identifier
+    # because of case senisitivity in its table names, so we make project_details in
+    # the web app an alias to a table with a quoted identifier. This makes for poor SQL
+    # for power end users.
+    rname='"Project"'
     ) 
 
 
 db.define_table('project_members',
-    Field('oid', length=64, default=uuid.uuid4),
+    Field('oid', length=64, default=uuid.uuid4, rname='"Oid"'),
     Field('project_id', 'reference project_id', notnull=True),
     Field('project_id_oid', length=64, notnull=True),
     Field('user_id', 'reference auth_user', notnull=True),
@@ -551,7 +556,7 @@ def admin_decision_form(selector_options):
     return admin
 
 
-def SAFEmailer(subject, to, template, template_dict, cc=None):
+def SAFEmailer(subject, to, template, template_dict, cc=None, cc_info=True):
     
     """
     Takes a template name, fills it in from the template dictionary
@@ -562,6 +567,13 @@ def SAFEmailer(subject, to, template, template_dict, cc=None):
     html_msg = response.render('email_templates/' + template, template_dict)
     txt_msg = html2text.html2text(html_msg)
     msg = (txt_msg, html_msg)
+    
+    # add the info address into all emails (unless told explicitly not to)
+    if cc_info:
+        if cc is None:
+            cc = ['info@safeproject.net']
+        else:
+            cc.append('info@safeproject.net')
     
     # send the mail
     msg_status = mail.send(to=to, subject=subject, message=msg,

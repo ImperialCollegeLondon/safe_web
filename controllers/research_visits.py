@@ -1581,6 +1581,11 @@ def export_research_visits():
     else:
         record = None
     
+    # no records?
+    if db(rv_query).count() == 0:
+        session.flash = CENTER(B('No research visit data found', _style='color:red'))
+        redirect(URL('research_visits','research_visits'))
+    
     # grab the data from those queries
     rv_data = db(rv_query).select(orderby=db.research_visit.arrival_date)
     safe_data = db(safe_query).select(orderby=db.bed_reservations_safe.arrival_date)
@@ -1617,7 +1622,7 @@ def export_research_visits():
     subhead = openpyxl.styles.Font(bold=True)
     warn = openpyxl.styles.Font(bold=True, color='FF0000')
     cell_shade = {'Approved': openpyxl.styles.PatternFill(fill_type='solid', start_color='8CFF88'),
-                  'Pending': openpyxl.styles.PatternFill(fill_type='solid', start_color='FFCB8B'),
+                  'Submitted': openpyxl.styles.PatternFill(fill_type='solid', start_color='FFCB8B'),
                   'Draft': openpyxl.styles.PatternFill(fill_type='solid', start_color='DDDDDD'),
                   'Rejected': openpyxl.styles.PatternFill(fill_type='solid', start_color='FF96C3')}
     

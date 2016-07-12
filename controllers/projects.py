@@ -462,7 +462,9 @@ def project_details():
                     
                     # iii) add the proposer as the Main Contact for the project
                     db.project_members.insert(user_id = auth.user.id,
+                                              user_id_oid = auth.user.oid,
                                               project_id = project_id,
+                                              project_id_oid = db.project_id(project_id).oid,
                                               project_role = 'Lead Researcher',
                                               is_coordinator = True)
                     
@@ -733,7 +735,6 @@ def project_details():
                     # i) lookup the new member details to get a reference to auth and update the history
                     # and link the OIDs up 
                     new_member = db.project_members(members.vars.id)
-                    print new_member
                     
                     hist_str = '[{}] {} {}\\n -- Project members added/updated: {} {}, {} {}\\n'
                     new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
@@ -1065,7 +1066,10 @@ def validate_new_project_member(form):
     
     for r in existing_record:
         db.project_members(r.id).delete_record()
-
+    
+    # now need to insert OIDs
+    form.vars.user_id_oid = db.auth_user(form.vars.user_id).oid
+    form.vars.project_id_oid = db.project_id(form.vars.project_id).oid
 
 ## -----------------------------------------------------------------------------
 ## ADMINISTER NEW PROJECTS

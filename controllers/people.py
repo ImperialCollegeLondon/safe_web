@@ -201,7 +201,8 @@ def manage_users():
     db.auth_user.password.writable = False
     
     form = SQLFORM.grid(query = db.auth_user, csv=True,
-                        fields=[db.auth_user.last_name,
+                        fields=[db.auth_user.id,
+                                db.auth_user.last_name,
                                 db.auth_user.first_name, 
                                 db.auth_user.email,
                                ],
@@ -210,7 +211,7 @@ def manage_users():
                         editable=True,
                         create=False,
                         details=True,
-                        formargs={'showid': False}, 
+                        # formargs={'showid': False}, 
                     )
     
     return dict(form=form)

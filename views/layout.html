@@ -59,7 +59,8 @@
 
 
 {{if auth.is_impersonating():}}
-{{=DIV(CENTER('Admin Reminder: You are impersonating another user. Click ', 
+{{=DIV(CENTER('Admin Reminder: You are impersonating ', auth.user.first_name, 
+              ' ', auth.user.last_name,'. Click ', 
               A('here', _href=URL('user','impersonate', args=0)), 
               ' to revert to your own login'), 
         _style='background-color:darkred;color:white;padding:5px')}}

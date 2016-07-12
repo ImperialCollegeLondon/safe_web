@@ -108,7 +108,11 @@ academic_status_set = ['Undergraduate', 'Masters Student',
 titles_set = [None, 'Dr','Prof', 'Assist. Prof', 'Assoc. Prof']
 
 auth.settings.extra_fields['auth_user']= [
-    Field('oid', length=64, default=uuid.uuid4), # user OID
+    # define a separate user OID used by Earthcape but maintained the web app
+    # As a further wrinkle, Earthcape expects a quoted identifier due to 
+    # case sensitivity in its table names, so use rname to make that the actual
+    # field name, but keep the simple oid name as an alias in Web2Py
+    Field('oid', length=64, default=uuid.uuid4, rname='"Oid"'), 
     Field('title', 'string', requires=IS_IN_SET(titles_set)), 
     Field('nationality', 'string'),
     Field('academic_status', 'string', requires=IS_IN_SET(academic_status_set)),
@@ -145,15 +149,12 @@ db.auth_user.thumbnail_picture.default = os.path.join(request.folder, 'static', 
 db.auth_user.email.represent = lambda value, row: A(value, _href='mailto:{}'.format(value))
 db.auth_user.website.represent = lambda value, row: A(value, _href=value)
 
-
-
 # provide links to user directory for logged in users
 # set a string formatting for representing user ID
 db.auth_user._format = '%(last_name)s, %(first_name)s'
 
 # make the choice of supervisor a dropdown.
 db.auth_user.supervisor_id.requires = IS_EMPTY_OR(IS_IN_DB(db, 'auth_user.id', db.auth_user._format))
-
 db.auth_user.password.requires = CRYPT(digest_alg='sha512')
 
 # code to try and integrate the Earthcape password formatting
