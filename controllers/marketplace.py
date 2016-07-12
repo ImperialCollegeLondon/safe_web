@@ -76,7 +76,6 @@ def view_volunteer():
         else:
             email = DIV()
         
-        print record
         # form is a mix of some fixed details (Name/Institution/Type) and some editable ones
         vol = DIV(DIV(H5('Volunteer Offer'), _class="panel-heading"),
                   DIV(LABEL('Volunteer:', _class="control-label col-sm-2" ),
@@ -409,7 +408,9 @@ def help_requests():
     
     # subset to approved posts with expiry dates in the future
     approved_posts = (db.help_request.admin_status == 'Approved') & \
-                     (db.help_request.end_date > datetime.date.today())
+                     (db.help_request.end_date > datetime.date.today()) & \
+                     (db.help_request.project_id == db.project_id.id) & \
+                     (db.project_id.project_details_id == db.project_details.id)
     
     # links to custom view page
     links = [dict(header = '', 
@@ -417,26 +418,27 @@ def help_requests():
                                       SPAN('View', _class="buttontext button"),
                                       _class="button btn btn-default", 
                                       _href=URL("marketplace","view_help_request", 
-                                                args=[row.id], user_signature=True),
+                                                args=[row.help_request.id], user_signature=True),
                                       _style='padding: 3px 5px 3px 5px;'))]
     
-    # hide admin fields in the grid
-    db.help_request.admin_status.readable = False
-    db.help_request.submission_date.readable = False
+    # create a link using the project name
+    db.project_details.title.represent = lambda value, row: A(value, _href=URL('projects','project_view',
+                                                              args=row.project_details.project_id))
     
-    # TODO - complete formatting links to projects and users
-    #db.help_request.contact_id.represent = lambda contact_id, row: I(contact_id)
-    db.help_request.project_id.represent = lambda value, row: A('Project', _href=URL('projects','project_view', args=value))
-    
-    approved_posts = (db.help_request.admin_status == 'Approved')
+    # hide the ID fields which are used in row information in links
+    db.help_request.id.readable = False
+    db.project_details.project_id.readable = False
     
     form = SQLFORM.grid(query=approved_posts, csv=False, 
-                        fields=[db.help_request.project_id,
+                        fields=[db.help_request.id,
+                                db.project_details.title,
+                                db.project_details.project_id,
                                 db.help_request.start_date,
                                 db.help_request.end_date,
                                 db.help_request.work_description,
-                                db.help_request.paid_position], 
-                        headers = {'help_request.project_id': 'Project link'},
+                                db.help_request.paid_position
+                                ], 
+                        headers = {'project_details.title': 'Project Title'},
                         maxtextlength=250,
                         links=links,
                         deletable=False,
@@ -580,108 +582,107 @@ def help_request_details():
                             buttons = buttons,
                             showid=False)
         
-        if form.validate(onvalidation=validate_help_request):
+            if form.validate(onvalidation=validate_help_request):
             
-            req_keys = request.vars.keys()
+                req_keys = request.vars.keys()
             
-            # get and add a comment to the history
-            hist_str = '[{}] {} {}\\n -- {}\\n'
-            new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
-                                                       auth.user.first_name,
-                                                       auth.user.last_name,
-                                                       'Help request created' if request_id is None else "Help request updated")
+                # get and add a comment to the history
+                hist_str = '[{}] {} {}\\n -- {}\\n'
+                new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                           auth.user.first_name,
+                                                           auth.user.last_name,
+                                                           'Help request created' if request_id is None else "Help request updated")
             
-            if 'update' in req_keys:
-                id = record.update_record(admin_status = 'Submitted',
-                                          admin_history = new_history + record.admin_history,
-                                          **db.help_request._filter_fields(form.vars))
-                id = id.id
-                msg = CENTER(B('Help request updated and resubmitted for approval.'), _style='color: green')
-            elif 'create' in req_keys:
-                id = db.help_request.insert(admin_status = 'Submitted',
-                                            admin_history=new_history, 
-                                            **db.help_request._filter_fields(form.vars))
-                msg = CENTER(B('Help request created and submitted for approval.'), _style='color: green')
+                if 'update' in req_keys:
+                    id = record.update_record(admin_status = 'Submitted',
+                                              admin_history = new_history + record.admin_history,
+                                              **db.help_request._filter_fields(form.vars))
+                    id = id.id
+                    msg = CENTER(B('Help request updated and resubmitted for approval.'), _style='color: green')
+                elif 'create' in req_keys:
+                    id = db.help_request.insert(admin_status = 'Submitted',
+                                                admin_history=new_history, 
+                                                **db.help_request._filter_fields(form.vars))
+                    msg = CENTER(B('Help request created and submitted for approval.'), _style='color: green')
+                else:
+                    pass
+            
+                # Email the link
+                template_dict = {'name': auth.user.first_name, 
+                                 'url': URL('marketplace', 'help_request_details', args=[id], scheme=True, host=True),
+                                 'submission_type': 'project help request'}
+            
+                SAFEmailer(to=auth.user.email,
+                           subject='SAFE: project help request submitted',
+                           template =  'generic_submitted.html',
+                           template_dict = template_dict)
+            
+                session.flash = msg
+                redirect(URL('marketplace','help_request_details', args=[id]))
+            
+            elif form.errors:
+                response.flash = CENTER(B('Problems with the form, check below.'), _style='color: red')
             else:
                 pass
-            
-            # Email the link
-            template_dict = {'name': auth.user.first_name, 
-                             'url': URL('marketplace', 'help_request_details', args=[id], scheme=True, host=True),
-                             'submission_type': 'project help request'}
-            
-            SAFEmailer(to=auth.user.email,
-                       subject='SAFE: project help request submitted',
-                       template =  'generic_submitted.html',
-                       template_dict = template_dict)
-            
-            session.flash = msg
-            redirect(URL('marketplace','help_request_details', args=[id]))
-            
-        elif form.errors:
-            response.flash = CENTER(B('Problems with the form, check below.'), _style='color: red')
-        else:
-            pass
         
-        # package form into a panel
-        if record is None:
-            status = ""
-            # vis = ""
-        else:
-            status =    DIV(approval_icons[record.admin_status], XML('&nbsp'),
-                           'Status: ', XML('&nbsp'), record.admin_status, 
-                            _class='col-sm-3',
-                            _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
-            # if record.hidden:
-            #     vis = DIV('Hidden', _class='col-sm-1 col-sm-offset-1',
-            #               _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
-            # else:
-            #     vis = DIV('Visible', _class='col-sm-1 col-sm-offset-1',
-            #               _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
-            
-                      
-        panel_header = DIV(H5('Project help request', _class='col-sm-9'), status, # vis,
-                           _class='row', _style='margin:0px 10px')
+            # package form into a panel
+            if record is None:
+                status = ""
+                # vis = ""
+            else:
+                status =    DIV(approval_icons[record.admin_status], XML('&nbsp'),
+                               'Status: ', XML('&nbsp'), record.admin_status, 
+                                _class='col-sm-3',
+                                _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
+                # if record.hidden:
+                #     vis = DIV('Hidden', _class='col-sm-1 col-sm-offset-1',
+                #               _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
+                # else:
+                #     vis = DIV('Visible', _class='col-sm-1 col-sm-offset-1',
+                #               _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
         
-        # package in controller
-        if not readonly:
-            form.custom.widget.work_description['_rows'] = 4
-            form.custom.widget.start_date['_class'] = "form-control input-sm"
-            form.custom.widget.end_date['_class'] = "form-control input-sm"
+            panel_header = DIV(H5('Project help request', _class='col-sm-9'), status, # vis,
+                               _class='row', _style='margin:0px 10px')
+        
+            # package in controller
+            if not readonly:
+                form.custom.widget.work_description['_rows'] = 4
+                form.custom.widget.start_date['_class'] = "form-control input-sm"
+                form.custom.widget.end_date['_class'] = "form-control input-sm"
     
-        form = FORM(DIV(DIV(panel_header, _class="panel-heading"),
-                        DIV(form.custom.begin, 
-                            DIV(LABEL('Project:', _class="control-label col-sm-2" ),
-                                DIV(form.custom.widget.project_id,  _class="col-sm-10"),
-                                _class='row', _style='margin:10px 10px'),
-                            DIV(LABEL('Work description:', _class="control-label col-sm-2" ),
-                                DIV(form.custom.widget.work_description,  _class="col-sm-10"),
-                                _class='row', _style='margin:10px 10px'),
-                            DIV(LABEL('Dates:', _class="control-label col-sm-2" ),
-                                DIV(DIV(form.custom.widget.start_date,
-                                        SPAN('to', _class="input-group-addon input-sm"),
-                                        form.custom.widget.end_date,
-                                        _class="input-daterange input-group", _id="help_datepicker"),
-                                    _class='col-sm-10'),
-                                _class='row', _style='margin:10px 10px'),
-                            HR(),
-                            DIV(P('If this is a paid position, please check the box and provide a URL for any application details.'),
-                                _class='row', _style='margin:10px 10px'),
-                            DIV(LABEL(form.custom.widget.paid_position, 'Paid Position', 
-                                _class="control-label col-sm-2 col-sm-offset-2"),
-                                _class='row', _style='margin:10px 10px'),
-                            DIV(LABEL('Website for details', _class="control-label col-sm-2" ),
-                                DIV(form.custom.widget.url,  _class="col-sm-10"),
-                                _class='row', _style='margin:10px 10px'),
-                            DIV(DIV(form.custom.submit,  _class="col-sm-10 col-sm-offset-2"),
-                                _class='row', _style='margin:10px 10px'),
-                            form.custom.end,
-                           _class='panel_body'),
-                        _class="panel panel-primary"),
-                        datepicker_script(id = 'help_datepicker',
-                                          autoclose = 'true',
-                                          startDate ='"+0d"',
-                                          endDate ='""'))
+            form = FORM(DIV(DIV(panel_header, _class="panel-heading"),
+                            DIV(form.custom.begin, 
+                                DIV(LABEL('Project:', _class="control-label col-sm-2" ),
+                                    DIV(form.custom.widget.project_id,  _class="col-sm-10"),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(LABEL('Work description:', _class="control-label col-sm-2" ),
+                                    DIV(form.custom.widget.work_description,  _class="col-sm-10"),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(LABEL('Dates:', _class="control-label col-sm-2" ),
+                                    DIV(DIV(form.custom.widget.start_date,
+                                            SPAN('to', _class="input-group-addon input-sm"),
+                                            form.custom.widget.end_date,
+                                            _class="input-daterange input-group", _id="help_datepicker"),
+                                        _class='col-sm-10'),
+                                    _class='row', _style='margin:10px 10px'),
+                                HR(),
+                                DIV(P('If this is a paid position, please check the box and provide a URL for any application details.'),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(LABEL(form.custom.widget.paid_position, 'Paid Position', 
+                                    _class="control-label col-sm-2 col-sm-offset-2"),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(LABEL('Website for details', _class="control-label col-sm-2" ),
+                                    DIV(form.custom.widget.url,  _class="col-sm-10"),
+                                    _class='row', _style='margin:10px 10px'),
+                                DIV(DIV(form.custom.submit,  _class="col-sm-10 col-sm-offset-2"),
+                                    _class='row', _style='margin:10px 10px'),
+                                form.custom.end,
+                               _class='panel_body'),
+                            _class="panel panel-primary"),
+                            datepicker_script(id = 'help_datepicker',
+                                              autoclose = 'true',
+                                              startDate ='"+0d"',
+                                              endDate ='""'))
     
     else: 
         # security doesn't allow people editing other users blogs
