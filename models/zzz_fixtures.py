@@ -36,22 +36,21 @@ admin_history = '[{}] David Orme\n ** Ported from old website'.format(datetime.d
 ##         to be linked up again manually in the project_members import 
 ## ------------------------------------------------------------------------
 
-if db(db.auth_user).count() == 0:
-    
-    
-    # set up some groups
-    db.auth_group.insert(role='admin',
-                         description='People who have access to the SAFE admin functions')
-    
+
+# Groups and turning on impersonation for admin
+if db(db.auth_group.role == 'admin').count() == 0:
+    gid = db.auth_group.insert(role='admin',
+                               description='People who have access to the SAFE admin functions')
+    auth.add_permission(gid,'impersonate','auth_user')
+
+if db(db.auth_group.role == 'species_profiler').count() == 0:
     db.auth_group.insert(role='species_profiler',
                          description='People who can add and edit species profiles')
-    
-    #db.auth_group.insert(role='bloggers',
-    #                     description='People who can add blog posts')
-    
+if db(db.auth_group.role == 'wiki_user').count() == 0:
     db.auth_group.insert(role='wiki_user',
                          description='People who can edit the wiki')
-    
+
+if db(db.auth_user).count() == 0:
     
     # insert 'users' from previous website: people associated with projects and contacts of varying kinds
     
@@ -186,6 +185,7 @@ if db(db.project_details).count() == 0:
                                     project_details_oid=details.oid)
     
     csvfile.close()
+
 
 ## ------------------------------------------------------------------------
 ## LOAD EXISTING PROJECT MEMBERS

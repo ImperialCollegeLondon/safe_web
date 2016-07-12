@@ -4,7 +4,13 @@
 {{=T('Sign Up') if request.args(0) == 'register' else T('Log In') if request.args(0) == 'login' else T(request.args(0).replace('_',' ').title())}}
 </h2>
 
-{{=P('You will need to register and log in to use this website to propose and arrange research at SAFE. We do screen new registrations so there will be a delay before your registration is confirmed and you are able to log in.') +P('The website will use your email address as your login name.') + BR() if request.args(0) == 'register' else ''}}
+{{if request.args(0) == 'register':}}
+{{=P('You will need to register and log in to use this website to propose and arrange research at SAFE. We do screen new registrations so there will be a delay before your registration is confirmed and you are able to log in.') +P('The website will use your email address as your login name.') + BR()}}
+{{elif request.args(0) == 'impersonate':}}
+{{=P('Administrators can use this page to impersonate another user - you will need to look up their user id and then enter it here. This will allow you to take actions as if you were logged in as this user. A banner at the top of the page will warn you when you are impersonating another user and provide a link to return to your own login.') + P('Please do use this option carefully and with respect. It is rare that you would need to make a change like this - typically you will only need to use this when we have lost contact with a user and need to update content that they own.') + BR()}}
+{{else:}}
+{{pass}}
+
 
 <div class="container">
     <div class="row">

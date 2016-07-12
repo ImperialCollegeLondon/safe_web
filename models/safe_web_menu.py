@@ -145,6 +145,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (CAT(SPAN(n['hlp'], _class=badge_class['hlp']),
                              T('  Help requests')), True, URL('marketplace', 'administer_help_requests'), []),
                         LI(_class="divider"),
+                        (T('Impersonate another user'), True, URL('user', 'impersonate')),
                         (T('Database admin'), True, URL('appadmin', 'index'))
                       ])]
 
