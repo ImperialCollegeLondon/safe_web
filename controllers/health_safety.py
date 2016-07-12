@@ -76,7 +76,7 @@ def health_and_safety():
         #  populate links from visit and reservation details pages
         db(db.auth_user.id == auth.user.id).update(h_and_s_id = form.vars.id)
         
-        response.flash = CENTER(B('Thanks for updating your health and safety information.'), _style='color: green')
+        session .flash = CENTER(B('Thanks for updating your health and safety information.'), _style='color: green')
         redirect(URL('health_safety','health_and_safety', args=uid))
     elif form.errors:
         response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')

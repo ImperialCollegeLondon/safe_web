@@ -65,13 +65,13 @@ def funders():
     
     for r in content:
         
-        row_class = 'col-sm-' + str(12/len(r['links']))
+        row_class = 'img-responsive col-sm-' + str(12/len(r['links']))
         
         links = [A(DIV(_style='background-image:url(' +  URL('static', str(ln['image'])) + ');' + 
                               'background-size:contain;background-repeat: no-repeat;background-position:center;' +
                               'height:' + r['height'], _class=row_class),
                        _href=ln['url']) for ln in r['links']]
-        funders.append(DIV(*links, _class='row', _style='padding:10px;'))
+        funders.append(DIV(*links, _class='row', _style='margin:20px 0px;'))
     
     return dict(funders=funders)
 

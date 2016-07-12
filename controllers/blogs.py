@@ -291,7 +291,7 @@ def administer_blogs():
     
     # create a new button that passes the project id to a new controller
     links = [dict(header = '', body = lambda row: A('Details',_class='button btn btn-default'
-                  ,_href=URL("blog","blog_details", args=[row.id])))
+                  ,_href=URL("blogs","blog_details", args=[row.id])))
             ]
     
     # get a query of pending requests 
