@@ -21,7 +21,7 @@ You'll get a PEM file from Amazon when you create the EC2 instance. This is a ke
 
     # EC2 instance connection
     chmod 400 AWS_SAFE_Web.pem
-    ssh -i AWS_SAFE_Web.pem ubuntu@ec2-52-51-38-168.eu-west-1.compute.amazonaws.com
+    ssh -i AWS_SAFE_Web.pem ubuntu@ec2-52-208-194-85.eu-west-1.compute.amazonaws.com
 
 **Note that this file contains the keys to the whole server** - it should not be saved anywhere publically accessible or shared with people outside the project admin.
 
@@ -212,8 +212,7 @@ This should now be the DB empty of data, ready to repopulate everything, once th
 
     sudo service apache2 restart
 
- Once the system is in production, of course, this is a disasterous thing to do. So need a snapshotting system to preserve the file
- structure and a db dump to preserve the DB contents.
+ Once the system is in production, of course, this is a disasterous thing to do. So need a snapshotting system to preserve the file structure and a db dump to preserve the DB contents.
  
 #### web2py Plugins ####
 
