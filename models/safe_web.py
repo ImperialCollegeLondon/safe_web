@@ -107,12 +107,24 @@ visib_style = "padding:3px 10px;background:darkgreen"
 
 ## -----------------------------------------------------------------------------
 ## SAFE TABLE DEFINITIONS
-## -- TODO - look at UUIDs in definitions for integration with EarthCape
-##           UUIDs - enable UUID in postgresql
-##           CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-##           uuid_generate_v4()
 ## -----------------------------------------------------------------------------
 
+
+## ON EARTHCAPE INTEGRATION: 
+## We'd prefer to use a single shared DB but the two applications use different 
+## frameworks and some tables and fields would need to be called 
+## something different in the this DB to allow Earthcape to read them.
+## This would need use of the rname option to set the real DB name  
+## and then the name used by web2py is an internal alias. This is a bit of
+## a hack but Earthcape names require capitalisation, where web2py by
+## default maps Field_Name to the standard SQL lowercase field_name. We'd also
+## need to hand alter primary keys from the default btree on id, to include an
+## EC compatible UUID field in the table primary key (id, "Oid"). 
+## -     Field('oid', length=64, default=uuid.uuid4),
+## We've explored this in some depth and it just engineers in more fragility 
+## than is worthwhile to avoid. Commit d6b93a3 is tagged as the last version 
+## containing this integration code, which has now been stripped back out to 
+## reduce processing complexity.
 
 ## -----------------------------------------------------------------------------
 ## CONTACTS - a simple table to map users to contacts roles
@@ -142,39 +154,23 @@ db.define_table('contacts',
 
 
 db.define_table('project_id', 
-    Field('oid', length=64, default=uuid.uuid4, rname='"Oid"'),
-    Field('project_details_id', 'integer'),
-    Field('project_details_oid', length=64))
-
-
-# The project details table and several fields within it need to be called 
-# something different in the actual DB to allow Earthcape to use the same
-# table, and these use the rname option to set the real DB name. 
-# The name used by web2py is an internal alias. This is a bit of
-# a hack but replacing existing field names throughout this 
-# application is tedious, added to which the Earthcape names 
-# require capitalisation: web2py by default maps Field_Name to
-# the standard SQL lowercase field_name, so it opens up a different
-# set of hacks. It would be much much easier and avoid considerable
-# complexity in SQL on the DB if everything just used lower case 
-# but the EC framework I think uses Java and has lots of capitalisation
+    Field('project_details_id', 'integer'))
 
 db.define_table('project_details',
-    Field('oid', length=64, default=uuid.uuid4, rname='"Oid"'),
     Field('project_id', 'reference project_id'),
     Field('version', 'integer'),
     Field('thumbnail_figure','upload', uploadfolder= os.path.join(request.folder, 'uploads/images/projects')),
-    Field('title','string', notnull=True, rname='"Name"'),
+    Field('title','string', notnull=True),
     Field('research_areas', type='list:string',
           requires=IS_IN_SET(research_tags, multiple=True), 
           widget=SQLFORM.widgets.multiple.widget),
-    Field('start_date','date', notnull=True, rname='"StartDate"'),
-    Field('end_date','date', notnull=True, rname='"EndDate"'),
+    Field('start_date','date', notnull=True),
+    Field('end_date','date', notnull=True),
     Field('data_use', type='list:string', 
           requires=IS_IN_SET(data_use_set, multiple=True),
           widget = SQLFORM.widgets.checkboxes.widget),
-    Field('rationale','text', notnull=True, rname='"Description"'),
-    Field('methods','text', notnull=True, rname='"Methods"'),
+    Field('rationale','text', notnull=True),
+    Field('methods','text', notnull=True),
     Field('destructive_sampling', 'boolean', default=False),
     Field('destructive_sampling_info', 'text'),
     Field('which_animal_taxa', type='list:string',
@@ -188,13 +184,6 @@ db.define_table('project_details',
     Field('data_sharing','boolean', default=False),
     # this allows us to link project pages on import
     Field('legacy_project_id', 'string', readable = False, writable = False),
-    # # these fields were collected in the old site that are now not used.
-    # Field('legacy_sampling_sites', type='list:string', 
-    #       requires=IS_IN_SET(sites_set, multiple=True),
-    #       readable = False, writable = False),
-    # Field('legacy_sampling_scales', type='list:string', 
-    #       requires=IS_IN_SET(spatial_scales_set, multiple=True),
-    #       readable = False, writable = False),
     # proposer id and date
     Field('proposer_id','reference auth_user'),
     Field('proposal_date','datetime'),
@@ -202,22 +191,12 @@ db.define_table('project_details',
     # - admin_history is used to maintain a record of proposal processing
     Field('admin_status','string', requires=IS_IN_SET(project_status_set), default='Pending'), 
     Field('admin_history','text', writable=False), 
-    # A required field for EarthCape that specifies the type of thing, constant
-    # but a necessary part of the EC mechanism
-    Field('earthcape_object_type', 'integer', default=15, rname='"ObjectType"'),
-    # EC also requires that OID is in the table primary key, so:
-    # primarykey = ['id', 'oid'],
     # set the way the row is represented in foreign tables
-    format='%(title)s',
-    rname='"Project"'
-    ) 
+    format='%(title)s') 
 
 db.define_table('project_members',
-    Field('oid', length=64, default=uuid.uuid4, rname='"Oid"'),
     Field('project_id', 'reference project_id', notnull=True),
-    Field('project_id_oid', length=64, notnull=True),
     Field('user_id', 'reference auth_user', notnull=True),
-    Field('user_id_oid', length=64, notnull=True),
     Field('project_role', requires=IS_IN_SET(project_roles), notnull=True),
     Field('is_coordinator','boolean', notnull=True, default=False))
 
@@ -229,8 +208,6 @@ db.define_table('project_links',
 db.define_table('project_link_pairs',
     Field('link_id', 'reference project_links', notnull=True),
     Field('project_id', 'reference project_id'))
-
-
 
 ## -----------------------------------------------------------------------------
 ## OUTPUTS

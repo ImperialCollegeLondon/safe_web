@@ -157,8 +157,8 @@ if db(db.project_details).count() == 0:
             else:
                 img_st = None
             
-            # get a new row from the project_id table
-            project_id = db.project_id.insert()
+            # get a new row from the project_id table with a temporary details id 
+            project_id = db.project_id.insert(project_details_id=0)
             
             # now insert all the information
             details_id = db.project_details.insert(thumbnail_figure = img_st,
@@ -181,8 +181,7 @@ if db(db.project_details).count() == 0:
             # link the project_id to the details
             details = db.project_details(details_id)
             id_record = db.project_id(project_id)
-            id_record.update_record(project_details_id=details.id,
-                                    project_details_oid=details.oid)
+            id_record.update_record(project_details_id=details.id)
     
     csvfile.close()
 
@@ -218,10 +217,7 @@ if db(db.project_members).count() == 0:
             
             # now insert all the information
             db.project_members.insert(project_id = r.project_id,
-                                      project_id_oid = r.oid,
                                       user_id = a.id,
-                                      user_id_oid = a.oid,
-                                      oid = uuid.uuid4(),
                                       project_role = row['Position'],
                                       is_coordinator = True if row['coord'] == 'TRUE' else False)
     

@@ -446,8 +446,7 @@ def project_details():
                     # i) link to a new project_id
                     
                     new_details = db.project_details(form.vars.id)
-                    project_id = db.project_id.insert(project_details_id = new_details.id,
-                                                      project_details_oid = new_details.oid)
+                    project_id = db.project_id.insert(project_details_id = new_details.id)
                                                       
                     # ii) set it up as a Draft version and initialise the history
                     hist_str = '[{}] {} {}\\n -- New proposal created\\n'
@@ -462,9 +461,7 @@ def project_details():
                     
                     # iii) add the proposer as the Main Contact for the project
                     db.project_members.insert(user_id = auth.user.id,
-                                              user_id_oid = auth.user.oid,
                                               project_id = project_id,
-                                              project_id_oid = db.project_id(project_id).oid,
                                               project_role = 'Lead Researcher',
                                               is_coordinator = True)
                     
@@ -700,9 +697,8 @@ def project_details():
                                               auth.user.first_name,
                                               auth.user.last_name) + details.admin_history
                 
-                # get the new record updated with the new status, version number and oid
+                # get the new record updated with the new status and version number
                 db.project_details(new_draft_id).update_record(admin_status='Draft',
-                                                               oid = uuid.uuid4(),
                                                                version=details.version + 1,
                                                                admin_history = new_history)
                                                                
@@ -930,8 +926,7 @@ def project_details():
                 # if this is an approval then update the project_id table
                 if admin.vars.decision == 'Approved':
                     id_record = db.project_id(project_id)
-                    id_record.update_record(project_details_id = details.id,
-                                            project_details_oid = details.oid)
+                    id_record.update_record(project_details_id = details.id)
                 
                 # Email decision
                 proposer = details.proposer_id
@@ -1066,10 +1061,7 @@ def validate_new_project_member(form):
     
     for r in existing_record:
         db.project_members(r.id).delete_record()
-    
-    # now need to insert OIDs
-    form.vars.user_id_oid = db.auth_user(form.vars.user_id).oid
-    form.vars.project_id_oid = db.project_id(form.vars.project_id).oid
+
 
 ## -----------------------------------------------------------------------------
 ## ADMINISTER NEW PROJECTS
