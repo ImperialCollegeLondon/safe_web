@@ -24,7 +24,11 @@ def submitting_proposals():
 
 def logistics():
     
-    return response.render()
+    # load costs from the json data
+    f = os.path.join(request.folder, 'private','content/en/info/costs.json')
+    costs = simplejson.load(open(f))
+    
+    return dict(costs=costs)
 
 def data_policy():
     

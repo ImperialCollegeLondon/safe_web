@@ -1,7 +1,3 @@
-<!-- These variables control the size and position of linked images on this page -->
-{{width=120}}
-{{style='margin:0px 15px 15px 0px'}}
-
 {{=H2('Logistics and costs')}}
 
 <p>You will need to think carefully about the logistics of your research at SAFE: make clear plans for when you need to be at different sites and budget for field costs. You will need to budget for:</p>
@@ -32,10 +28,7 @@
 
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Transfer</TH><TH>Driving time</TH><TH>One way journey cost (approx.)</TH></TR>
-<TR><TD>Tawau to Maliau</TD><TD>4 hours</TD><TD>RM 400</TD></TR>
-<TR><TD>Tawau to SAFE</TD><TD>2.5 hours</TD><TD>RM 250</TD></TR>
-<TR><TD>SAFE to Maliau</TD><TD>3.5 hours</TD><TD>RM 350</TD></TR>
-<TR><TD>SAFE to Danum Valley</TD><TD>7 - 8 hours</TD><TD>approx. RM 750</TD></TR>
+{{=CAT([TR(TD(v['name']), TD(v['drive_time']), TD('RM ' + str(v['cost']))) for k, v in costs['transfers'].iteritems()])}}
 </TABLE>
 
 {{=H4('Transport around the SAFE Project experimental area')}}
@@ -44,11 +37,7 @@
 
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Location</TH><TH>Driving time</TH><TH>One way journey cost (approx.)</TH></TR>
-<TR><TD>LFE</TD><TD>Walking distance from camp</TD><TD>--</TD></TR>
-<TR><TD>B, C, D, E</TD><TD>30 minutes</TD><TD>RM 50</TD></TR>
-<TR><TD>A, F, VJR</TD><TD>60 minutes</TD><TD>RM 100</TD></TR>
-<TR><TD>OP1, OP2, OP3</TD><TD>90 minutes</TD><TD>RM 150</TD></TR>
-<TR><TD>LF1, LF2, LF3</TD><TD>150 minutes</TD><TD>RM 250</TD></TR>
+{{=CAT([TR(TD(v['name']), TD(v['drive_time']), TD('RM ' + str(v['cost']))) for k, v in costs['transport'].iteritems()])}}
 </TABLE>
 
 
@@ -61,7 +50,7 @@
 
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Category</TH><TH>Standard cost</TH></TR>
-<TR><TD>SAFE food costs per night</TD><TD>RM 25</TD></TR>
+{{=CAT([TR(TD(v['name']), TD('RM ' + str(v['cost']))) for k, v in costs['safe_costs'].iteritems()])}}
 </TABLE>
 
 {{=H4('Maliau Basin')}}
@@ -72,21 +61,14 @@
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Category</TH><TH>Standard cost</TH><TH>Discounted cost</TH><TH>Monthly rate</TH></TR>
 <TR><TD colspan=4><strong>Maliau Basin entry permits</strong> (per person or vehicle for each visit)</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Administration fee </TD><TD>RM 40</TD><TD>RM 25</TD><TD>--</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Conservation fee </TD><TD>RM 15 </TD><TD>RM 50</TD><TD>--</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Vehicle entry permit </TD><TD>RM 5 </TD><TD>RM 5</TD><TD>--</TD></TR>
+{{=CAT([TR(TD(XML("&nbsp;&nbsp;&nbsp;" + v['name'])), TD('RM ' + str(v['standard'])), 
+           TD('RM ' + str(v['discount'])), TD('RM ' + str(v['month']))) for k, v in costs['maliau_entry'].iteritems()])}}
 <TR><TD colspan=4><strong>Accomodation</strong> (per night)</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Hostel (person)</TD><TD>RM 35</TD><TD>RM 30</TD><TD>--</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Resthouse Standard (room)</TD><TD>RM 100</TD><TD>RM 80</TD><TD>--</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Additional person (max 2 per room)</TD><TD>RM 30</TD><TD>RM 40</TD><TD>--</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Scientists’ Annex (person)</TD><TD>RM 100</TD><TD></TD><TD>RM 300</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Belian camping ground (person)</TD><TD>RM 15</TD><TD>RM 10</TD><TD>--</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Satellite camp (person)</TD><TD>RM 30</TD><TD>RM 25</TD><TD>--</TD></TR>
+{{=CAT([TR(TD(XML("&nbsp;&nbsp;&nbsp;" + v['name'])), TD('RM ' + str(v['standard'])), 
+           TD('RM ' + str(v['discount'])), TD('RM ' + str(v['month']))) for k, v in costs['maliau_accom'].iteritems()])}}
 <TR><TD colspan=4><strong>Food</strong> (per person per meal)</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Breakfast</TD><TD>RM 15</TD><TD>RM 18</TD><TD>--</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Lunch</TD><TD>RM 20</TD><TD>RM 37</TD><TD>--</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Dinner</TD><TD>RM 30</TD><TD>RM 45</TD><TD>--</TD></TR>
-<TR><TD>&nbsp;&nbsp;&nbsp;Full board</TD><TD>RM 65</TD><TD>RM 100</TD><TD>--</TD></TR>
+{{=CAT([TR(TD(XML("&nbsp;&nbsp;&nbsp;" + v['name'])), TD('RM ' + str(v['standard'])), 
+           TD('RM ' + str(v['discount'])), TD('RM ' + str(v['month']))) for k, v in costs['maliau_food'].iteritems()])}}
 </TABLE>
 
 
@@ -97,7 +79,8 @@
 
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Category</TH><TH>Standard cost</TH><TH>Night work</TH><TH>Canopy access</TH></TR>
-<TR><TD>Half day RA cost (up to 5 hours)</TD><TD>RM 70</TD><TD>RM 105</TD><TD>RM 140</TD></TR>
-<TR><TD>Full day RA cost (5 -- 8 hours)</TD><TD>RM 125</TD><TD>RM 187</TD><TD>RM 250</TD></TR>
+{{=CAT([TR(TD(XML("&nbsp;&nbsp;&nbsp;" + v['name'])), TD('RM ' + str(v['standard'])), 
+           TD('RM ' + str(v['night'])), TD('RM ' + str(v['tree']))) for k, v in costs['ra_costs'].iteritems()])}}
+
 </TABLE>
 

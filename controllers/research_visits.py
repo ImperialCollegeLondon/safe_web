@@ -1551,8 +1551,14 @@ def export_research_visits():
     """
     This creates an excel workbook compiling research visit data
     and pokes it out as an http download, so a button can call the controller
-    and return the file via the browser.
+    and return the file via the browser. Costs are loaded from the same costs 
+    json used to populate the logistics and costs page, so can be updated from 
+    a single location
     """
+    
+    # load costs from the json data
+    f = os.path.join(request.folder, 'private','content/en/info/costs.json')
+    costs = simplejson.load(open(f))
     
     # set up the coordinates of the data block
     curr_row = start_row = 8
@@ -1734,7 +1740,8 @@ def export_research_visits():
         admin_status = db.research_visit(r.bed_reservations_safe.research_visit_id).admin_status
         
         # calculate cost - food charge only
-        cost = (r.bed_reservations_safe.departure_date - r.bed_reservations_safe.arrival_date).days * 25
+        cost = (r.bed_reservations_safe.departure_date - 
+                r.bed_reservations_safe.arrival_date).days * costs['safe_costs']['food']['cost']
         
         # put the list of info to be written together
         dat = [curr_row, r.bed_reservations_safe.arrival_date, 
@@ -1753,19 +1760,22 @@ def export_research_visits():
         admin_status = db.research_visit(r.bed_reservations_maliau.research_visit_id).admin_status
         
         # calculate cost - entry, bed and food costs
-        days = (r.bed_reservations_maliau.departure_date - r.bed_reservations_maliau.arrival_date).days
-        cost = 40 + 15 # entry/admin fees
+        days = (r.bed_reservations_maliau.departure_date -
+                r.bed_reservations_maliau.arrival_date).days
+        # admin and conservation on entry
+        cost = cost['maliau_entry']['admin']['cost'] + cost['maliau_entry']['cons']['cost']
+        # annex/hostel are only alternatives at the moment
         if r.bed_reservations_maliau.type == 'Annex':
-            cost += days * 100
+            cost += days * cost['maliau_accom']['annex']['standard']
         else:
-            cost += days * 35 # hostel is only alternative at the moment
-        
+            cost += days * cost['maliau_accom']['hostel']['standard'] 
+        # food
         if r.bed_reservations_maliau.breakfast is True:
-            cost += 15 * days
+            cost +=  cost['maliau_food']['breakfast']['standard'] * days
         if r.bed_reservations_maliau.lunch is True:
-            cost += 20 * days
+            cost += cost['maliau_food']['lunch']['standard'] * days
         if r.bed_reservations_maliau.dinner is True:
-            cost += 30 * days
+            cost += cost['maliau_food']['dinner']['standard'] * days
         
         # content 
         food_labels = ['B' if r.bed_reservations_maliau.breakfast else ''] + \
@@ -1788,13 +1798,13 @@ def export_research_visits():
         
         # costs
         if r.transfers.transfer in ['SAFE to Tawau','Tawau to SAFE']:
-            cost = 250
+            cost = cost['transfers']['tawau_safe']['cost']
         elif r.transfers.transfer in ['SAFE to Maliau','Maliau to SAFE']:
-            cost = 350
+            cost = cost['transfers']['safe_maliau']['cost']
         elif r.transfers.transfer in ['Tawau to Maliau','Maliau to Tawau']:
-            cost = 400
+            cost = cost['transfers']['tawau_maliau']['cost']
         elif r.transfers.transfer in ['SAFE to Danum','Danum to SAFE']:
-            cost = 750
+            cost = cost['transfers']['safe_danum']['cost']
             
         dat = [curr_row, r.transfers.transfer_date, r.transfers.transfer_date, 
                r.transfers.research_visit_id, 'Transfer', 
@@ -1809,12 +1819,11 @@ def export_research_visits():
         
         # costs 
         if r.site_time in ['All day at SAFE', 'All day at Maliau']:
-            cost = 125
+            cost = costs['ra_costs']['full']
         else:
-            cost = 70
+            cost = costs['ra_costs']['half']
         
-        cost_mult = {'Standard':1, 'Rope work':1.5, 'Night work':2}
-        cost *= cost_mult[r.work_type]
+        cost = cost_mult[r.work_type]
         
         dat = [curr_row, r.start_date, r.finish_date, r.research_visit_id, 'RA booking',
                r.site_time, admin_status, cost]
