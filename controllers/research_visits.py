@@ -620,7 +620,7 @@ def research_visit_details():
         accom_test = CAT(accm_pane, accom_js, maliau_js)
         
         ## C) Site transfer bookings panel
-        transfers_panel =   DIV(DIV(DIV(H5('Site transfer requests', _class='col-sm-8'),
+        transfers_panel =   DIV(DIV(DIV(H5('Site transfer requests (Wed/Sun only)', _class='col-sm-8'),
                                     DIV(DIV(TAG.BUTTON(reserve_transfer_icon, _type='submit', _name='book_transfer',
                                                        _style='padding: 5px 15px;background:lightgrey;color:black;'),
                                             _class='pull-right'),
@@ -640,11 +640,17 @@ def research_visit_details():
                                     _class='panel-body'),
                                 _class='panel panel-primary')
         
-        # add javascript to constrain datepicker
+        # add javascript to constrain datepicker and only let admins add days that aren't We/Su
+        if auth.has_membership('admin'):
+            transfer_days = '""'
+        else:
+            transfer_days = '"12456"'
+        
         transfers_js = datepicker_script(id = 'transfer_datepicker', 
                                          autoclose = "true",
                                          startDate ='"' + record.arrival_date.isoformat() + '"',
-                                         endDate ='"' + record.departure_date.isoformat() + '"')
+                                         endDate ='"' + record.departure_date.isoformat() + '"',
+                                         daysOfWeekDisabled = transfer_days)
         
         transfers_panel = CAT(transfers_panel, transfers_js)
         
