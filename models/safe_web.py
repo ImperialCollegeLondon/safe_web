@@ -11,7 +11,6 @@ from gluon.contrib import simplejson
 # ugly hacked inline style for more visible HR in panel-primary
 local_hr = HR(_style='margin-top: 10px; margin-bottom: 0px; border: 0; border-top: 1px solid #325d88;')
 
-
 n_beds_available = 25
 
 project_roles = ['Lead Researcher', 'Supervisor', 'Co-supervisor', 'PhD Student',
@@ -99,10 +98,13 @@ add_member_icon = SPAN('',_class="glyphicon glyphicon-plus-sign",
                           _style="color:green;font-size: 1.6em;", 
                           _title='Add member')
 
+# blog and news post visibility icons 
+
 hide_glyph = SPAN('', _class="glyphicon glyphicon-eye-close")
 visib_glyph = SPAN('', _class="glyphicon glyphicon-eye-open")
 hide_style = "padding:3px 10px;background:darkred"
 visib_style = "padding:3px 10px;background:darkgreen"
+
 ## -----------------------------------------------------------------------------
 ## SAFE TABLE DEFINITIONS
 ## -- TODO - look at UUIDs in definitions for integration with EarthCape
@@ -145,22 +147,34 @@ db.define_table('project_id',
     Field('project_details_oid', length=64))
 
 
+# The project details table and several fields within it need to be called 
+# something different in the actual DB to allow Earthcape to use the same
+# table, and these use the rname option to set the real DB name. 
+# The name used by web2py is an internal alias. This is a bit of
+# a hack but replacing existing field names throughout this 
+# application is tedious, added to which the Earthcape names 
+# require capitalisation: web2py by default maps Field_Name to
+# the standard SQL lowercase field_name, so it opens up a different
+# set of hacks. It would be much much easier and avoid considerable
+# complexity in SQL on the DB if everything just used lower case 
+# but the EC framework I think uses Java and has lots of capitalisation
+
 db.define_table('project_details',
     Field('oid', length=64, default=uuid.uuid4, rname='"Oid"'),
     Field('project_id', 'reference project_id'),
     Field('version', 'integer'),
     Field('thumbnail_figure','upload', uploadfolder= os.path.join(request.folder, 'uploads/images/projects')),
-    Field('title','string', notnull=True),
+    Field('title','string', notnull=True, rname='"Name"'),
     Field('research_areas', type='list:string',
           requires=IS_IN_SET(research_tags, multiple=True), 
           widget=SQLFORM.widgets.multiple.widget),
-    Field('start_date','date', notnull=True),
-    Field('end_date','date', notnull=True),
+    Field('start_date','date', notnull=True, rname='"StartDate"'),
+    Field('end_date','date', notnull=True, rname='"EndDate"'),
     Field('data_use', type='list:string', 
           requires=IS_IN_SET(data_use_set, multiple=True),
           widget = SQLFORM.widgets.checkboxes.widget),
-    Field('rationale','text', notnull=True),
-    Field('methods','text', notnull=True),
+    Field('rationale','text', notnull=True, rname='"Description"'),
+    Field('methods','text', notnull=True, rname='"Methods"'),
     Field('destructive_sampling', 'boolean', default=False),
     Field('destructive_sampling_info', 'text'),
     Field('which_animal_taxa', type='list:string',
@@ -169,7 +183,9 @@ db.define_table('project_details',
     Field('ethics_approval_required', 'boolean', default=False),
     Field('ethics_approval_details', 'text'),
     Field('funding', 'string'),
-    Field('data_sharing','boolean', notnull=True),
+    # this next field basically has to be set to be True in code 
+    # before a project can be submitted
+    Field('data_sharing','boolean', default=False),
     # this allows us to link project pages on import
     Field('legacy_project_id', 'string', readable = False, writable = False),
     # # these fields were collected in the old site that are now not used.
@@ -186,15 +202,15 @@ db.define_table('project_details',
     # - admin_history is used to maintain a record of proposal processing
     Field('admin_status','string', requires=IS_IN_SET(project_status_set), default='Pending'), 
     Field('admin_history','text', writable=False), 
+    # A required field for EarthCape that specifies the type of thing, constant
+    # but a necessary part of the EC mechanism
+    Field('earthcape_object_type', 'integer', default=15, rname='"ObjectType"'),
+    # EC also requires that OID is in the table primary key, so:
+    # primarykey = ['id', 'oid'],
     # set the way the row is represented in foreign tables
     format='%(title)s',
-    # And now, Earthcape needs this table to be called Project as a quoted identifier
-    # because of case senisitivity in its table names, so we make project_details in
-    # the web app an alias to a table with a quoted identifier. This makes for poor SQL
-    # for power end users.
     rname='"Project"'
     ) 
-
 
 db.define_table('project_members',
     Field('oid', length=64, default=uuid.uuid4, rname='"Oid"'),
