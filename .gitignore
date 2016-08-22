@@ -7,6 +7,9 @@ sessions/
 # ignore database definitions
 databases/
 
+# ignore the uploads folder
+uploads/
+
 # mac folder junk
 .DS_Store
 
