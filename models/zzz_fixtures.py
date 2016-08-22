@@ -83,25 +83,25 @@ if db(db.auth_user).count() == 0:
     
     csvfile.close()
     
-    # add the developer to the admin group
-    rows = db(db.auth_user.email == 'd.orme@imperial.ac.uk').select()
-    r = rows.first()
-    r.update_record(password=db.auth_user.password.requires('password23')[0])
-    auth.add_membership('admin', r.id)
-    #auth.add_membership('bloggers', r.id)
-    
-    # add test users to the admin group
-    rows = db(db.auth_user.last_name == 'Ewers').select()
-    r = rows.first()
-    r.update_record(password=db.auth_user.password.requires('password23')[0])
-    auth.add_membership('admin', r.id)
-    #auth.add_membership('bloggers', r.id)
-    
-    rows = db(db.auth_user.email == 'olivia.daniel08@imperial.ac.uk').select()
-    r = rows.first()
-    r.update_record(password=db.auth_user.password.requires('password23')[0])
-    auth.add_membership('admin', r.id)
-    #auth.add_membership('bloggers', r.id)
+    # # add the developer to the admin group
+    # rows = db(db.auth_user.email == 'd.orme@imperial.ac.uk').select()
+    # r = rows.first()
+    # r.update_record(password=db.auth_user.password.requires('password23')[0])
+    # auth.add_membership('admin', r.id)
+    # #auth.add_membership('bloggers', r.id)
+    #
+    # # add test users to the admin group
+    # rows = db(db.auth_user.last_name == 'Ewers').select()
+    # r = rows.first()
+    # r.update_record(password=db.auth_user.password.requires('password23')[0])
+    # auth.add_membership('admin', r.id)
+    # #auth.add_membership('bloggers', r.id)
+    #
+    # rows = db(db.auth_user.email == 'olivia.daniel08@imperial.ac.uk').select()
+    # r = rows.first()
+    # r.update_record(password=db.auth_user.password.requires('password23')[0])
+    # auth.add_membership('admin', r.id)
+    # #auth.add_membership('bloggers', r.id)
 
 
 ## ------------------------------------------------------------------------

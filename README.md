@@ -1,8 +1,6 @@
-# SAFE website #
+# SAFE website and deployment recipe#
 
-This is the bitbucket repository for the code underlying the SAFE website. The web application is written using the [web2py](http://web2py.com/) framework and is intended to work with the same database backend as the SAFE Earthcape database.
-
-## Deployment recipe ##
+This is the bitbucket repository for the code underlying the SAFE website. The web application is written using the [web2py](http://web2py.com/) framework and is intended to work alongside a database for the SAFE Earthcape database. In practice, using the _same_ DB backend involves too many hacks to both systems and made everything more fragile.
 
 
 ### Creating the AWS virtual machine and web interface ###
@@ -14,112 +12,114 @@ The overview is:
   3. The DB backend for the website is running in PostgreSQL on an Amazon RDS instance. This is so that the DB can be accessed by Earthcape as well as by the website, otherwise we could just run it from a local sqlite database.
   4. Backup. Amazon Cloudwatch allows scheduling of snapshots of the volume. These are incremental, so daily backups are just a matter of creating a rule on Cloudwatch. However, because the DB is external, that also needs backup, so we need to schedule a db dump into the volume, which can then be backed up by the snapshot.
 
+## EC2 setup ##
 
-### Connecting to the EC2 instance by SSH ###
+You need to setup an EC2 account and then walk through creating a new EC2 instance running `linux`: I've used Ubuntu 14.04 LTS.  This is all done through the browser UI.  Make sure to **tag the instance with the name 'SAFE Webserver'**, as this tag is used to identify the server instance for some of the automatic steps below. Also make sure you setup the security rules to allow the server to listen to all HTTP, SSH and HTTPS requests. The website will redirect http to https but we'll get to that later.
 
-You'll get a PEM file from Amazon when you create the EC2 instance. This is a key file that allows you to connect to your server via SSH. The only trick is that you need to make the file 'read only by owner' using `chmod` :
+This gives you a virtual server, and in the process of creating it you'll get a key file (`.pem`), that allows you to connect to the server remotely via SSH. This allows you to then set up other aspects of the server:
+
+  1. Once a VM instance is up and running, it has some hard drive space and an IP address, so you can theoretically run everything from there. But... you need to think of them as temporary and substitutable: the disk space associated with the root device on an instance **does not persist** if the instance is shut down **nor does the IP address**. So you can run everything from it, but if the instance is stopped for any reason, you've got to start over and you've probably lost data.
+    So, we need a couple of extra resources:
+  2. **A data volume** which we can attach to our VM instance. This then acts as a drive that the VM can use for storage but it also persistent: if the VM goes down, the attached volume is preserved. It can also be backed up automatically to provide recovery (see below).
+  3. ** An elastic IP**, which is a mechanism to link the IP of a VM instance (lost at VM shutdown) to a permanent IP. In the event of a crash, you can switch the VM linked to the IP to the new VM and carry on as before.
+
+So. First, connect to the EC2 Instance and install some tools. For reproducability, the AWS command line interface is used to set up these components.
+
+You willl need to get the public DNS name for the instance from the EC2 Dashboard. You will also need the PEM file and - because the operating system is extremely cautious about these files and who can edit and view them - you may need to make it 'read only by owner' using `chmod` :
 
     # EC2 instance connection
     chmod 400 AWS_SAFE_Web.pem
-    ssh -i AWS_SAFE_Web.pem ubuntu@ec2-52-208-194-85.eu-west-1.compute.amazonaws.com
+    ssh -i AWS_SAFE_Web.pem ubuntu@ec2-52-210-141-41.eu-west-1.compute.amazonaws.com
 
 **Note that this file contains the keys to the whole server** - it should not be saved anywhere publically accessible or shared with people outside the project admin.
 
-### Enabling HTTPS ###
 
-We're  using the LetsEncrypt open source certification. These commands install LetsEncrypt and load any required packages.
+### Identity and Access Managment (IAM ) setup
 
-    git clone https://github.com/letsencrypt/letsencrypt
-    cd letsencrypt
-    ./letsencrypt-auto --help
+To use command line tools and protect the server, you need to setup users and groups through the IAM web console. You will need to create a developer group with the AdministratorAccess Policy and then create and add a user to this group. Note down (or download) the secret keys associated with the user in order to do the next step.
 
-This command then requests the certificate request, which will look up the IP address registered for the machine against the DN registrar and create the certificate:
+### Set up command line tools 
 
-    ./letsencrypt-auto --apache -d beta.safeproject.net
+We need to install the command line tools from `apt-get` and then configure them. You'll need the user credentials associated with your EC2 account to configure the tools.
 
-The installation creates an Apache site config file and enables it:
-
-    /etc/apache2/sites-available/000-default-le-ssl.conf
-
-This also point to a config include that turns on the SSL remapping of `http` to `https`:
-
-    /etc/letsencrypt/options-ssl-apache.conf
-
-However, in order to get http:// working, I had to edit the apache configuration to map anything coming  in to port 80 to get rewritten to a https:// request:
-
-    <VirtualHost *:80>
-            ServerAdmin webmaster@localhost
-            ServerName beta.safeproject.net
+    sudo apt-get install awscli
+    aws configure # and enter secret details
     
-            HostnameLookups Off
-            UseCanonicalName On
-            ServerSignature Off
-    
-            RewriteEngine On
-            RewriteCond %{HTTPS} off
-            RewriteRule (.*) https://%{SERVER_NAME}$1 [R,L]
-    </VirtualHost>
+    # install pip and a python package to script tools
+    sudo apt-get update
+    sudo apt-get install python-pip
+    sudo pip install boto3
 
-So, any http request to this server is now forwarded on to use https, for all sites.
+### Creating the data volume
 
-The installation suggests checking the resulting domain name using:
+Once you're logged in via SSH and have set up the AWS CLI tools, then we can use python to create and attach a storage volume to the instance. The AWS CLI tools have a shell interface (`aws ec2 ...`) but because the script gets responses in JSON format, it is easier to use the python boto3 interface, which handles the responses as Python dictionaries.
 
-    https://www.ssllabs.com/ssltest/analyze.html?d=beta.safeproject.net
+The python scripty below creates a  new Elastic Block Storage (EBS) volume, which is just a fancy name for a virtual hard drive that works directly with your VM instance. The free tier for AWS comes with 30GB of EBS storage and the default VM uses 8GB (which might be excessive), so this can be ~20GB without running up costs. It then attaches it to the instance tagged with the name `SAFE Webserver`.
 
+    python launch_and_attach_data_volume.py
+
+The volume now exists as a device (`/dev/xvdb` is used in the script) on the instance, but doesn't have a file system and isn't mounted. So:
+
+    sudo mkfs -t ext4 /dev/xvdb
+    sudo mkdir /home/www-data
+    sudo mount /dev/xvdb /home/www-data
 
 ### Installing web2py ###
 
 This downloads and runs a web2py script that sets sets up web2py, postgres, postfix and a bunch of other stuff and restarts Apache. This installation therefore sets up a machine that could run its own internal DB and mailserver, although AWS try to get you to use their RDS service, which isn't available for free.
 
-    wget https://web2py.googlecode.com/hg/scripts/setup-web2py-ubuntu.sh
-    chmod +x setup-web2py-ubuntu.sh
+    cd /home/www-data
+    sudo wget https://raw.githubusercontent.com/web2py/web2py/master/scripts/setup-web2py-ubuntu.sh
+    sudo chmod +x setup-web2py-ubuntu.sh
     sudo ./setup-web2py-ubuntu.sh
+
+As part of this script you have the opportunity to configure postfix for email (choose None in the configuration options) and to configure a SSL certificate to allow HTTPS. This self-signed certificate is basically worthless.
 
 You then need to set the password for the admin web2py app to enable admin access via the web interface, which involves running a command from within the web2py python modules:
 
     cd /home/www-data/web2py
     sudo -u www-data python -c "from gluon.main import save_password; save_password(raw_input('admin password: '),443)"
 
-#### Apache configuration ####
+### Progress report #1
 
-The installer creates and enables an apache2 configuration (`default.conf`) that sets a bunch of stuff. However, it tries to create a self signed certificate and create the VirtualHost entries, which have already been handled by LetsEncrypt. You therefore need a new configuration file that points apache2 to the correct directories to serve the website. All the information is in `default.conf` but wrapped in VirtualHost declarations. We're interested in the following, which tells Apache2 to map `www.servername.net/anything` to the web2py WSGI handler and allows the handler access to the content.
+At this point, we should have a webserver running web2py with the default applications. However at the moment, it is only accessible via the Public DNS of the VM instance. If you copy that from the EC2 console into the browser, you should see the welcome to web2py application.
 
-    WSGIDaemonProcess web2py user=www-data group=www-data processes=1 threads=1
-    WSGIProcessGroup web2py
-    WSGIScriptAlias / /home/www-data/web2py/wsgihandler.py
-    WSGIPassAuthorization On
-    
-    <Directory /home/www-data/web2py>
-      AllowOverride None
-      Require all denied
-      <Files wsgihandler.py>
-        Require all granted
-      </Files>
-    </Directory>
-    
-    AliasMatch ^/([^/]+)/static/(?:_[\d]+.[\d]+.[\d]+/)?(.*) \ /home/www-data/web2py/applications/$1/static/$2
-    
-    <Directory /home/www-data/web2py/applications/*/static/>
-      Options -Indexes
-      ExpiresActive On
-      ExpiresDefault "access plus 1 hour"
-      Require all granted
-    </Directory>
+If you try going to https://<public dns>, you'll get warnings about the certificate not being trusted. We need a proper certificate from a trusted authority to enable HTTPS but before we do that, we'll get the web application up and running
 
-It all needs to go into `/etc/apache2/sites-available/web2py.conf` and then we need to switch out the old one. We also need to turn off the default `DocumentRoot` created by LetsEncrypt, so open up `/etc/apache2/sites-available/000-default-le-ssl.conf` and comment that line out and the reload apache2.
+## Deploying the web application
 
-    sudo vi /etc/apache2/sites-available/000-default-le-ssl.conf
-    # comment out the line: DocumentRoot /var/www/html
-    sudo a2dissite default.conf
-    sudo a2ensite web2py.conf 
-    sudo service apache2 reload
+This is basically just a matter of cloning the repository and then setting up the configuration for the application running on this server.
 
-After this the web2py interface should available at (e.g.)
+### Install python modules
 
-    https://ec2-52-50-144-96.eu-west-1.compute.amazonaws.com/admin
+The application needs a few extra python modules. I didn't muck around with virtualenv for packages as these ones should probably should be globally available rather than just for the user www-data. I needed:
+
+    sudo pip install gitpython 
+    sudo pip install --upgrade google-api-python-client
+    sudo pip install openpyxl
+    sudo pip install fs
+    sudo pip install html2text
+
+### Initial deployment 
+
+First up, install git:
+
+    sudo apt-get install git
+
+Now clone the repo into the web2py applications folder. You could set up SSH, which gives the advantage of not needing to provide a password every time. However it is a pain to set up the keypairs and you'd expect that there are  going to be relatively infrequent roll outs of updated versions. So go with an clone via https, requiring your bitbucket password:
+
+    cd /home/www-data/web2py/applications
+    sudo -u www-data git clone https://davidorme@bitbucket.org/davidorme/safe_web.git
+
+Before the application can work, we need to setup the database backend and edit the `appconfig.ini` file for the application to point to this database and to the correct SMTP server to send mail.
+
+  1. **Create the DB**. Currently we are using a PostgreSQL DB running on an AWS Relational Database Server (RDS) set up by Evgeniy for the Earthcape database. We need to create a database instance on this called `safe_web2py`. So, log into the server (you will need the password for the):
+  
+  
+    psql earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com safe_web2py
 
 
-### Setting the default application ###
+### Setting the default application 
 
 To set the application at the root of the domain name, create a file called `routes.py` in the base of the web2py installation (_outside_ of the git repo) with the contents:
 
@@ -133,30 +133,19 @@ Then restart apache:
 
     sudo service apache2 restart
 
-#### Python package management ####
 
-For any extra python packages, you'll then need:
 
-    sudo apt-get install python-pip
 
-I didn't muck around with virtualenv for packages as these ones should probably should be globally available rather than just for the user www-data. I needed:
+#### Setting up the environment for backup ####
 
-    sudo pip install gitpython 
-    sudo pip install --upgrade google-api-python-client
-    sudo pip install openpyxl
-    sudo pip install fs
-    sudo pip install html2text
+    aws iam create-role --role-name ebs-backup-worker 
 
-#### Deploying the web2py application from a bitbucket repo ####
 
-First up, install git:
 
-    sudo apt-get install git
+##### Resetting the DB in development NOT once in production #####
 
-Now clone the repo into the web2py applications folder. You could set up SSH, which gives the advantage of not needing to provide a password every time. However it is a pain to set up the keypairs and you'd expect that there are  going to be relatively infrequent roll outs of updated versions. So go with an clone via https, requiring your bitbucket password:
+In production, the DB is the ultimate source of truth, but in the startup, this is populated from the zzz-fixtures.py file. Between major revisions in development, it is probably wise to purge the DB data and reload it:
 
-    cd /home/www-data/web2py/applications
-    sudo -u www-data git clone https://davidorme@bitbucket.org/davidorme/safe_web.git
 
 It is wise to disable the app from the admin site before updating! The web server provides a nice maintenance banner whilst it is disabled.
 
@@ -166,10 +155,6 @@ Updating from the repo requires the following:
     sudo git remote update
     sudo git pull
 
-
-##### Resetting the DB in development NOT once in production #####
-
-In production, the DB is the ultimate source of truth, but in the startup, this is populated from the zzz-fixtures.py file. Between major revisions in development, it is probably wise to purge the DB data and reload it:
 
 1) In the DB, delete all the tables.
 
@@ -470,3 +455,89 @@ The config file to map all this up is:
     
 
 Once this has been set up, in the access control section of the Configuration Manager on Dokuwiki, change the `authtype` to  `authpgsql`. You'll be kicked out and need to log back in as a web2py admin user to make further changes.
+
+
+
+
+
+### Enabling HTTPS ###
+
+We're  using the LetsEncrypt open source certification. These commands install LetsEncrypt and load any required packages.
+
+    git clone https://github.com/letsencrypt/letsencrypt
+    cd letsencrypt
+    ./letsencrypt-auto --help
+
+This command then requests the certificate request, which will look up the IP address registered for the machine against the DN registrar and create the certificate:
+
+    ./letsencrypt-auto --apache -d beta.safeproject.net
+
+The installation creates an Apache site config file and enables it:
+
+    /etc/apache2/sites-available/000-default-le-ssl.conf
+
+This also point to a config include that turns on the SSL remapping of `http` to `https`:
+
+    /etc/letsencrypt/options-ssl-apache.conf
+
+However, in order to get http:// working, I had to edit the apache configuration to map anything coming  in to port 80 to get rewritten to a https:// request:
+
+    <VirtualHost *:80>
+            ServerAdmin webmaster@localhost
+            ServerName beta.safeproject.net
+    
+            HostnameLookups Off
+            UseCanonicalName On
+            ServerSignature Off
+    
+            RewriteEngine On
+            RewriteCond %{HTTPS} off
+            RewriteRule (.*) https://%{SERVER_NAME}$1 [R,L]
+    </VirtualHost>
+
+So, any http request to this server is now forwarded on to use https, for all sites.
+
+The installation suggests checking the resulting domain name using:
+
+    https://www.ssllabs.com/ssltest/analyze.html?d=beta.safeproject.net
+
+
+
+#### Apache configuration ####
+
+The installer creates and enables an apache2 configuration (`default.conf`) that sets a bunch of stuff. However, it tries to create a self signed certificate and create the VirtualHost entries, which have already been handled by LetsEncrypt. You therefore need a new configuration file that points apache2 to the correct directories to serve the website. All the information is in `default.conf` but wrapped in VirtualHost declarations. We're interested in the following, which tells Apache2 to map `www.servername.net/anything` to the web2py WSGI handler and allows the handler access to the content.
+
+    WSGIDaemonProcess web2py user=www-data group=www-data processes=1 threads=1
+    WSGIProcessGroup web2py
+    WSGIScriptAlias / /home/www-data/web2py/wsgihandler.py
+    WSGIPassAuthorization On
+    
+    <Directory /home/www-data/web2py>
+      AllowOverride None
+      Require all denied
+      <Files wsgihandler.py>
+        Require all granted
+      </Files>
+    </Directory>
+    
+    AliasMatch ^/([^/]+)/static/(?:_[\d]+.[\d]+.[\d]+/)?(.*) \ /home/www-data/web2py/applications/$1/static/$2
+    
+    <Directory /home/www-data/web2py/applications/*/static/>
+      Options -Indexes
+      ExpiresActive On
+      ExpiresDefault "access plus 1 hour"
+      Require all granted
+    </Directory>
+
+It all needs to go into `/etc/apache2/sites-available/web2py.conf` and then we need to switch out the old one. We also need to turn off the default `DocumentRoot` created by LetsEncrypt, so open up `/etc/apache2/sites-available/000-default-le-ssl.conf` and comment that line out and the reload apache2.
+
+    sudo vi /etc/apache2/sites-available/000-default-le-ssl.conf
+    # comment out the line: DocumentRoot /var/www/html
+    sudo a2dissite default.conf
+    sudo a2ensite web2py.conf 
+    sudo service apache2 reload
+
+After this the web2py interface should available at (e.g.)
+
+    https://ec2-52-50-144-96.eu-west-1.compute.amazonaws.com/admin
+
