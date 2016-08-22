@@ -810,7 +810,8 @@ def research_visit_details():
         ## AND PROVIDE THE FORM LOGIC FOR HANDLING THE VARIOUS CONTROLS
         
         if readonly:
-            console =  CAT(DIV(visitors),
+            console =  CAT(H3('Proposed research visit details'),
+                           DIV(visitors),
                            DIV(safe_table),
                            DIV(maliau_table),
                            DIV(transfer_table),
@@ -821,6 +822,7 @@ def research_visit_details():
             # the research visit id to allow the validation to cross check.
             # - insert anchors between panels to bring the URL back to the pane that was edited
             console =  FORM(A(_name='console'),
+                            H3('Proposed research visit details'),
                             DIV(DIV(visitors, _class='col-sm-5'),
                                 DIV(DIV(accom_test, _class='row'),
                                    DIV(transfers_panel, _class='row'),
@@ -1558,7 +1560,7 @@ def export_research_visits():
     
     # load costs from the json data
     f = os.path.join(request.folder, 'private','content/en/info/costs.json')
-    costs = simplejson.load(open(f))
+    costs_dict = simplejson.load(open(f))
     
     # set up the coordinates of the data block
     curr_row = start_row = 8
@@ -1741,7 +1743,7 @@ def export_research_visits():
         
         # calculate cost - food charge only
         cost = (r.bed_reservations_safe.departure_date - 
-                r.bed_reservations_safe.arrival_date).days * costs['safe_costs']['food']['cost']
+                r.bed_reservations_safe.arrival_date).days * costs_dict['safe_costs']['food']['cost']
         
         # put the list of info to be written together
         dat = [curr_row, r.bed_reservations_safe.arrival_date, 
@@ -1763,19 +1765,19 @@ def export_research_visits():
         days = (r.bed_reservations_maliau.departure_date -
                 r.bed_reservations_maliau.arrival_date).days
         # admin and conservation on entry
-        cost = cost['maliau_entry']['admin']['cost'] + cost['maliau_entry']['cons']['cost']
+        cost = costs_dict['maliau_entry']['admin']['standard'] + costs_dict['maliau_entry']['cons']['standard']
         # annex/hostel are only alternatives at the moment
         if r.bed_reservations_maliau.type == 'Annex':
-            cost += days * cost['maliau_accom']['annex']['standard']
+            cost += days * costs_dict['maliau_accom']['annex']['standard']
         else:
-            cost += days * cost['maliau_accom']['hostel']['standard'] 
+            cost += days * costs_dict['maliau_accom']['hostel']['standard'] 
         # food
         if r.bed_reservations_maliau.breakfast is True:
-            cost +=  cost['maliau_food']['breakfast']['standard'] * days
+            cost +=  costs_dict['maliau_food']['breakfast']['standard'] * days
         if r.bed_reservations_maliau.lunch is True:
-            cost += cost['maliau_food']['lunch']['standard'] * days
+            cost += costs_dict['maliau_food']['lunch']['standard'] * days
         if r.bed_reservations_maliau.dinner is True:
-            cost += cost['maliau_food']['dinner']['standard'] * days
+            cost += costs_dict['maliau_food']['dinner']['standard'] * days
         
         # content 
         food_labels = ['B' if r.bed_reservations_maliau.breakfast else ''] + \
@@ -1798,13 +1800,13 @@ def export_research_visits():
         
         # costs
         if r.transfers.transfer in ['SAFE to Tawau','Tawau to SAFE']:
-            cost = cost['transfers']['tawau_safe']['cost']
+            cost = costs_dict['transfers']['tawau_safe']['cost']
         elif r.transfers.transfer in ['SAFE to Maliau','Maliau to SAFE']:
-            cost = cost['transfers']['safe_maliau']['cost']
+            cost = costs_dict['transfers']['safe_maliau']['cost']
         elif r.transfers.transfer in ['Tawau to Maliau','Maliau to Tawau']:
-            cost = cost['transfers']['tawau_maliau']['cost']
+            cost = costs_dict['transfers']['tawau_maliau']['cost']
         elif r.transfers.transfer in ['SAFE to Danum','Danum to SAFE']:
-            cost = cost['transfers']['safe_danum']['cost']
+            cost = costs_dict['transfers']['safe_danum']['cost']
             
         dat = [curr_row, r.transfers.transfer_date, r.transfers.transfer_date, 
                r.transfers.research_visit_id, 'Transfer', 
@@ -1819,11 +1821,11 @@ def export_research_visits():
         
         # costs 
         if r.site_time in ['All day at SAFE', 'All day at Maliau']:
-            cost = costs['ra_costs']['full']
+            cost = costs_dict['ra_costs']['full']
         else:
-            cost = costs['ra_costs']['half']
+            cost = costs_dict['ra_costs']['half']
         
-        cost = cost_mult[r.work_type]
+        cost = cost[r.work_type]
         
         dat = [curr_row, r.start_date, r.finish_date, r.research_visit_id, 'RA booking',
                r.site_time, admin_status, cost]

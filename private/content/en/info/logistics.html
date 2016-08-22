@@ -22,14 +22,22 @@
 
 {{=H4('Transfers')}}
 
-<p>Pick-up and drop-offs from Tawau town or Tawau airport can be arranged on Sundays, when there is minimal fieldwork, or on a weekday subjected to availability of vehicles and drivers and at the discretion of Scientific Coordinator.  Requests made less than one week prior to pick up may not be entertained.  Email the Deputy Scientific Coordinator to arrange a pick-up.</p>
+<p>Pick-up and drop-offs from Tawau town or Tawau airport can be arranged on Wednesdays and Sundays, subject to availability of vehicles and drivers and at the discretion of Scientific Coordinator. You will need to include transfers in your reseearch visit plan, which you will need to submit at least a fortnight before you plan to come to the field.</p>
 
-<p>Because of the distances and the nature of the roads involved, we strongly discourage anyone from requesting same-day return trips to and from Maliau.  Same-day return trips between Tawau and SAFE are possible.  Transfers between Tawau, SAFE field camp and Maliau Basin Studies Centre are charged at the same rates as those charged by SEARRP at Danum Valley, which can be found here.</p>
+<p>Because of the distances and the nature of the roads involved, we strongly discourage anyone from requesting same-day return trips to and from Maliau.  Same-day return trips between Tawau and SAFE are possible.  Transfers between Tawau, SAFE field camp and Maliau Basin Studies Centre are charged at the rates below and are the same as those charged by SEARRP at Danum Valley.</p>
 
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Transfer</TH><TH>Driving time</TH><TH>One way journey cost (approx.)</TH></TR>
 {{=CAT([TR(TD(v['name']), TD(v['drive_time']), TD('RM ' + str(v['cost']))) for k, v in costs['transfers'].iteritems()])}}
 </TABLE>
+
+<p>It is also possible to arrange transfers using vehicles and drivers from Maliau Basin. These will need to be arranged separately and have different costs:</p>
+
+<TABLE width='100%' class="table table-striped">
+<TR><TH>Transfer</TH><TH>Driving time</TH><TH>One way journey cost (approx.)</TH></TR>
+{{=CAT([TR(TD(v['name']), TD(v['drive_time']), TD('RM ' + str(v['cost']))) for k, v in costs['transfers_maliau'].iteritems()])}}
+</TABLE>
+
 
 {{=H4('Transport around the SAFE Project experimental area')}}
 
@@ -79,8 +87,8 @@
 
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Category</TH><TH>Standard cost</TH><TH>Night work</TH><TH>Canopy access</TH></TR>
-{{=CAT([TR(TD(XML("&nbsp;&nbsp;&nbsp;" + v['name'])), TD('RM ' + str(v['standard'])), 
-           TD('RM ' + str(v['night'])), TD('RM ' + str(v['tree']))) for k, v in costs['ra_costs'].iteritems()])}}
+{{=CAT([TR(TD(XML("&nbsp;&nbsp;&nbsp;" + v['name'])), TD('RM ' + str(v['Standard'])), 
+           TD('RM ' + str(v['Night work'])), TD('RM ' + str(v['Rope work']))) for k, v in costs['ra_costs'].iteritems()])}}
 
 </TABLE>
 
