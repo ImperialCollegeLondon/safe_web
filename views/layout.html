@@ -54,10 +54,6 @@
     {{end}} -->
     <!-- Main ========================================= -->
 
-
-{{=H2('This is a beta version of the new website - any data entered is for testing purposes only and will be discarded before the site is relaunched. Not for live use!', _style='color:red;')}}
-
-
 {{if auth.is_impersonating():}}
 {{=DIV(CENTER('Admin Reminder: You are impersonating ', auth.user.first_name, 
               ' ', auth.user.last_name,'. Click ', 
