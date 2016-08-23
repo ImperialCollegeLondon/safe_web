@@ -413,19 +413,31 @@ This should now be the DB empty of data, ready to repopulate everything, once th
 
 We want to do two things: i) copy the contents of database out of the RDS and onto the  volume mounted at `/home/www-data`; and then ii) use the AWS snapshot mechanism to backup the volume.
 
-There is a built in AWS service called Lambda that allows scheduling and functions but it is quite tricky to use. As long as we are dealing with a single VM, it is probably easier to use `cron` or something similar.
+There is a built in AWS service called Lambda that allows scheduling and functions but it is quite tricky to use. As long as we are dealing with a single VM, it is probably easier to use `cron` or something similar. The web application code repository contains a couple of scripts under `private/aws_setup` which can be added to `crontab` to automate this.
+
 
 These two webpages give some good instructions on how you might do this with Lambda and provide a python backup script that I've ruthlessly repurposed:
 
 https://serverlesscode.com/post/lambda-schedule-ebs-snapshot-backups/
 https://serverlesscode.com/post/lambda-schedule-ebs-snapshot-backups-2/
 
+Rather than doing stuff using `sudo` all the time, we'll give the default EC2 user `ubuntu` access to the `www-data` group and allow any group members to write to the `/home/www-data` folder.
+
+    sudo usermod -a -G www-data ubuntu
+    sudo chown -R www-data /home/www-data
+    sudo chgrp -R www-data /home/www-data
+    sudo chmod -R g+w /home/www-data
+
+    sudo find /home/www-data -type d -exec chmod 2775 {} \;
+    sudo find /home/www-data -type f -exec chmod ug+rw {} \;
+
+Note that you have to logout and log back in again for this to have an effect! We can now use the `ubuntu` user account to run backups.
 
 ### Remote backup of the PostgreSQL DB
 
 The RDS server keeps a daily backup of databases with 7 day retention, but keeping a local copy seems like a sensible strategy. This means a remote dump of the database, which is fine for such a small payload (5 years of legacy data is ~ 1.2 Mb as raw SQL, ~500Kb as compressed format). 
 
-In order to automate this, we need to create a file `.pgpass` in the home directory of the user running the `pg_dump` command that contains credentials - you can't send the connection password in the `pg_dump` command. The contents should be:
+In order to automate this, we need to create a file `.pgpass` in the `ubuntu` user's home directory containing connection credentials - you can't set the connection password directly in the `pg_dump` command. The contents should be:
 
     # e.g. hostname:port:database:username:password
     earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com:*:safe_web2py:safe_admin:password
@@ -434,6 +446,21 @@ The file needs to have permissions set:
 
     chmod 0600 ~/.pgpass
 
+We want the dump to be written to the volume that is about to be backed up, which is mounted at `/home/www-data`, so we should let the backup be handled by the user `www-data`. 
+
+  1. Create a backup directory
+  
+    sudo mkdir safe_web2py_psql_dump
+
+  2. Configure cron to run the backup script every day in the small hours
+  
+    (crontab -l ; echo "23 3 * * * python  /home/www-data/web2py/applications/safe_web/private/aws_setup/db_remote_dump.py >> /home/www-data/db_remote_dump.log 2>&1") | crontab -
+
+  3. Edit the system log setup to keep a specific cron log
+  
+    sudo vi /etc/rsyslog.d/50-default.conf
+    # uncomment the cron line
+    sudo service rsyslog restart
 
 ### Snapshots of the data volume
 
@@ -441,8 +468,14 @@ AWS has a Snapshot facility that allows you to take a copy of a volume. These vo
 
 A python script `data_backup_and_rotate.py` is included in the application under `private/aws_setup`, which can be added to the crontab in order to maintain snapshots.
 
+    (crontab -l ; echo "47 3 * * * python  /home/www-data/web2py/applications/safe_web/private/aws_setup/data_backup_and_rotate.py >> /home/www-data/data_backup_and_rotate.log 2>&1") | crontab -
+
+### Monitoring the backup process
+
+The file `/var/log/cron.log` shows the processes being executed and the two log files in `/home/www-data` show the messages from the scripts.
 
 
+## Random disorganised thoughts
 
 #### web2py Plugins ####
 

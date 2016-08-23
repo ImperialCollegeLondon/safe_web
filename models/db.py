@@ -94,9 +94,7 @@ auth.settings.extra_fields['auth_user']= [
 ## create auth tables 
 auth.define_tables(username=False, signature=False)
 
-# dont show the user the UUID field or legacy user or H&S
-db.auth_user.oid.readable = False
-db.auth_user.oid.writable = False
+# dont show the user the legacy user or H&S
 db.auth_user.legacy_user_id.readable = False
 db.auth_user.legacy_user_id.writable = False
 db.auth_user.h_and_s_id.readable = False
