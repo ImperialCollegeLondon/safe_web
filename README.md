@@ -366,49 +366,6 @@ Next, install extensions that will be used from the admin extension manager:
     etc
 
 
-## Resetting the DB in development 
-
-As noted above, in production, the DB is the ultimate source of truth, but in the startup, this is populated from the `zzz_fixtures.py file`. In order to reset the development version, the following steps are used. It is wise to disable the app from the web2py admin site before updating! The web server provides a nice maintenance banner whilst it is disabled.
-
-
-  1. Update the code from the repo using the following:  
-  
-    sudo git remote update
-    sudo git pull
-
-  2. In the DB, delete all the tables and recreate the db (as above): 
-  
-    # requires password
-    psql -h earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com template1 safe_admin
-
-And then in SQL:
-
-    -- may need to kill sessions attached to it
-    SELECT pg_terminate_backend(pg_stat_activity.pid)
-    FROM pg_stat_activity
-    WHERE pg_stat_activity.datname = 'safe_web2py'
-      AND pid <> pg_backend_pid();
-    -- recreate
-    drop database safe_web2py;
-    create database safe_web2py;
-
-  3. In the file system the upload directory contains copies of files loaded in. These won't be purged by deleting the DB content, so avoid duplicating them on reload: 
-  
-    cd /home/www-data/web2py/applications/safe_web/uploads
-    sudo find . -type f -delete
- 
-  4. Kill the web2py databases table description files - they need to be regenerated when the DB is brought back up
- 
-    cd /home/www-data/web2py/applications/safe_web/databases
-    sudo rm *.table
-    sudo rm sql.log
-
-This should now be the DB empty of data, ready to repopulate everything, once the models run. You may also need to restart the server:
-
-    sudo service apache2 restart
-
-**Remember**: once the system is in production this is a disasterous thing to do and you should use the production reset recipe.
-
 ## Backup and restore in production
 
 We want to do two things: i) copy the contents of database out of the RDS and onto the  volume mounted at `/home/www-data`; and then ii) use the AWS snapshot mechanism to backup the volume.
@@ -473,6 +430,56 @@ A python script `data_backup_and_rotate.py` is included in the application under
 ### Monitoring the backup process
 
 The file `/var/log/cron.log` shows the processes being executed and the two log files in `/home/www-data` show the messages from the scripts.
+
+
+### Backup of the server
+
+Having installed everything, we can take an snapshot of the server volume - this would otherwise be deleted when the VM is stopped. This should mean we can bring the server and installed software backup by creating an image from the snapshot, reattaching the data volume and starting a new instance.
+
+    python vm_snapshot.py
+
+## Resetting the DB in development 
+
+As noted above, in production, the DB is the ultimate source of truth, but in the startup, this is populated from the `zzz_fixtures.py file`. In order to reset the development version, the following steps are used. It is wise to disable the app from the web2py admin site before updating! The web server provides a nice maintenance banner whilst it is disabled.
+
+
+  1. Update the code from the repo using the following:  
+  
+    sudo git remote update
+    sudo git pull
+
+  2. In the DB, delete all the tables and recreate the db (as above): 
+  
+    # requires password
+    psql -h earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com template1 safe_admin
+
+And then in SQL:
+
+    -- may need to kill sessions attached to it
+    SELECT pg_terminate_backend(pg_stat_activity.pid)
+    FROM pg_stat_activity
+    WHERE pg_stat_activity.datname = 'safe_web2py'
+      AND pid <> pg_backend_pid();
+    -- recreate
+    drop database safe_web2py;
+    create database safe_web2py;
+
+  3. In the file system the upload directory contains copies of files loaded in. These won't be purged by deleting the DB content, so avoid duplicating them on reload: 
+  
+    cd /home/www-data/web2py/applications/safe_web/uploads
+    sudo find . -type f -delete
+ 
+  4. Kill the web2py databases table description files - they need to be regenerated when the DB is brought back up
+ 
+    cd /home/www-data/web2py/applications/safe_web/databases
+    sudo rm *.table
+    sudo rm sql.log
+
+This should now be the DB empty of data, ready to repopulate everything, once the models run. You may also need to restart the server:
+
+    sudo service apache2 restart
+
+**Remember**: once the system is in production this is a disasterous thing to do and you should use the production reset recipe.
 
 
 ## Random disorganised thoughts
