@@ -80,7 +80,30 @@ You then need to set the password for the admin web2py app to enable admin acces
     cd /home/www-data/web2py
     sudo -u www-data python -c "from gluon.main import save_password; save_password(raw_input('admin password: '),443)"
 
-### Progress report #1
+
+### Update PostgreSQL
+
+At the time of writing, the AWS Ubuntu is 14.04 LTS, which installs postgresql 9.3 but the AWS RDS servers run 9.4. This isn't a problem except if we want to use the `pg_dump` command on the webserver to create a remote dump of the DB. This is a bit paranoid, since the RDS servers keep daily backups for 7 days, but you can't be too careful.
+
+1. Stop the 9.3 Server and remove the package
+
+        sudo /etc/init.d/postgresql stop
+        sudo apt-get --purge remove postgresql\*
+
+2. Create the file /etc/apt/sources.list.d/pgdg.list, and add a line for the repository  
+
+        deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main
+
+3. Get the packages available from that repo:
+
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        sudo apt-get update
+
+4. Install the version specific apt package
+
+        sudo apt-get install postgresql-9.4
+
+### Section progress report #1
 
 At this point, we should have a webserver running web2py with the default applications. However at the moment, it is only accessible via the Public DNS of the VM instance. If you copy that from the EC2 console into the browser, you should see the welcome to web2py application.
 
@@ -102,7 +125,9 @@ The application needs a few extra python modules. I didn't muck around with virt
 
 ### Initial deployment 
 
-First up, install git:
+**Read the next statement very carefully**: The SAFE web application is deploying a lot of existing data, so the first deployment calls some code to copy across existing files and to load the database with legacy data from the previous system. This code is only needed once at **initial deployment**. The code in this section assumes that this is what you're doing - essentially a bunch of stuff that is only used while the application is in development. If you follow this section once the application has actually been live, you're burning down a live system. The recovery plan for the production system is **very** different and is described below.
+
+OK. So warning over. First up, install git:
 
     sudo apt-get install git
 
@@ -113,15 +138,26 @@ Now clone the repo into the web2py applications folder. You could set up SSH, wh
 
 Before the application can work, we need to setup the database backend and edit the `appconfig.ini` file for the application to point to this database and to the correct SMTP server to send mail.
 
-  1. **Create the DB**. Currently we are using a PostgreSQL DB running on an AWS Relational Database Server (RDS) set up by Evgeniy for the Earthcape database. We need to create a database instance on this called `safe_web2py`. So, log into the server (you will need the password for the):
-  
-  
-    psql earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com safe_web2py
+  1. **Create the DB**. Currently we are using a PostgreSQL DB running on an AWS Relational Database Server (RDS) set up by Evgeniy for the Earthcape database. We need to create a database instance on this called `safe_web2py`. So, log into the server (you will need the password for the RDS user `safe_admin`):
+ 
+    psql -h earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com template1 -U safe_admin
+    create database safe_web2py;
 
+Quit from the `psql` terminal using the command `\q`. If the database already exists then *think very hard about what you're doing* and look at the section below on resetting the database during development:
+
+   2. **Edit the appconfig**. We now need to point the application to the database backend.
+   
+    cd /home/www-data/web2py/applications/safe_web/private/
+    sudo cp appconfig_template.ini appconfig.ini
+    sudo vi appconfig.ini
+
+Edit that using `vi` to fill in the details for the DB and SMTP.
+
+  3. **Cross your fingers**. The URL http://<Public DNS>/safe_web/default/index should now open the web application. There will be a delay as on the initial deployment, the application has to run the file `model/zzz_fixtures.py`, which is responsible for loading all the legacy data.
 
 ### Setting the default application 
 
-To set the application at the root of the domain name, create a file called `routes.py` in the base of the web2py installation (_outside_ of the git repo) with the contents:
+Rather than including `safe\_web` in every URL, we can set a default application for the web2py server. Create a file called `routes.py` in the base of the web2py installation (_outside_ of the git repo) with the contents:
 
     routers = dict(
         BASE = dict(
@@ -133,44 +169,219 @@ Then restart apache:
 
     sudo service apache2 restart
 
+### Section progress report #2
+
+We've now got a live web application running on the Public DNS of an AWS EC2 server. Now what we need to do is to associate the instance with the IP of an Elastic IP address and to setup a secure HTTPS certificate. 
+
+## Making the site use https://www.safeproject.net
+
+### Elastic IP Address
+
+The Elastic IP address can be created programatically but then has to be associated with the DNS entry for https://www.safeproject.net. This has already been done, so the next step is to connect the new instance to that Elastic IP. The script below uses Python and boto3 again:
+
+    python attach_instance_to_elastic_ip.py
+
+At this point, the IP address for your instance has been changed, so your SSH connection will terminate!
+
+### Fix the HTTPS connection
+
+We're  using the LetsEncrypt open source certification. These commands install LetsEncrypt and load any required packages.
+
+    ssh -i AWS_SAFE_Web.pem ubuntu@beta.safeproject.net
+    cd /home/www-data/
+    git clone https://github.com/letsencrypt/letsencrypt
+    cd letsencrypt
+    ./letsencrypt-auto --help
+
+The next command then requests the certificate request, which will look up the IP address registered for the machine against the DN registrar and create the certificate. You will need to specify a contact email for emergencies and should specify that all HTTP traffic is redirected to HTTPS.
+
+    ./letsencrypt-auto --apache -d beta.safeproject.net
+
+The installation creates an Apache site config file and enables it:
+
+    /etc/apache2/sites-available/000-default-le-ssl.conf
+
+This also point to a config include that turns on the SSL remapping of `http` to `https`:
+
+    /etc/letsencrypt/options-ssl-apache.conf
+
+However, in order to get http:// working, I had to edit the apache configuration to map anything coming  in to port 80 to get rewritten to a https:// request:
+
+    <VirtualHost *:80>
+            ServerAdmin webmaster@localhost
+            ServerName beta.safeproject.net
+    
+            HostnameLookups Off
+            UseCanonicalName On
+            ServerSignature Off
+    
+            RewriteEngine On
+            RewriteCond %{HTTPS} off
+            RewriteRule (.*) https://%{SERVER_NAME}$1 [R,L]
+    </VirtualHost>
+
+So, any http request to this server is now forwarded on to use https, for all sites. Now reload it:
+
+    sudo service apache2 reload
+
+The installation suggests checking the resulting domain name using:
+
+    https://www.ssllabs.com/ssltest/analyze.html?d=beta.safeproject.net
 
 
+### Fix the Apache configuration 
 
-#### Setting up the environment for backup ####
+We now have a valid HTTPS vertificate but the installer has broken the link that directs Apache to the web2py server, so we need to fix that up.
 
-    aws iam create-role --role-name ebs-backup-worker 
+The installer creates and enables an apache2 configuration (`default.conf`) that sets a bunch of stuff. However, it tries to create a self signed certificate and create the VirtualHost entries, which have already been handled by LetsEncrypt. You therefore need a new configuration file that points apache2 to the correct directories to serve the website. All the information is in `default.conf` but wrapped in VirtualHost declarations. We're interested in the following, which tells Apache2 to map `www.servername.net/anything` to the web2py WSGI handler and allows the handler access to the content.
+
+    WSGIDaemonProcess web2py user=www-data group=www-data processes=1 threads=1
+    WSGIProcessGroup web2py
+    WSGIScriptAlias / /home/www-data/web2py/wsgihandler.py
+    WSGIPassAuthorization On
+    
+    <Directory /home/www-data/web2py>
+      AllowOverride None
+      Require all denied
+      <Files wsgihandler.py>
+        Require all granted
+      </Files>
+    </Directory>
+    
+    AliasMatch ^/([^/]+)/static/(?:_[\d]+.[\d]+.[\d]+/)?(.*) /home/www-data/web2py/applications/$1/static/$2
+    
+    <Directory /home/www-data/web2py/applications/*/static/>
+      Options -Indexes
+      ExpiresActive On
+      ExpiresDefault "access plus 1 hour"
+      Require all granted
+    </Directory>
+
+It all needs to go into `/etc/apache2/sites-available/web2py.conf` and then we need to switch out the old one. We also need to turn off the default `DocumentRoot` created by LetsEncrypt, so open up `/etc/apache2/sites-available/000-default-le-ssl.conf` and comment that line out and the reload apache2.
+
+    sudo vi /etc/apache2/sites-available/000-default-le-ssl.conf
+    # comment out the line: DocumentRoot /var/www/html
+    sudo a2dissite default.conf
+    sudo a2ensite web2py.conf 
+    sudo service apache2 reload
 
 
+## Install Dokuwiki
 
-##### Resetting the DB in development NOT once in production #####
+First, you will need to ssh into the EC2 instance:
 
-In production, the DB is the ultimate source of truth, but in the startup, this is populated from the zzz-fixtures.py file. Between major revisions in development, it is probably wise to purge the DB data and reload it:
+    ssh -i AWS_SAFE_Web.pem ubuntu@beta.safeproject.net
+
+Then, broadly following the instructions [here](https://www.dokuwiki.org/install:ubuntu)
+
+ First, update the system and install / update web services:
+
+    sudo apt-get update && sudo apt-get upgrade
+    sudo apt-get install apache2 libapache2-mod-php5
+
+Now enable the Apache Rewrite module in order to get cleaner URLs
+ 
+    sudo a2enmod rewrite
+
+Get and extract the latest dokuwiki tarball
+
+    cd /home/www-data
+    sudo wget http://download.dokuwiki.org/src/dokuwiki/dokuwiki-stable.tgz
+    sudo tar xvf dokuwiki-stable.tgz
+    sudo mv dokuwiki-*/ dokuwiki # rename the root directory
+    sudo rm dokuwiki-stable.tgz
+ 
+Now make all of that belong to the `www-data` user:
+
+    sudo chown -R www-data:www-data /home/www-data/dokuwiki
+
+Now create the following apache2 config file to lead URLs to dokuwiki:
+
+    cd /home/www-data/dokuwiki/
+    sudo -u www-data vi apache2.conf
+
+With the following contents:
+
+    AliasMatch ^/dokuwiki/sites/[^/]+$      /home/www-data/dokuwiki/
+    AliasMatch ^/dokuwiki/sites/[^/]+/(.*)$ /home/www-data/dokuwiki/$1
+    Alias      /dokuwiki                    /home/www-data/dokuwiki/
+    
+    <Directory /home/www-data/dokuwiki/>
+    Options +FollowSymLinks
+    AllowOverride All
+    Require all granted
+    
+            <IfModule mod_rewrite.c>
+    
+                    # Uncomment to implement server-side URL rewriting
+                    # (cf. <http://www.dokuwiki.org/config:userewrite>).
+                            # Do *not* mix that with multisite!
+                    #RewriteEngine on
+                    #RewriteBase /dokuwiki
+                    #RewriteRule ^lib                      - [L]
+                    #RewriteRule ^doku.php                 - [L]
+                    #RewriteRule ^feed.php                 - [L]
+                    #RewriteRule ^_media/(.*)              lib/exe/fetch.php?media=$1  [QSA,L]
+                    #RewriteRule ^_detail/(.*)             lib/exe/detail.php?media=$1 [QSA,L]
+                    #RewriteRule ^_export/([^/]+)/(.*)     doku.php?do=export_$1&id=$2 [QSA,L]
+                    #RewriteRule ^$                        doku.php  [L]
+                    #RewriteRule (.*)                      doku.php?id=$1  [QSA,L]
+            </IfModule>
+    </Directory>
+    
+    <Directory /home/www-data/dokuwiki/bin>
+            Require all denied
+    </Directory>
+    
+    <Directory /home/www-data/dokuwiki/data>
+            Require all denied
+    </Directory>
+
+Now copy that into the list of sites available to apache2 and enable it:
+
+    sudo cp apache2.conf /etc/apache2/sites-available/dokuwiki.conf
+    sudo a2ensite dokuwiki
+    sudo service apache2 restart
+ 
+ That should expose the wiki site here:
+ 
+    http://beta.safeproject.net/dokuwiki/install.php
+
+The `install.php` site exposes an initial configuration page:
+
+[https://www.dokuwiki.org/installer](https://www.dokuwiki.org/installer)
+ 
+ It then needs to be deleted as it is an insecure  point of entry. 
+
+    sudo rm /home/www-data/dokuwiki/install.php
+
+The commented out rewrite rules in the apache2.conf file can now be uncommented to provide nicer looking links:
+
+    sudo sed -i -e 's/^#Rewrite/Rewrite/' /etc/apache2/sites-available/dokuwiki.conf
+    sudo service apache2 restart
+
+Next, install extensions that will be used from the admin extension manager:
+
+    move (restrict to @admin in config),
+    etc
 
 
-It is wise to disable the app from the admin site before updating! The web server provides a nice maintenance banner whilst it is disabled.
+## Resetting the DB in development 
+
+As noted above, in production, the DB is the ultimate source of truth, but in the startup, this is populated from the `zzz_fixtures.py file`. In order to reset the development version, the following steps are used. It is wise to disable the app from the web2py admin site before updating! The web server provides a nice maintenance banner whilst it is disabled.
 
 
-Updating from the repo requires the following:
-
+  1. Update the code from the repo using the following:  
+  
     sudo git remote update
     sudo git pull
 
-
-1) In the DB, delete all the tables.
-
+  2. In the DB, delete all the tables and recreate the db (as above): 
+  
     # requires password
-    psql -h earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com safe_web2py safe_admin
+    psql -h earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com template1 safe_admin
 
 And then in SQL:
-
-    -- this require write permission
-    DROP SCHEMA public CASCADE;
-    CREATE SCHEMA public;
-    GRANT ALL ON SCHEMA public TO postgres;
-    GRANT ALL ON SCHEMA public TO public;
-    COMMENT ON SCHEMA public IS 'standard public schema';
-
-or possibly, if you can't figure out what sets schema permissions
 
     -- may need to kill sessions attached to it
     SELECT pg_terminate_backend(pg_stat_activity.pid)
@@ -178,16 +389,15 @@ or possibly, if you can't figure out what sets schema permissions
     WHERE pg_stat_activity.datname = 'safe_web2py'
       AND pid <> pg_backend_pid();
     -- recreate
-    \c template1
     drop database safe_web2py;
     create database safe_web2py;
 
-2) In the file system the upload directory contains copies of files loaded in. These won't be purged by deleting the DB content, so avoid duplicating them on reload:
-
+  3. In the file system the upload directory contains copies of files loaded in. These won't be purged by deleting the DB content, so avoid duplicating them on reload: 
+  
     cd /home/www-data/web2py/applications/safe_web/uploads
     sudo find . -type f -delete
  
- 3) Kill the databases files - they need to be regenerated when the DB is brought back up
+  4. Kill the web2py databases table description files - they need to be regenerated when the DB is brought back up
  
     cd /home/www-data/web2py/applications/safe_web/databases
     sudo rm *.table
@@ -197,8 +407,43 @@ This should now be the DB empty of data, ready to repopulate everything, once th
 
     sudo service apache2 restart
 
- Once the system is in production, of course, this is a disasterous thing to do. So need a snapshotting system to preserve the file structure and a db dump to preserve the DB contents.
- 
+**Remember**: once the system is in production this is a disasterous thing to do and you should use the production reset recipe.
+
+## Backup and restore in production
+
+We want to do two things: i) copy the contents of database out of the RDS and onto the  volume mounted at `/home/www-data`; and then ii) use the AWS snapshot mechanism to backup the volume.
+
+There is a built in AWS service called Lambda that allows scheduling and functions but it is quite tricky to use. As long as we are dealing with a single VM, it is probably easier to use `cron` or something similar.
+
+These two webpages give some good instructions on how you might do this with Lambda and provide a python backup script that I've ruthlessly repurposed:
+
+https://serverlesscode.com/post/lambda-schedule-ebs-snapshot-backups/
+https://serverlesscode.com/post/lambda-schedule-ebs-snapshot-backups-2/
+
+
+### Remote backup of the PostgreSQL DB
+
+The RDS server keeps a daily backup of databases with 7 day retention, but keeping a local copy seems like a sensible strategy. This means a remote dump of the database, which is fine for such a small payload (5 years of legacy data is ~ 1.2 Mb as raw SQL, ~500Kb as compressed format). 
+
+In order to automate this, we need to create a file `.pgpass` in the home directory of the user running the `pg_dump` command that contains credentials - you can't send the connection password in the `pg_dump` command. The contents should be:
+
+    # e.g. hostname:port:database:username:password
+    earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com:*:safe_web2py:safe_admin:password
+
+The file needs to have permissions set:
+
+    chmod 0600 ~/.pgpass
+
+
+### Snapshots of the data volume
+
+AWS has a Snapshot facility that allows you to take a copy of a volume. These volumes are iterative backups, so can quickly capture new files, and when they are deleted the mechanism only removes the link to a particular version, not the underlying files.
+
+A python script `data_backup_and_rotate.py` is included in the application under `private/aws_setup`, which can be added to the crontab in order to maintain snapshots.
+
+
+
+
 #### web2py Plugins ####
 
 The SAFE website only uses [web2py_ckeditor4](https://github.com/timrichardson/web2py_ckeditor4/releases) to add a WYSIWYG interface for blogs and news.
@@ -272,103 +517,11 @@ bloggers group for adding new blog posts (using markmin?)
 CRON JOB
 automated email on project expiry to check it is closed and email members about database.
 
-### Deploying Dokuwiki ###
 
-First, you will need to ssh into the EC2 instance:
 
-    ssh -i AWS_SAFE_Web.pem ubuntu@ec2-52-50-144-96.eu-west-1.compute.amazonaws.com
 
-Then, broadly following the instructions [here](https://www.dokuwiki.org/install:ubuntu)
 
- First, update the system and install / update web services:
-
-    sudo apt-get update && sudo apt-get upgrade
-    sudo apt-get install apache2 libapache2-mod-php5
-
-Now enable the Apache Rewrite module in order to get cleaner URLs
- 
-    sudo a2enmod rewrite
-
-Get and extract the latest dokuwiki tarball
-
-    cd /home/www-data
-    sudo wget http://download.dokuwiki.org/src/dokuwiki/dokuwiki-stable.tgz
-    sudo tar xvf dokuwiki-stable.tgz
-    sudo mv dokuwiki-*/ dokuwiki # rename the root directory
-    sudo rm dokuwiki-stable.tgz
- 
-Now make all of that belong to the `www-data` user:
-
-    sudo chown -R www-data:www-data /home/www-data/dokuwiki
-
-Now create the following apache2 config file to lead URLs to dokuwiki:
-
-    sudo -U www-data vi /home/www-data/dokuwiki/apache2.conf
-
-With the following contents:
-
-    AliasMatch ^/dokuwiki/sites/[^/]+$      /home/www-data/dokuwiki/
-    AliasMatch ^/dokuwiki/sites/[^/]+/(.*)$ /home/www-data/dokuwiki/$1
-    Alias      /dokuwiki                    /home/www-data/dokuwiki/
-    
-    <Directory /home/www-data/dokuwiki/>
-    Options +FollowSymLinks
-    AllowOverride All
-    Require all granted
-    
-            <IfModule mod_rewrite.c>
-    
-                    # Uncomment to implement server-side URL rewriting
-                    # (cf. <http://www.dokuwiki.org/config:userewrite>).
-                            # Do *not* mix that with multisite!
-                    #RewriteEngine on
-                    #RewriteBase /dokuwiki
-                    #RewriteRule ^lib                      - [L]
-                    #RewriteRule ^doku.php                 - [L]
-                    #RewriteRule ^feed.php                 - [L]
-                    #RewriteRule ^_media/(.*)              lib/exe/fetch.php?media=$1  [QSA,L]
-                    #RewriteRule ^_detail/(.*)             lib/exe/detail.php?media=$1 [QSA,L]
-                    #RewriteRule ^_export/([^/]+)/(.*)     doku.php?do=export_$1&id=$2 [QSA,L]
-                    #RewriteRule ^$                        doku.php  [L]
-                    #RewriteRule (.*)                      doku.php?id=$1  [QSA,L]
-            </IfModule>
-    </Directory>
-    
-    <Directory /home/www-data/dokuwiki/bin>
-            Require all denied
-    </Directory>
-    
-    <Directory /home/www-data/dokuwiki/data>
-            Require all denied
-    </Directory>
-
-Now link that into the list of sites available to apache2 and enable it:
-
-    sudo ln apache2.conf /etc/apache2/sites-available/dokuwiki.conf
-    sudo a2ensite dokuwiki
-    sudo service apache2 restart
- 
- That should expose the wiki site here:
- 
-    http://ec2-52-50-144-96.eu-west-1.compute.amazonaws.com/dokuwiki/install.php
-
-The `install.php` site exposes an initial configuration page:
-
-[https://www.dokuwiki.org/installer](https://www.dokuwiki.org/installer)
- 
- It then needs to be deleted as it is an insecure  point of entry. 
-
-    sudo rm /home/www-data/dokuwiki/install.php
-
-The commented out rewrite rules in the apache2.conf file can now be uncommented to provide nicer looking links:
-
-    sudo sed -i -e 's/^#Rewrite/Rewrite/' /home/www-data/dokuwiki/apache2.conf
-    sudo service apache2 restart
-
-Next, install extensions that will be used from the admin extension manager:
-
-move (restrict to @admin in config),
-
+.
 #### Making Dokuwiki work with the Web2Py DB auth tables ####
 
 This is a bit awkward as we need:
@@ -459,85 +612,4 @@ Once this has been set up, in the access control section of the Configuration Ma
 
 
 
-
-### Enabling HTTPS ###
-
-We're  using the LetsEncrypt open source certification. These commands install LetsEncrypt and load any required packages.
-
-    git clone https://github.com/letsencrypt/letsencrypt
-    cd letsencrypt
-    ./letsencrypt-auto --help
-
-This command then requests the certificate request, which will look up the IP address registered for the machine against the DN registrar and create the certificate:
-
-    ./letsencrypt-auto --apache -d beta.safeproject.net
-
-The installation creates an Apache site config file and enables it:
-
-    /etc/apache2/sites-available/000-default-le-ssl.conf
-
-This also point to a config include that turns on the SSL remapping of `http` to `https`:
-
-    /etc/letsencrypt/options-ssl-apache.conf
-
-However, in order to get http:// working, I had to edit the apache configuration to map anything coming  in to port 80 to get rewritten to a https:// request:
-
-    <VirtualHost *:80>
-            ServerAdmin webmaster@localhost
-            ServerName beta.safeproject.net
-    
-            HostnameLookups Off
-            UseCanonicalName On
-            ServerSignature Off
-    
-            RewriteEngine On
-            RewriteCond %{HTTPS} off
-            RewriteRule (.*) https://%{SERVER_NAME}$1 [R,L]
-    </VirtualHost>
-
-So, any http request to this server is now forwarded on to use https, for all sites.
-
-The installation suggests checking the resulting domain name using:
-
-    https://www.ssllabs.com/ssltest/analyze.html?d=beta.safeproject.net
-
-
-
-#### Apache configuration ####
-
-The installer creates and enables an apache2 configuration (`default.conf`) that sets a bunch of stuff. However, it tries to create a self signed certificate and create the VirtualHost entries, which have already been handled by LetsEncrypt. You therefore need a new configuration file that points apache2 to the correct directories to serve the website. All the information is in `default.conf` but wrapped in VirtualHost declarations. We're interested in the following, which tells Apache2 to map `www.servername.net/anything` to the web2py WSGI handler and allows the handler access to the content.
-
-    WSGIDaemonProcess web2py user=www-data group=www-data processes=1 threads=1
-    WSGIProcessGroup web2py
-    WSGIScriptAlias / /home/www-data/web2py/wsgihandler.py
-    WSGIPassAuthorization On
-    
-    <Directory /home/www-data/web2py>
-      AllowOverride None
-      Require all denied
-      <Files wsgihandler.py>
-        Require all granted
-      </Files>
-    </Directory>
-    
-    AliasMatch ^/([^/]+)/static/(?:_[\d]+.[\d]+.[\d]+/)?(.*) \ /home/www-data/web2py/applications/$1/static/$2
-    
-    <Directory /home/www-data/web2py/applications/*/static/>
-      Options -Indexes
-      ExpiresActive On
-      ExpiresDefault "access plus 1 hour"
-      Require all granted
-    </Directory>
-
-It all needs to go into `/etc/apache2/sites-available/web2py.conf` and then we need to switch out the old one. We also need to turn off the default `DocumentRoot` created by LetsEncrypt, so open up `/etc/apache2/sites-available/000-default-le-ssl.conf` and comment that line out and the reload apache2.
-
-    sudo vi /etc/apache2/sites-available/000-default-le-ssl.conf
-    # comment out the line: DocumentRoot /var/www/html
-    sudo a2dissite default.conf
-    sudo a2ensite web2py.conf 
-    sudo service apache2 reload
-
-After this the web2py interface should available at (e.g.)
-
-    https://ec2-52-50-144-96.eu-west-1.compute.amazonaws.com/admin
 

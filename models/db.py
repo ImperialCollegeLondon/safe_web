@@ -8,8 +8,6 @@
 ## be redirected to HTTPS, uncomment the line below:
 # request.requires_https()
 
-import uuid
-
 ## app configuration made easy. Look inside private/appconfig.ini
 from gluon.contrib.appconfig import AppConfig
 # from gluon.tools import Recaptcha
@@ -75,11 +73,6 @@ academic_status_set = ['Undergraduate', 'Masters Student',
 titles_set = [None, 'Dr','Prof', 'Assist. Prof', 'Assoc. Prof']
 
 auth.settings.extra_fields['auth_user']= [
-    # define a separate user OID used by Earthcape but maintained the web app
-    # As a further wrinkle, Earthcape expects a quoted identifier due to 
-    # case sensitivity in its table names, so use rname to make that the actual
-    # field name, but keep the simple oid name as an alias in Web2Py
-    Field('oid', length=64, default=uuid.uuid4, rname='"Oid"'), 
     Field('title', 'string', requires=IS_IN_SET(titles_set)), 
     Field('nationality', 'string'),
     Field('academic_status', 'string', requires=IS_IN_SET(academic_status_set)),

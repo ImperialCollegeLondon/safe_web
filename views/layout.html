@@ -75,7 +75,7 @@
 {{this_banner= URL('static', os.path.join('images','banners',random.choice(banners)))}}
 
 
-<div style="width:100%;min-height:100px;position:relative; background-image:url({{=this_banner}});padding:0px">
+<div style="width:100%;min-height:100px;position:relative;margin-left: auto;margin-right: auto;display: block; background-image:url({{=this_banner}});padding:0px">
 {{=A(IMG(_src=URL('static','images/SAFE_acronym_150.png'), _height='85px', _style='position:absolute;right:3px;bottom:3px'),
      _href=URL('default','index'))}}
 </div>
