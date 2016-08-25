@@ -9,19 +9,39 @@ The overview is:
 
   1. Create and Amazon EC2 instance - the free tier options provide a reasonable processing and disk space
   2. In order to enable SSH, we're using the LetsEncrypt software and certification authority.
-  3. The DB backend for the website is running in PostgreSQL on an Amazon RDS instance. This is so that the DB can be accessed by Earthcape as well as by the website, otherwise we could just run it from a local sqlite database.
-  4. Backup. Amazon Cloudwatch allows scheduling of snapshots of the volume. These are incremental, so daily backups are just a matter of creating a rule on Cloudwatch. However, because the DB is external, that also needs backup, so we need to schedule a db dump into the volume, which can then be backed up by the snapshot.
+  3. The DB backend for the website is running in PostgreSQL on an Amazon RDS instance. This is so that the DB
+     can be accessed by Earthcape as well as by the website, otherwise we could just run it from a local sqlite database.
+  4. Backup. Amazon has some neat tools for automating backups (Cloudwatch, Lambda) and the snapshot mechanism is
+     incremental so there is a neat system for daily backups. The DB is external and gets backed up on RDS. Just 
+     for paranoia, the `private/aws_setup` directory contains `cron` scripts, that implement a rolling seven day
+     backup using a remote dump of the DB into the data directory and then a rolling seven day snapshot of the data
+     directory.
 
 ## EC2 setup ##
 
-You need to setup an EC2 account and then walk through creating a new EC2 instance running `linux`: I've used Ubuntu 14.04 LTS.  This is all done through the browser UI.  Make sure to **tag the instance with the name 'SAFE Webserver'**, as this tag is used to identify the server instance for some of the automatic steps below. Also make sure you setup the security rules to allow the server to listen to all HTTP, SSH and HTTPS requests. The website will redirect http to https but we'll get to that later.
+You need to setup an EC2 account and then walk through creating a new EC2 instance running `linux`: I've used Ubuntu
+14.04 LTS.  This is all done through the browser UI.  Make sure to **tag the instance with the name 'SAFE Webserver'**, 
+as this tag is used to identify the server instance for some of the automatic steps below. Also make sure you setup the 
+security rules to allow the server to listen to all HTTP, SSH and HTTPS requests. The website will redirect http to https 
+but we'll get to that later.
 
-This gives you a virtual server, and in the process of creating it you'll get a key file (`.pem`), that allows you to connect to the server remotely via SSH. This allows you to then set up other aspects of the server:
+This gives you a virtual server, and in the process of creating it you'll get a key file (`.pem`), that allows 
+you to connect to the server remotely via SSH. This allows you to then set up other aspects of the server:
 
-  1. Once a VM instance is up and running, it has some hard drive space and an IP address, so you can theoretically run everything from there. But... you need to think of them as temporary and substitutable: the disk space associated with the root device on an instance **does not persist** if the instance is shut down **nor does the IP address**. So you can run everything from it, but if the instance is stopped for any reason, you've got to start over and you've probably lost data.
-    So, we need a couple of extra resources:
-  2. **A data volume** which we can attach to our VM instance. This then acts as a drive that the VM can use for storage but it also persistent: if the VM goes down, the attached volume is preserved. It can also be backed up automatically to provide recovery (see below).
-  3. ** An elastic IP**, which is a mechanism to link the IP of a VM instance (lost at VM shutdown) to a permanent IP. In the event of a crash, you can switch the VM linked to the IP to the new VM and carry on as before.
+  1. Once a VM instance is up and running, it has some hard drive space and an IP address, so you can theoretically
+     run everything from there. But... you need to think of them as temporary and substitutable: the disk space 
+     associated with the root device on an instance **does not persist** if the instance is shut down **nor does 
+     the IP address**. So you can run everything from it, but if the instance is stopped for any reason,
+     you've got to start over and you've probably lost data.
+     
+     So, we need a couple of extra resources:
+     
+  2. **A data volume** which we can attach to our VM instance. This then acts as a drive that the VM can use 
+      for storage but it also persistent: if the VM goes down, the attached volume is preserved. It can also 
+      be backed up automatically to provide recovery (see below).
+  3. ** An elastic IP**, which is a mechanism to link the IP of a VM instance (lost at VM shutdown) to a
+     permanent IP. In the event of a crash, you can switch the VM linked to the IP to the new VM and
+     carry on as before.
 
 So. First, connect to the EC2 Instance and install some tools. For reproducability, the AWS command line interface is used to set up these components.
 
@@ -532,20 +552,11 @@ We potentially have Malay and English content, so need to separate the content o
 * Accessing external database
  - Need to set up ODBC and pyodbc for MSSQL, can use FreeTDS
 
-
-- SAFE google account
-    
-    Mysafeproject@gmail.com
-    safe5abah
-    
- - Google group 
+    - SAFE google account
+    - Google group 
     - owned by Rob
     
 Mail Chimp/Twitter/HootSuite
-
-    - redesign 
-    info@safeproject.net
-    safe2011!
     
 Server:
     host the wiki too.
@@ -557,11 +568,6 @@ bloggers group for adding new blog posts (using markmin?)
 CRON JOB
 automated email on project expiry to check it is closed and email members about database.
 
-
-
-
-
-.
 #### Making Dokuwiki work with the Web2Py DB auth tables ####
 
 This is a bit awkward as we need:
