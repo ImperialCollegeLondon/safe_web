@@ -92,7 +92,7 @@ def view_volunteer():
                           _class='col-sm-10'),
                        _class='row', _style='margin:10px 10px'),
                   DIV(LABEL('Statement of interests:', _class="control-label col-sm-2" ),
-                      DIV(record.statement_of_interests,  _class="col-sm-10"),
+                      DIV(record.statement_of_interests.replace('\n', '<br />'),  _class="col-sm-10"),
                       _class='row', _style='margin:10px 10px'),
                   DIV(LABEL('Volunteer type:', _class="control-label col-sm-2" ),
                       DIV(record.volunteer_type, _class="col-sm-10"),
@@ -495,7 +495,7 @@ def view_help_request():
                            _class='col-sm-10'),
                        _class='row', _style='margin:10px 10px'),
                   DIV(LABEL('Work description:', _class="control-label col-sm-2" ),
-                      DIV(row.help_request.work_description,  _class="col-sm-10"),
+                      DIV(XML(row.help_request.work_description.replace('\n', '<br />')),  _class="col-sm-10"),
                       _class='row', _style='margin:10px 10px'),
                   DIV(LABEL('Paid position?', _class="control-label col-sm-2" ),
                       DIV(CAT('This ', B('is' if row.help_request.paid_position else 'is not') , ' a paid position'),
@@ -808,4 +808,3 @@ def administer_help_requests():
                          links = links)
     
     return dict(form=form)
-

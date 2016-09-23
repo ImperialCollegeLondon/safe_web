@@ -60,5 +60,5 @@ else:
         Tags = [{"Key":'Name', 
                  "Value":'SAFE_Data_backup'}]
     )
-    print "Snapshot {} created with description: {}".format(snapshot['SnapshotId'], snap['Description'])
+    print "Snapshot {} created with description: {}".format(snapshot['SnapshotId'], snapshot['Description'])
 

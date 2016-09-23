@@ -74,7 +74,7 @@ def manage_news():
                                          _height = 100)),
             dict(header = '', 
                  body = lambda row: A(SPAN('',_class="glyphicon glyphicon-zoom-in"),
-                                      SPAN('View'), _class="button btn btn-default", 
+                                      SPAN('Edit'), _class="button btn btn-default", 
                                       _href=URL("news","news_details", args=[row.id], user_signature=True),
                                       _style='padding: 3px 5px 3px 5px;')),
             dict(header = '', 
@@ -97,7 +97,7 @@ def manage_news():
                         maxtextlength=100,
                         create=False,
                         deletable=False,
-                        editable=True, 
+                        editable=False, 
                         details=False, # just reveals a bunch of crappy html.
                         # searchable=False,
                         formargs={'showid': False,

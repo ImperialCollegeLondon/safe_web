@@ -199,7 +199,9 @@ def manage_users():
     # don't let the admin touch passwords and expose the contact group/role
     db.auth_user.password.readable = False
     db.auth_user.password.writable = False
-    
+    # turn off the standard auth_user id representation
+    db.auth_user.id.represent = lambda value, row: value
+ 
     form = SQLFORM.grid(query = db.auth_user, csv=True,
                         fields=[db.auth_user.id,
                                 db.auth_user.last_name,

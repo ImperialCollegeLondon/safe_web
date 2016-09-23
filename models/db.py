@@ -6,7 +6,7 @@
 
 ## if SSL/HTTPS is properly configured and you want all HTTP requests to
 ## be redirected to HTTPS, uncomment the line below:
-# request.requires_https()
+request.requires_https()
 
 ## app configuration made easy. Look inside private/appconfig.ini
 from gluon.contrib.appconfig import AppConfig
@@ -20,6 +20,7 @@ import os
 
 ## once in production, remove reload=True to gain full speed
 myconf = AppConfig(reload=True)
+
 
 ## ----------------------------------------------------------------------------
 ## DB connection definitions
@@ -55,6 +56,18 @@ from gluon.tools import Auth #, Service, PluginManager
 auth = Auth(db)
 # service = Service()
 # plugins = PluginManager()
+
+## -----------------------------------------------------------------------------
+## CONFIGURE EMAIL ACCOUNT SETTINGS 
+## -----------------------------------------------------------------------------
+
+mail = auth.settings.mailer
+
+# use the hostgator SMTP server
+mail.settings.server = myconf.take('smtp.server')
+mail.settings.sender = myconf.take('smtp.sender')
+mail.settings.login = myconf.take('smtp.login')
+mail.settings.ssl = True
 
 ## -----------------------------------------------------------------------------
 ## EXTEND THE USER TABLE DEFINITION
@@ -103,9 +116,12 @@ db.auth_user.h_and_s_id.writable = False
 # set a default image for the picture
 db.auth_user.thumbnail_picture.default = os.path.join(request.folder, 'static', 'images/default_thumbnails/missing_person.png')
 
-# turn user emails and websites into  links
+# turn user emails and websites into  links 
+# and also make the user id show names for ease of use in impersonate
 db.auth_user.email.represent = lambda value, row: A(value, _href='mailto:{}'.format(value))
 db.auth_user.website.represent = lambda value, row: A(value, _href=value)
+# db.auth_user.id.represent = lambda value, row: '{}, {} ({})'.format(row.last_name, row.first_name, row.id)
+# db.auth_user.id.requires = IS_IN_DB(db, 'auth_user.id', '%(last_name)s, %(first_name)s (%(id)s)')
 
 # provide links to user directory for logged in users
 # set a string formatting for representing user ID
@@ -122,6 +138,11 @@ auth.settings.registration_requires_verification = False
 auth.settings.registration_requires_approval = True
 auth.settings.reset_password_requires_verification = True
 
+# send an email to the admin when new users register
+auth.settings.register_onaccept.append(lambda form:   mail.send(to='info@safeproject.net', 
+                                       subject='New website registration',
+                                       message='A new user has registered at the website and needs approval.'))
+
 # by default, web2py creates a group for each user - we don't want that
 auth.settings.create_user_groups = False
 
@@ -130,17 +151,6 @@ auth.settings.create_user_groups = False
 # TODO - turn on captcha for regiastration
 # auth.settings.register_captcha = Recaptcha()
 
-## -----------------------------------------------------------------------------
-## CONFIGURE EMAIL ACCOUNT SETTINGS 
-## -----------------------------------------------------------------------------
-
-mail = auth.settings.mailer
-
-# use the hostgator SMTP server
-mail.settings.server = myconf.take('smtp.server')
-mail.settings.sender = myconf.take('smtp.sender')
-mail.settings.login = myconf.take('smtp.login')
-mail.settings.ssl = True
 
 ## -----------------------------------------------------------------------------
 ## IMPORT the CKEDITOR PLUGIN TO GIVE A WYSIWYG EDITOR FOR BLOGS AND NEWS

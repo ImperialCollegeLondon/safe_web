@@ -52,7 +52,7 @@ response.menu = [
         (T('Health and Safety'), True, URL('info', 'health_and_safety'), []),
         (T('Biosecurity'), True, URL('info', 'biosecurity'), []),
         (T('SAFE Calendars'), True, URL('info', 'calendars'), []),
-        (A('FAQs and SAFE wiki', _href='http://beta.safeproject.net/dokuwiki/start', _target='_blank'), False, None, []),
+        (A('FAQs and SAFE wiki', _href='https://www.safeproject.net/dokuwiki/start', _target='_blank'), False, None, []),
         (T('Bed availability at SAFE'), True, URL('research_visits', 'safe_bed_availability'), []),
         (T('SAFE Mailing list'), True, URL('info', 'mailing_list'), []),
         LI(_class="divider"),

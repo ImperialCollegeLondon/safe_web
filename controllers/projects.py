@@ -827,20 +827,16 @@ def project_details():
             else:
                 
                 # what projects is the user a coordinator for?
-                coordinating = db((db.project_members.user_id == auth.user_id) &
+                coordinating = db((db.project_id.project_details_id == db.project_details.id) & 
+                                  (db.project_id.id == db.project_members.project_id) &
+                                  (db.project_members.user_id == auth.user_id) &
                                   (db.project_members.project_id <> project_id) &
                                   (db.project_members.is_coordinator == 'T'))
                 
-                # if the user is a coordinator of other projects, allow linking to this one
-                if coordinating.count() > 0:
-                    linkable = db((db.project_id.project_details_id == db.project_details.id) &
-                                  (db.project_id.id.belongs(coordinating._select())))
-                    linkable = linkable.select(db.project_details.title,
-                                               db.project_id.id)
-                else:
-                    linkable = None
-            
-            if linkable is not None:
+                linkable =  coordinating.select(db.project_details.title,
+                                                db.project_id.id)
+                
+            if len(linkable):
                 
                 # build up a form containing a table of the current links and some controls
                 # to add new ones
