@@ -1010,11 +1010,12 @@ def validate_project_details(form):
     else:
         form.submit = False
     
-    # insert proposal time, proposer and a temporary project_id if there 
-    # is no record (so a new proposal)
+    # insert proposer if there is no record (so a new proposal)
     if form.record is None:
         form.vars.proposer_id = auth.user_id
-        form.vars.proposal_date =  datetime.datetime.now()
+    
+    # add the date, regardless of the status, this is when something last happened
+    form.vars.proposal_date =  datetime.datetime.now()
     
     # must agree to share data
     if form.vars.data_sharing is False or form.vars.data_sharing is None:

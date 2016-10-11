@@ -418,6 +418,8 @@ def research_visit_details():
                                             'and a date range and  click the release beds button (', release_bed_icon ,
                                             '). The web application will automatically truncate or split existing reservations',
                                             'to remove bookings for these dates'),
+                                          P('The final date in your booking is the ',B('departure date'), ', so you will not '
+                                            'have a bed reserved in the evening of the final date.'),
                                             _style='padding:0 0 0 20px'),
                                    TAG.DT('Book site transfers'),
                                    TAG.DD(P('Use the checkboxes to select the visitors who need to travel, and then select ',
@@ -573,7 +575,9 @@ def research_visit_details():
                                         _class="input-daterange input-group", _id="accom_datepicker"),
                                     _class='col-sm-10'),
                                 _class='row'),
-                            DIV(_class='row', _style='margin:2px'),
+                            DIV(DIV(_class='col-sm-2'),
+                                DIV('Note: these dates are the arrival date and departure dates', _class='col-sm-10'),
+                                _class='row', _style='margin:2px'),
                             DIV(LABEL('Location:', _class='col-sm-2'),
                                 DIV(LABEL(INPUT(_type='radio', _name='location', 
                                                 _value='SAFE', value='SAFE', _onclick='locSAFE()'), 
@@ -1941,4 +1945,3 @@ def administer_research_visits():
                          )
     
     return dict(form=form)
-

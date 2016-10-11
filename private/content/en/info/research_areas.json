@@ -58,6 +58,9 @@
 	"Biogeochemistry": {
 		"text": "Biogeochemistry describes the cycling of chemical substances through the atmosphere, soils, rivers and living organisms. This research area brings together research across soil science, plant science, microclimate and freshwater biology to examine how land conversion transforms the ways in which carbon, water and nitrogen flow through the ecosystems at the SAFE Project.",
 		"image": "images/research_areas/biogeochemistry.jpg"
-	}
+	},
+    "Education and training":{
+        "text": "The SAFE Project is a fantastic open-air laboratory for the next generation of biologists to learn about tropical forest ecosystems and to practise their field and data management skills. Students on courses at the SAFE Project are often involved in collecting important research data and so contribute to the science as well as to their own education.",
+        "image": "images/research_areas/education.jpg"
+    }
 }
-

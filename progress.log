@@ -1,1 +1,27 @@
 [2016-02-24 09:22:23] START
+[2016-09-06 13:37:23] EDIT safe_web/views/news/news_post.html: 0
+[2016-09-06 13:37:26] EDIT safe_web/views/news/news_post.html: 0
+[2016-09-06 13:37:54] EDIT safe_web/views/news/news_post.html: 0
+[2016-09-06 13:44:38] EDIT safe_web/controllers/marketplace.py: 1
+[2016-09-06 13:49:42] EDIT safe_web/controllers/marketplace.py: -1
+[2016-09-06 13:56:22] EDIT safe_web/controllers/marketplace.py: 0
+[2016-09-06 13:57:23] EDIT safe_web/controllers/marketplace.py: 0
+[2016-09-09 10:41:02] EDIT safe_web/models/db.py: 3
+[2016-09-21 13:40:35] EDIT safe_web/views/default/index.html: 0
+[2016-09-21 13:41:23] EDIT safe_web/views/default/index.html: 0
+[2016-09-22 14:33:12] EDIT safe_web/views/default/index.html: 0
+[2016-09-22 14:34:51] EDIT safe_web/views/default/index.html: 0
+[2016-09-23 13:04:05] EDIT safe_web/controllers/projects.py: -4
+[2016-10-05 12:04:43] EDIT safe_web/controllers/research_visits.py: 3
+[2016-10-05 12:05:12] EDIT safe_web/controllers/research_visits.py: 0
+[2016-10-05 12:07:15] EDIT safe_web/controllers/research_visits.py: 1
+[2016-10-05 12:10:49] EDIT safe_web/controllers/research_visits.py: 0
+[2016-10-05 12:11:58] EDIT safe_web/models/safe_web.py: 0
+[2016-10-05 12:12:08] EDIT safe_web/models/safe_web.py: 0
+[2016-10-05 12:21:31] EDIT safe_web/private/content/en/info/research_areas.json: 3
+[2016-10-05 12:21:54] EDIT safe_web/private/content/en/info/research_areas.json: 1
+[2016-10-05 12:25:45] UPLOAD /home/www-data/web2py/applications/safe_web/static/images/research_areas/education.jpg: 148
+[2016-10-05 12:29:37] UPLOAD /home/www-data/web2py/applications/safe_web/static/images/research_areas/education.jpg: 98
+[2016-10-05 12:42:55] EDIT safe_web/controllers/projects.py: 1
+[2016-10-07 12:54:02] EDIT safe_web/controllers/projects.py: 1
+[2016-10-07 12:56:08] EDIT safe_web/controllers/projects.py: -2

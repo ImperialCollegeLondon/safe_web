@@ -25,7 +25,7 @@ volunteer_type = ['Voluntary experience', 'Undergraduate Honours project', 'Othe
 research_tags = ["Water Resources", "Biodiversity", "Plant Science", "Zoology", "Ecology", 
                  "Freshwater Biology", "Agriculture", "Infectious Diseases", "Soil Science", 
                  "Meteorology and Atmospheric Science", "Biogeochemistry", "Microclimate", 
-                 "Policy", "Other", "Riparian", "Invasive Species"]
+                 "Policy", "Other", "Riparian", "Invasive Species", "Education and training"]
 
 data_use_set = ['Undergraduate Project','Masters Project', 'PhD Thesis','Research Grant','Other']
 
