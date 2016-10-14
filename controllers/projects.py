@@ -970,9 +970,8 @@ def project_details():
                                 (db.auth_user.id == db.project_members.user_id)).select(db.auth_user.email)
                     
                     
-                    # TODO TODO TODO - make this live! Sub in to email below.
-                    coords = set([r.email for r in coords])
-                    coords = ['d.orme@imperial.ac.uk']
+                    # get a list of unique coordinator emails
+                    coords = list(set([r.email for r in coords]))
                     
                     # Email the review panel
                     SAFEmailer(to = coords,
@@ -1015,6 +1014,11 @@ def validate_project_details(form):
     
     # insert proposer if there is no record (so a new proposal)
     if form.record is None:
+        form.vars.proposer_id = auth.user_id
+    
+    # update proposer if this is being submitted (reflect which of coordinators 
+    # submitted and catches updates onlegacy projects with undefined proposers)
+    if form.submit:
         form.vars.proposer_id = auth.user_id
     
     # add the date, regardless of the status, this is when something last happened
