@@ -436,7 +436,9 @@ def project_details():
                                subject='SAFE: project proposal submitted',
                                template =  'project_submitted.html',
                                template_dict = {'name': auth.user.first_name,
-                                                'url': URL('projects', 'project_details', args=[project_id, version_id], scheme=True, host=True)})
+                                                'url': URL('projects', 'project_details', args=[project_id, version_id],
+                                                            scheme=True, host=True),
+                                                'title': details.title})
                     
                     session.flash = CENTER(B('SAFE project proposal submitted.'), _style='color: green')
                     redirect(URL('projects', 'project_details', args=[project_id, version_id]))
@@ -927,6 +929,7 @@ def project_details():
                 # Email decision
                 proposer = details.proposer_id
                 template_dict = {'name': proposer.first_name, 
+                                 'title': details.title,
                                  'url': URL('projects', 'project_details', args=[project_id, version_id], scheme=True, host=True),
                                  'public_url': URL('projects', 'project_view', args=[project_id], scheme=True, host=True),
                                  'overview_url': URL('info', 'steps_to_follow', scheme=True, host=True),
