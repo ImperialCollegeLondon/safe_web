@@ -134,3 +134,18 @@ def newsletter():
     table.sort(key = lambda r: r[2], reverse=True)
     
     return dict(table=table)
+
+@auth.requires_membership('admin')
+def public_holidays():
+    
+    
+    form = SQLFORM.grid(query=(db.public_holidays), csv=False,
+                         maxtextlength=250,
+                         deletable=True,
+                         editable=True,
+                         create=True,
+                         details=False)
+    
+    return dict(form=form)
+    
+    
