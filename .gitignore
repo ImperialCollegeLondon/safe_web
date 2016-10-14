@@ -19,6 +19,10 @@ uploads/
 # backup files
 *.bak
 
+# anonymous R files
+.Rdata
+.Rapp.history
+
 # ignore the appconfig.ini, which needs to be different on production 
 # and development servers, so isn't under version control
 private/appconfig.ini

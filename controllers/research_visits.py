@@ -156,7 +156,7 @@ def research_visit_details():
                                     zip(available_project_titles, available_project_ids)],
                                   _class='form-control', _name='project_selector')
         
-        visit= FORM(DIV(DIV(H5('Research visit details'), _class="panel-heading"),
+        visit= FORM(DIV(DIV(H5('Research visit summary'), _class="panel-heading"),
                         DIV(DIV(LABEL('Choose project:', _class="control-label col-sm-2" ),
                                 DIV(project_selector, _class="col-sm-8"),
                                 TAG.BUTTON('Select', _style="padding: 5px 15px", _class='col-sm-2',
@@ -175,10 +175,7 @@ def research_visit_details():
         if rv_id is not None:
             # intercept existing records first
             buttons = [TAG.button('Save edits',_type="submit",
-                                   _name='save_proposal', _style='padding: 5px 15px 5px 15px;'),
-                        XML('&nbsp;')*5,
-                        TAG.button('Submit proposal',_type="submit",
-                                   _name='submit_proposal', _style='padding: 5px 15px 5px 15px;')]
+                                   _name='save_proposal', _style='padding: 5px 15px 5px 15px;')]
         elif new_rv_project_requested is not None:
             # then new ones (as the code sets new_rv_request_submitted = 0 for rv_id calls)
             buttons = [TAG.button('Create proposal',_type="submit",
@@ -196,50 +193,29 @@ def research_visit_details():
         # process the visit form to create hidden fields and to process input
         if visit.process(onvalidation=validate_research_visit_details, formname='visit').accepted:
             
-            if visit.submit:
+            # if this is a new proposal then need to insert the project_id,
+            # which isn't included in the form, but not if this is a look see visit
+            if rv_id is None and new_rv_project_requested != '0':
+                db.research_visit(visit.vars.id).update_record(project_id = new_rv_project_requested)
             
-                # i) update the history, change the status and redirect
-                hist_str = '[{}] {} {}\\n -- Proposal submitted\\n'
-                new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
-                                                           auth.user.first_name,
-                                                           auth.user.last_name) + record.admin_history
-            
-                record.update_record(admin_status = 'Submitted',
-                                     admin_history = new_history)
-            
-                # ii) email the proposer
+            # if this is a new draft, email the proposer the link for the page
+            if rv_id is None:
                 SAFEmailer(to=auth.user.email,
-                           subject='SAFE: research visit proposal submitted',
-                           template =  'research_visit_submitted.html',
+                           subject='SAFE: draft research visit proposal created',
+                           template =  'research_visit_created.html',
                            template_dict = {'name': auth.user.first_name,
-                                            'url': URL('research_visits', 'research_visit_details', args=[visit.vars.id], scheme=True, host=True)})
+                                            'url': URL('research_visits', 'research_visit_details',
+                                                       args=[visit.vars.id], scheme=True, host=True)})
                 
-                session.flash = CENTER(B('Research visit proposal submitted.'), _style='color: green')
+                db.research_visit(visit.vars.id).update_record(admin_status = 'Draft')
+                session.flash = CENTER(B('Research visit proposal created'), _style='color: green')
                 
             else:
-                
-                # if this is a new proposal then need to insert the project_id, which isn't
-                # included in the form, as long as it isn't a look see visit
-                if rv_id is None and new_rv_project_requested != '0':
-                    db.research_visit(visit.vars.id).update_record(project_id = new_rv_project_requested)
-                
-                # if this is a new draft, email the proposer the link for the page
-                if rv_id is None:
-                    SAFEmailer(to=auth.user.email,
-                               subject='SAFE: draft research visit proposal created',
-                               template =  'research_visit_created.html',
-                               template_dict = {'name': auth.user.first_name,
-                                                'url': URL('research_visits', 'research_visit_details', args=[visit.vars.id], scheme=True, host=True)})
-                    
-                    db.research_visit(visit.vars.id).update_record(admin_status = 'Draft')
-                    session.flash = CENTER(B('Research visit proposal created'), _style='color: green')
-                    
-                else:
-                    session.flash = CENTER(B('Research visit proposal updated'), _style='color: green')
-                
+                session.flash = CENTER(B('Research visit proposal updated'), _style='color: green')
+            
             redirect(URL('research_visits','research_visit_details', args=visit.vars.id))
         else:
-        
+            
             pass
     
         # Now repackage the form into a custom DIV
@@ -279,8 +255,8 @@ def research_visit_details():
         
         # fix up the dates to control the datepicker and the bed booking limits
         if auth.has_membership('admin'):
-            # admins can book any number of people from today until eternity
-            visit_start_min = '+0d'
+            # admins can book any number of people and do so retrospectively
+            visit_start_min = ''
             visit_end_max = ''
             bed_booking_limit = 1e7
         else:
@@ -316,7 +292,7 @@ def research_visit_details():
         else:
             status = DIV()
         
-        visit = FORM(DIV(DIV(DIV(H5('Project details', _class='col-sm-9'), status, _class='row', _style='margin:0px 0px'),
+        visit = FORM(DIV(DIV(DIV(H5('Research visit summary', _class='col-sm-9'), status, _class='row', _style='margin:0px 0px'),
                             _class="panel-heading"),
                         DIV(visit.custom.begin, proj_row,
                             DIV(LABEL('Visit title:', _class="control-label col-sm-2" ),
@@ -356,6 +332,7 @@ def research_visit_details():
     ## F) Maliau Accomodation
     ## G) Site transfers
     ## H) Research assistant bookings
+    ## I) Submit button panel
     
     
     # setup icons and the instructions
@@ -425,6 +402,15 @@ def research_visit_details():
                                    TAG.DD(P('Use the checkboxes to select the visitors who need to travel, and then select ',
                                             'a transfer option and the date you want to travel. Click the transfer ',
                                             'booking button (', reserve_transfer_icon, ') to make the booking.'),
+                                            P('Long distance transfers with SAFE vehicles are only available on ', 
+                                              B('Wednesdays'), ' and ', B('Sundays'),
+                                              '. You are strongly encouraged to liaise with other '
+                                              'researchers visiting the site by examining research visit plans and to coordinate '
+                                              'long distance transfers with each other to reduce demand on vehicles.'),
+                                            P('If you unavoidably need transfers on another day, you will need to email '
+                                              'info@safeproject.net to request that these are added to your research visit. '
+                                              'Note that transfers on other days of the week are difficult to organize and '
+                                              'subject to availability of vehicles, so you may have to be flexible.'),
                                             _style='padding:0 0 0 20px'),
                                    TAG.DT('Book research assistant support'),
                                    TAG.DD(P('Select a date range, the site and time of the day for which you want support ',
@@ -809,6 +795,37 @@ def research_visit_details():
         else:
             ra_table = DIV()
         
+        ## I) SUBMIT BUTTON PANEL 
+        
+        # switch the button class from active to inactive based on
+        # number of researchers named
+        number_of_visitors = db(db.research_visit_member.research_visit_id == rv_id).count()
+        nights_at_safe = db(db.bed_reservations_safe.research_visit_id == rv_id).count()
+        nights_at_maliau = db(db.bed_reservations_maliau.research_visit_id == rv_id).count()
+        
+        
+        if number_of_visitors and (nights_at_safe + nights_at_maliau):
+            submit_proposal_button = TAG.BUTTON('Submit proposal', _type='submit', 
+                                                _name='submit_proposal', _class='btn btn-success btn-md active')
+            submit_panel_text = P('Double check you have listed all of the researchers coming to the '
+                                  'field and provided details of all accommodation, transfers and RA '
+                                  ' support needed and then press the button below to submit your proposal.',
+                                  _style='padding: 3px 10px 3px 10px;')
+        else:
+            submit_proposal_button = TAG.BUTTON('Enter details to submit', _type='submit', 
+                                                _name='submit_proposal', _class='btn btn-success btn-md disabled',
+                                                _disabled='disabled')
+            submit_panel_text = P('You have not identified any researchers taking part in the research visit '
+                                  'or requested any accommodation. You will not be able to submit your proposal '
+                                  'until you provide the details listed at the top of the page.',
+                                  _style='padding: 3px 10px 3px 10px;')
+        
+        submit_panel =  DIV(DIV(DIV(submit_panel_text, _class='row'),
+                                DIV(CENTER(submit_proposal_button), _class='row'),
+                                _class='panel-body'),
+                            _class='panel panel-primary')
+        
+        
         ##
         ## SECTION 4) EXPOSE THE DETAILS (AND CONTROLS IF NOT READONLY)
         ## AND PROVIDE THE FORM LOGIC FOR HANDLING THE VARIOUS CONTROLS
@@ -837,6 +854,7 @@ def research_visit_details():
                             DIV(maliau_table),
                             DIV(transfer_table),
                             DIV(ra_table),
+                            DIV(submit_panel),
                             INPUT(_name='id', _id='id', _value=rv_id, _type='hidden'),
                            _id='console')
             
@@ -1039,7 +1057,30 @@ def research_visit_details():
                     new_history.append(' -- RA booked: {} from {} to {}\\n'.format(
                                              console.vars.ra_site_time, console.vars.ra_start,
                                              console.vars.ra_end))
+                # --------------------------------
+                # SUBMIT 
+                # --------------------------------
+                elif console.action == 'submit_proposal':
+                    
+                    # i) update the history, change the status and redirect
+                    hist_str = '[{}] {} {}\\n -- Proposal submitted\\n'
+                    new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                               auth.user.first_name,
+                                                               auth.user.last_name) + record.admin_history
+            
+                    record.update_record(admin_status = 'Submitted',
+                                         admin_history = new_history)
+            
+                    # ii) email the proposer
+                    SAFEmailer(to=auth.user.email,
+                               subject='SAFE: research visit proposal submitted',
+                               template =  'research_visit_submitted.html',
+                               template_dict = {'name': auth.user.first_name,
+                                                'url': URL('research_visits', 'research_visit_details',
+                                                            args=[visit.vars.id], scheme=True, host=True)})
                 
+                    session.flash = CENTER(B('Research visit proposal submitted.'), _style='color: green')
+                    
                 else:
                     # datechange causes a processing event that doesn't do anything
                     pass
@@ -1152,12 +1193,6 @@ def validate_research_visit_details(form):
     This controller checks the form that creates the initial RV entry
     """
     
-    # capture if the request is a submission
-    if 'submit_proposal' in request.vars.keys():
-        form.submit = True
-    else:
-        form.submit = False
-    
     # populate the proposer_id if this is a new entry (form has no record)
     if form.record is None:
         form.vars.proposer_id = auth.user.id
@@ -1233,7 +1268,7 @@ def validate_research_visit_details_console(form):
         # list of submit buttons (and one hidden action)
         submit_ids = set(["add_visitor", "add_project",
                           "reserve_beds", "release_beds", "book_transfer", 
-                          "book_res_assist", 'datechange'])
+                          "book_res_assist", "submit_proposal", 'datechange'])
     
         action = list(submit_ids.intersection(request_keys))
     
@@ -1642,6 +1677,7 @@ def export_research_visits():
     cell_shade = {'Approved': openpyxl.styles.PatternFill(fill_type='solid', start_color='8CFF88'),
                   'Submitted': openpyxl.styles.PatternFill(fill_type='solid', start_color='FFCB8B'),
                   'Draft': openpyxl.styles.PatternFill(fill_type='solid', start_color='DDDDDD'),
+                  'Resubmit': openpyxl.styles.PatternFill(fill_type='solid', start_color='DDDDDD'),
                   'Rejected': openpyxl.styles.PatternFill(fill_type='solid', start_color='FF96C3')}
     
     # name the worksheet and add a heading
