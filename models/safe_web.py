@@ -495,6 +495,15 @@ db.define_table('safe_web_email_log',
                 Field('status', 'string'),
                 Field('message_date','datetime'))
 
+## -----------------------------------------------------------------------------
+## Ancilliary tables to support website
+## -----------------------------------------------------------------------------
+
+# - this table is used to provide an admin editable list of dates
+#   to highlight in datepickers 
+db.define_table('public_holidays',
+                Field('date','date'),
+                Field('title','string'))
 
 
 ## Define a general function to power the datepicker widgets. Not sure if this is the best location for it.
@@ -504,25 +513,58 @@ def datepicker_script(id, **settings):
     """
     This function generates a JS script, keyed to the id of a HTML entity
     that loads it as a datepicker object and allows settings on that datepicker object
+    
+    It also loads a set of public holidays into the datepickers and highlights them.
+    
+    Finally, it embeds a style class for the highlight, which isn't a horrible kludge
+    at all and certainly isn't reflective of my general attitude to CSS in setting this up...
     """
     
+    # load the db table into session if it isn't there already
+    if not session.public_holidays:
+        holidays = db(db.public_holidays).select()
+        # get arrays of non-zero padded dates in java friendly D/M/YYYY and titles
+        dates = [x.date.strftime('%-d/%-m/%Y') for x in holidays]
+        titles = [x.title for x in holidays]
+        session.public_holidays = {'dates': str(dates), 'titles': str(titles)}
+    
+    # now create the script text
     settings_str = ',\n'.join(item[0] + ':' + str(item[1]) for item in settings.iteritems()) if settings else ''
     javascript = SCRIPT("""
         $('head').append($('<link  href="%(cssurl)s" type="text/css" rel="stylesheet" />'));
+        var sabah_holiday_dates = %(holiday_dates)s;
+        var sabah_holiday_names = %(holiday_titles)s;
         $.getScript('%(scripturl)s').done(function(){
             $('#%(_id)s').datepicker({
                 format: w2p_ajax_date_format.replace('%%Y', 'yyyy').replace('%%m', 'mm').replace('%%d', 'dd'),
-                %(settings)s
+                %(settings)s,
+                beforeShowDay: function(date){
+                    var d = date;
+                    var curr_date = d.getDate();
+                    var curr_month = d.getMonth() + 1; //Months are zero based
+                    var curr_year = d.getFullYear();
+                    var formattedDate = curr_date + "/" + curr_month + "/" + curr_year
+                    var holiday_index = $.inArray(formattedDate, sabah_holiday_dates) 
+                    if (holiday_index != -1) {
+                        return {
+                            classes: 'holiday',
+                            tooltip: sabah_holiday_names[holiday_index]
+                        };
+                    }
+                    return;
+                 }
             })
         });
         """ % {
             'cssurl': URL('static', 'plugin_bs_datepicker/datepicker.css'),
             'scripturl': URL('static', 'plugin_bs_datepicker/bootstrap-datepicker.js'),
             '_id': id,
-            'settings': settings_str
+            'settings': settings_str,
+            'holiday_dates': session.public_holidays['dates'],
+            'holiday_titles': session.public_holidays['titles']
         })
     
-    return javascript
+    return CAT(STYLE(XML('.holiday {background: #FE9781;}')), javascript)
 
 def admin_decision_form(selector_options):
     
