@@ -928,7 +928,7 @@ def project_details():
                 
                 # Email decision
                 proposer = details.proposer_id
-                template_dict = {'name': proposer.first_name, 
+                template_dict = {'name': proposer.first_name,
                                  'title': details.title,
                                  'url': URL('projects', 'project_details', args=[project_id, version_id], scheme=True, host=True),
                                  'public_url': URL('projects', 'project_view', args=[project_id], scheme=True, host=True),
@@ -943,14 +943,14 @@ def project_details():
                 # pick an decision
                 if admin.vars.decision == 'Approved':
                     
-                    SAFEmailer(to=auth.user.email,
+                    SAFEmailer(to=proposer.email,
                                subject='SAFE: project proposal approved',
                                template =  'project_approved.html',
                                template_dict = template_dict)
                     
                 elif admin.vars.decision == 'Resubmit':
                     
-                    SAFEmailer(to=auth.user.email,
+                    SAFEmailer(to=proposer.email,
                                subject='SAFE: project proposal requires resubmission',
                                template =  'project_resubmit.html',
                                template_dict = template_dict)
@@ -958,7 +958,7 @@ def project_details():
                 elif admin.vars.decision == 'In Review':
                     
                     # Email the proposer
-                    SAFEmailer(to=auth.user.email,
+                    SAFEmailer(to=proposer.email,
                                subject='SAFE: project proposal sent for review',
                                template =  'project_in_review.html',
                                template_dict = template_dict)
