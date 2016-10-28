@@ -57,13 +57,13 @@ response.menu = [
         (T('SAFE Mailing list'), True, URL('info', 'mailing_list'), []),
         LI(_class="divider"),
         (T('Volunteers available'), True, URL('marketplace', 'volunteers'), []),
-        (T('Help sought at SAFE'), True, URL('marketplace', 'help_requests'), []),
+        (T('Vacancies'), True, URL('marketplace', 'help_requests'), []),
     ]),
     ]
 
 ## ----------------------------------------------------------------------------
 ## REGISTERED USER MENU
-## -- adds an extra chunk to a menu for actions that require login. 
+## -- adds an extra chunk to a menu for actions that require login.
 ## -- Note that this basically just obfuscates the link, so the controllers
 ##    for these links also need login decorators
 ## -- having to use indexes to extend is a bit brittle, but hey.
@@ -79,7 +79,7 @@ user_actions = [(T('Registered users'), True, None, [
                 (T('Submit a new output'), True, URL('outputs', 'output_details'), []),
                 (T('Propose a research visit'), True, URL('research_visits', 'research_visit_details'), []),
                 (T('Volunteer at SAFE'), True, URL('marketplace', 'volunteer_details'), []),
-                (T('Request project help'), True, URL('marketplace', 'help_request_details'), []),
+                (T('Advertise Vacancy'), True, URL('marketplace', 'help_request_details'), []),
                 (T('Create a blog post'), True,URL('blogs', 'blog_details'),[]),
                 LI(_class="divider"),
                 (T('Request to join web group'), True, URL('groups', 'group_request'), []),
@@ -112,8 +112,8 @@ n_dict = {'grp': db.group_request.admin_status,
 n= {}
 badge_class = {}
 for key, field in n_dict.iteritems():
-    # auth_user uses 'pending' as part of built in mechanisms, others are status values 
-    n[key] = db(field.belongs(['Pending', 'pending', 'Submitted', 'In Review'])).count() 
+    # auth_user uses 'pending' as part of built in mechanisms, others are status values
+    n[key] = db(field.belongs(['Pending', 'pending', 'Submitted', 'In Review'])).count()
     badge_class[key] = 'label badge-danger' if n[key] == 0 else 'label label-danger'
 
 
@@ -136,7 +136,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (CAT(SPAN(n['out'], _class=badge_class['out']),
                              T('  New outputs')), True, URL('outputs', 'administer_outputs'), []),
                         (CAT(SPAN(n['vis'], _class=badge_class['vis']),
-                             T('  Research visits')), True, 
+                             T('  Research visits')), True,
                              URL('research_visits', 'administer_research_visits'), []),
                         (CAT(SPAN(n['blg'], _class=badge_class['blg']),
                              T('  Blog posts')), True, URL('blogs', 'administer_blogs'), []),
@@ -149,4 +149,4 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (T('Database admin'), True, URL('appadmin', 'index'))
                       ])]
 
-if "auth" in locals(): auth.wikimenu() 
+if "auth" in locals(): auth.wikimenu()

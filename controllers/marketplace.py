@@ -462,7 +462,7 @@ def view_help_request():
     record = db.help_request(record_id)
     
     if record is None or record.admin_status != 'Approved':
-            session.flash = CENTER(B('Not an approved help request record'), _style='color: red')
+            session.flash = CENTER(B('Not an approved vacancy record'), _style='color: red')
             redirect(URL('marketplace', 'help_requests'))
     else:
         
@@ -481,7 +481,7 @@ def view_help_request():
         else:
             email = DIV()
         
-        req = DIV(DIV(H5('Project help request'), _class="panel-heading"),
+        req = DIV(DIV(H5('Vacancy Advert'), _class="panel-heading"),
                   DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
                       DIV(A(row.project_details.title, 
                             _href=URL("projects","project_view", args=[row.project_details.id])),
@@ -541,7 +541,7 @@ def help_request_details():
         
     if request_id is not None and record is None:
         # avoid unknown blogs
-        session.flash = B(CENTER('Invalid project help request id'), _style='color:red;')
+        session.flash = B(CENTER('Invalid vacancy advert id'), _style='color:red;')
         redirect(URL('marketplace','help_requests'))
         
     elif record is None or record.user_id == auth.user.id or auth.has_membership('admin'):
@@ -591,19 +591,19 @@ def help_request_details():
                 new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
                                                            auth.user.first_name,
                                                            auth.user.last_name,
-                                                           'Help request created' if request_id is None else "Help request updated")
+                                                           'Vacancy advert created' if request_id is None else "Vacancy advert updated")
             
                 if 'update' in req_keys:
                     id = record.update_record(admin_status = 'Submitted',
                                               admin_history = new_history + record.admin_history,
                                               **db.help_request._filter_fields(form.vars))
                     id = id.id
-                    msg = CENTER(B('Help request updated and resubmitted for approval.'), _style='color: green')
+                    msg = CENTER(B('Vacancy advert updated and resubmitted for approval.'), _style='color: green')
                 elif 'create' in req_keys:
                     id = db.help_request.insert(admin_status = 'Submitted',
                                                 admin_history=new_history, 
                                                 **db.help_request._filter_fields(form.vars))
-                    msg = CENTER(B('Help request created and submitted for approval.'), _style='color: green')
+                    msg = CENTER(B('Vacancy advert created and submitted for approval.'), _style='color: green')
                 else:
                     pass
             
@@ -613,7 +613,7 @@ def help_request_details():
                                  'submission_type': 'project help request'}
             
                 SAFEmailer(to=auth.user.email,
-                           subject='SAFE: project help request submitted',
+                           subject='SAFE: Vacancy advert submitted',
                            template =  'generic_submitted.html',
                            template_dict = template_dict)
             
@@ -641,7 +641,7 @@ def help_request_details():
                 #     vis = DIV('Visible', _class='col-sm-1 col-sm-offset-1',
                 #               _style='padding: 5px 15px 5px 15px;background-color:lightgrey;color:black;')
         
-            panel_header = DIV(H5('Project help request', _class='col-sm-9'), status, # vis,
+            panel_header = DIV(H5('Project vacancy advert', _class='col-sm-9'), status, # vis,
                                _class='row', _style='margin:0px 10px')
         
             # package in controller
@@ -686,7 +686,7 @@ def help_request_details():
     
     else: 
         # security doesn't allow people editing other users blogs
-        session.flash = CENTER(B('You do not have permission to edit this project help request.'), _style='color: red')
+        session.flash = CENTER(B('You do not have permission to edit this vacancy advert.'), _style='color: red')
         redirect(URL('marketplace','help_requests', args=request_id))
     
     # admin history display
@@ -731,20 +731,20 @@ def help_request_details():
             if admin.vars.decision == 'Approved':
                 
                 SAFEmailer(to=poster.email,
-                           subject='SAFE: project help request approved',
+                           subject='SAFE: vacancy advert approved',
                            template =  'generic_approved.html',
                            template_dict = template_dict)
                 
-                msg = CENTER(B('Help request approval emailed to poster at {}.'.format(poster.email)), _style='color: green')
+                msg = CENTER(B('Vacancy advert approval emailed to poster at {}.'.format(poster.email)), _style='color: green')
             
             elif admin.vars.decision == 'Resubmit':
 
                 SAFEmailer(to=poster.email,
-                           subject='SAFE: project help request requires resubmission',
+                           subject='SAFE: Vacancy advert requires resubmission',
                            template =  'generic_resubmit.html',
                            template_dict = template_dict)
                 
-                msg = CENTER(B('Help request resubmission emailed to poster at {}.'.format(poster.email)), _style='color: green')
+                msg = CENTER(B('Vacancy advert resubmission emailed to poster at {}.'.format(poster.email)), _style='color: green')
             
             else:
                 pass
