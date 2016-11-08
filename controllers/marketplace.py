@@ -557,11 +557,16 @@ def help_request_details():
         
         # Restrict the project choices
         # - find the acceptable project ID numbers
-        query = db((db.project_members.user_id == auth.user.id) &
-                   (db.project_members.is_coordinator == 'T') & 
-                   (db.project_members.project_id == db.project_id.id) &
-                   (db.project_details.project_id == db.project_id.id) &
-                   (db.project_details.admin_status == 'Approved'))
+        if auth.has_membership('admin'):
+            # admins can advertise on any project
+            query = db(db.project_details.project_id > 0)
+        else:
+            # otherwise coordinators can advertise on their own projects
+            query = db((db.project_members.user_id == auth.user.id) &
+                       (db.project_members.is_coordinator == 'T') & 
+                       (db.project_members.project_id == db.project_id.id) &
+                       (db.project_details.project_id == db.project_id.id) &
+                       (db.project_details.admin_status == 'Approved'))
     
         # - modify the help_request project_id requirements within this controller
         db.help_request.project_id.requires = IS_IN_DB(query, db.project_details.project_id, '%(title)s', zero=None)
@@ -777,7 +782,7 @@ def validate_help_request(form):
     if form.vars.start_date < datetime.date.today():
         form.errors.start_date = 'Your start date is in the past.'
 
-
+@auth.requires_membership('admin')
 def administer_help_requests():
     
     """
