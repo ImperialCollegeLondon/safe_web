@@ -268,9 +268,19 @@ def approve_new_user():
     Approves a new user from the approve new members form
     """
     
-    # TODO - add emailer to user?
     # retrieve the user id from the page arguments passed by the button
     user_id = request.args(0)
+    user = db(db.id == user_id).select()
+    
+    template_dict = {'name': user.first_name, 
+                     'user_url': URL('people', 'user', args=[user_id], scheme=True, host=True),
+                     'profile_url': URL('user', 'profile', scheme=True, host=True),
+                     'h_and_s_url': URL('health_safety'. 'health_and_safety', scheme=True, host=True)}
+    
+    SAFEmailer(to=user.email,
+               subject='SAFE: registration approved',
+               template =  'registration_approved.html',
+               template_dict = template_dict)
     
     # update the registration key for that user ID to remove 'pending'
     db(db.auth_user.id == user_id).update(registration_key='')
@@ -289,11 +299,16 @@ def reject_new_user():
     Rejects a new user from the approve new members form
     """
     
-    
-    # TODO - add emailer to user
-    # TODO - add justification?
     # retrieve the user id from the page arguments passed by the button
     user_id = request.args(0)
+    user = db(db.id == user_id).select()
+    
+    template_dict = {'name': user.first_name}
+    
+    SAFEmailer(to=user.email,
+               subject='SAFE: registration rejected',
+               template =  'registration_rejected.html',
+               template_dict = template_dict)
     
     # remove that row from the auth_user database
     db(db.auth_user.id == user_id).delete()
