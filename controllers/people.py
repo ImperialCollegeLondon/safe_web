@@ -87,7 +87,7 @@ def user_details():
                 'institution':'Academic institution', 'institution_address':'Institutional Address',
                 'institution_phone':'Institutional Phone','phone':'Phone number', 'mobile_phone': 'Mobile phone', 
                 'email':'Email', 'alternative_email':'Alternative Email', 'orcid':'ORCiD',
-                'website': 'Website', 'scientific_expertise':'Areas of Expertise'}
+                'website': 'Website', 'scientific_expertise':'Areas of Expertise', 'biography':'Biography'}
         
         content = []
         
@@ -125,7 +125,12 @@ def user_details():
         # package content
         content = DIV(DIV(IMG(_src=img, _height=100), _class='col-sm-2'), DIV(*content,_class='col-sm-10'), _class='panel-body')
         
-        usr = DIV(DIV(H5(" ".join(('' if record.title is None else record.title, record.first_name, record.last_name))), 
+        if record.title in ['', None, ' ', 'None']:
+            title_name = " ".join((record.first_name, record.last_name))
+        else:
+            title_name = " ".join((record.title, record.first_name, record.last_name))
+        
+        usr = DIV(DIV(H5(title_name),
                   _class="panel-heading"),
                   content,
                   footer,
@@ -369,4 +374,3 @@ def manage_contacts():
                     )
     
     return dict(form=form)
-    
