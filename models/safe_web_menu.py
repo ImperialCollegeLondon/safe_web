@@ -125,6 +125,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (T('Manage blogs'), True, URL('blogs', 'manage_blogs'), []),
                         (T('Health and safety info'), True, URL('health_safety', 'admin_view_health_and_safety'), []),
                         (T('Public holidays'), True, URL('info', 'public_holidays'), []),
+                        (T('Create research visit'), True, URL('research_visits', 'create_late_research_visit'), []),
                         LI(_class="divider"),
                         (B('Approvals'), False, None, None),
                         (CAT(SPAN(n['usr'], _class=badge_class['usr']),

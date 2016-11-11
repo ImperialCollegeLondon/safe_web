@@ -109,15 +109,10 @@ def research_visit_details():
     
     # 1b) get a list of projects that the user is a coordinator of, to check for both project
     #     selection and subsequent project detail editing and booking.
-    #     Note: ADMINS can create/edit research visits for _any_ project
-    if auth.has_membership('admin'):
-        coord_query = db((db.project_id.id > 0) & 
-                         (db.project_id.project_details_id == db.project_details.id))
-    else:
-        coord_query = db((db.project_members.user_id == auth.user_id) &
-                         (db.project_members.is_coordinator == 'True') &
-                         (db.project_members.project_id == db.project_id.id) &
-                         (db.project_id.project_details_id == db.project_details.id))
+    coord_query = db((db.project_members.user_id == auth.user_id) &
+                     (db.project_members.is_coordinator == 'True') &
+                     (db.project_members.project_id == db.project_id.id) &
+                     (db.project_id.project_details_id == db.project_details.id))
     
     rows = coord_query.select(db.project_details.project_id, db.project_details.title)
     available_project_ids = [r.project_id for r in rows]
@@ -1170,6 +1165,163 @@ def research_visit_details():
     
     return dict(visit_record = record, visit=visit, instructions = instructions,
                 console=console, history=history, admin=admin, admin_warning=admin_warning)
+
+
+
+@auth.requires_membership('admin')
+def create_late_research_visit():
+  
+    """
+    Process to create an RV for a late booking user.
+    This allows an admin to create an RV that then belongs to that user
+    """
+    
+    # Two possible entry points:
+    # - Completely new RV request(bare URL)
+    # - Project specified for new RV request (project_id as a variable, but no record)
+    
+    new_rv_project_requested = request.vars['new']
+    
+    if new_rv_project_requested is not None and new_rv_project_requested != '0':
+        new_project_record = db.project_id(new_rv_project_requested)
+        if new_project_record is None:
+            session.flash = B(CENTER('Invalid new visit project reference'), _style='color:red;')
+            redirect(URL('research_visits','create_late_research_visit'))
+    else:
+        new_project_record = None
+    
+    # provide either a project drop down or a RV details form
+    if new_rv_project_requested is None:
+        
+        # Bare URL submitted: provide a list of available projects + look see visit
+        # and redirect back to the page, with the new project_id for the next step
+        proj_query = db((db.project_id.id > 0) & 
+                         (db.project_id.project_details_id == db.project_details.id))
+        rows = proj_query.select(db.project_details.project_id, db.project_details.title)
+        available_project_ids = [r.project_id for r in rows]
+        available_project_titles = [r.title for r in rows]
+        
+        project_selector = SELECT(OPTION('Look see visit', _value='0'),
+                                  *[OPTION(title, _value=pid) for title, pid in
+                                    zip(available_project_titles, available_project_ids)],
+                                  _class='form-control', _name='project_selector')
+        
+        visit= FORM(DIV(DIV(H5('Research visit summary'), _class="panel-heading"),
+                        DIV(DIV(LABEL('Choose project:', _class="control-label col-sm-2" ),
+                                DIV(project_selector, _class="col-sm-8"),
+                                TAG.BUTTON('Select', _style="padding: 5px 15px", _class='col-sm-2',
+                                            _type='submit', _name='submit_project_select'),
+                                _class='row', _style='margin:10px 10px'),
+                            _class='panel_body'),
+                        _class="panel panel-primary"))
+        
+        if visit.validate():
+            # reload the URL with the id of the new project as a variable
+            redirect(URL('research_visits','create_late_research_visit', vars={'new': visit.vars.project_selector}))
+            
+    else: 
+        
+        # Now have a URL with a project requested as a variable 'research_visit_details?new='866' 
+        buttons = [TAG.button('Create proposal',_type="submit",
+                               _name='save_proposal', _style='padding: 5px 15px 5px 15px;')]
+        
+        # get the project details
+        if new_rv_project_requested != '0':
+            
+            # get the title
+            pid = int(new_rv_project_requested)
+            proj_row = db((db.project_id.id == pid) & (db.project_id.project_details_id == db.project_details.id))
+            project_details = proj_row.select().first()
+            proj_title = project_details.project_details.title
+            
+            # restrict the proposer id to possible coordinators
+            coords = db((db.auth_user.id == db.project_members.user_id) &
+                        (db.project_members.project_id == pid) &
+                        (db.project_members.is_coordinator == 'True'))
+            db.research_visit.proposer_id.requires  = IS_IN_DB(coords, db.auth_user.id, '%(last_name)s, %(first_name)s', zero=None)
+        else:
+            project_details = None
+            proj_title = 'Look see visit'
+        
+        # Use SQLFORM for DB input
+        visit = SQLFORM(db.research_visit, 
+                        fields = ['title','arrival_date',
+                                  'departure_date','purpose',
+                                  'licence_details', 'proposer_id'],
+                        buttons = buttons,
+                        showid = False)
+        
+        # process the visit form to create hidden fields and to process input
+        if visit.process().accepted:
+            
+            # insert the project_id, but not if this is a look see visit
+            if new_rv_project_requested != '0':
+                db.research_visit(visit.vars.id).update_record(project_id = new_rv_project_requested)
+            
+            # email the identified coordinator the link for the page
+            proposer = db.auth_user[visit.vars.proposer_id]
+            SAFEmailer(to=proposer.email,
+                        subject='SAFE: draft short notice research visit proposal created on your behalf',
+                        template =  'research_visit_created.html',
+                        template_dict = {'name': auth.user.first_name,
+                                         'url': URL('research_visits', 'research_visit_details',
+                                                    args=[visit.vars.id], scheme=True, host=True)})
+                
+            db.research_visit(visit.vars.id).update_record(admin_status = 'Draft')
+            session.flash = CENTER(B('Research visit proposal created'), _style='color: green')
+            
+            redirect(URL('research_visits','research_visit_details', args=visit.vars.id))
+        else:
+            
+            pass
+    
+        # Now repackage the form into a custom DIV
+        # edit form widgets - notably, override the default date widget classes to allow
+        # them to use the daterange datepicker
+        visit.custom.widget.purpose['_rows'] = 4
+        visit.custom.widget.arrival_date['_class'] = "form-control input-sm"
+        visit.custom.widget.departure_date['_class'] = "form-control input-sm"
+        
+        proj_row = DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
+                       DIV(proj_title, _class="col-sm-10"),
+                       _class='row', _style='margin:10px 10px')
+        
+        # javascript to run the datepicker without date constraints
+        visit_js =datepicker_script(id = 'visit_datepicker',
+                                    autoclose = 'true',
+                                    startDate ='""',
+                                    endDate ='""')
+        
+        visit = FORM(DIV(DIV(DIV(H5('Research visit summary', _class='col-sm-9'), _class='row', _style='margin:0px 0px'),
+                            _class="panel-heading"),
+                        DIV(visit.custom.begin, proj_row,
+                            DIV(LABEL('Visit title:', _class="control-label col-sm-2" ),
+                                DIV(visit.custom.widget.title,  _class="col-sm-10"),
+                                _class='row', _style='margin:10px 10px'),
+                            DIV(LABEL('Coordinator:', _class="control-label col-sm-2" ),
+                                DIV(visit.custom.widget.proposer_id,  _class="col-sm-10"),
+                                _class='row', _style='margin:10px 10px'),
+                            DIV(LABEL('Dates:', _class="control-label col-sm-2" ),
+                                DIV(DIV(visit.custom.widget.arrival_date,
+                                        SPAN('to', _class="input-group-addon input-sm"),
+                                        visit.custom.widget.departure_date,
+                                        _class="input-daterange input-group", _id="visit_datepicker"),
+                                    _class='col-sm-10'),
+                                _class='row', _style='margin:10px 10px'),
+                            DIV(LABEL('Purpose:', _class="control-label col-sm-2" ),
+                                DIV(visit.custom.widget.purpose,  _class="col-sm-10"),
+                                _class='row', _style='margin:10px 10px'),
+                            DIV(DIV(visit.custom.submit,  _class="col-sm-10 col-sm-offset-2"),
+                                _class='row', _style='margin:10px 10px'),
+                            visit.custom.end,
+                           _class='panel_body'),
+                        _class="panel panel-primary"),
+                        visit_js)
+    
+    return dict(visit=visit)
+
+
+
 
 
 def uname(uid, rowid):
