@@ -270,12 +270,13 @@ def approve_new_user():
     
     # retrieve the user id from the page arguments passed by the button
     user_id = request.args(0)
-    user = db(db.id == user_id).select()
+    user = db.auth_user[user_id]
     
     template_dict = {'name': user.first_name, 
                      'user_url': URL('people', 'user', args=[user_id], scheme=True, host=True),
                      'profile_url': URL('user', 'profile', scheme=True, host=True),
-                     'h_and_s_url': URL('health_safety'. 'health_and_safety', scheme=True, host=True)}
+                     'h_and_s_url': URL('health_safety', 'health_and_safety', scheme=True, host=True),
+                     'admin': auth.user.first_name + " " + auth.user.last_name}
     
     SAFEmailer(to=user.email,
                subject='SAFE: registration approved',
@@ -301,9 +302,9 @@ def reject_new_user():
     
     # retrieve the user id from the page arguments passed by the button
     user_id = request.args(0)
-    user = db(db.id == user_id).select()
+    user = db.auth_user[user_id]
     
-    template_dict = {'name': user.first_name}
+    template_dict = {'name': user.first_name, 'admin': auth.user.first_name + " " + auth.user.last_name}
     
     SAFEmailer(to=user.email,
                subject='SAFE: registration rejected',
