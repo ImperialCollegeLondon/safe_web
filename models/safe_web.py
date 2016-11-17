@@ -490,6 +490,7 @@ db.define_table('safe_web_email_log',
                 Field('subject', 'string'),
                 Field('email_to', 'text'),
                 Field('email_cc', 'text'),
+                Field('email_bcc', 'text'),
                 Field('template','string'),
                 Field('template_dict','json'),
                 Field('status', 'string'),
@@ -591,7 +592,7 @@ def admin_decision_form(selector_options):
     return admin
 
 
-def SAFEmailer(subject, to, template, template_dict, cc=None, cc_info=True):
+def SAFEmailer(subject, to, template, template_dict, cc=None, cc_info=True, bcc=None):
     
     """
     Takes a template name, fills it in from the template dictionary
@@ -612,7 +613,7 @@ def SAFEmailer(subject, to, template, template_dict, cc=None, cc_info=True):
     
     # send the mail
     msg_status = mail.send(to=to, subject=subject, message=msg,
-                           cc=cc, reply_to='info@safeproject.net')
+                           cc=cc, bcc=bcc, reply_to='info@safeproject.net')
     
     # log it in the database
     db.safe_web_email_log.insert(email_to=to, 
@@ -620,5 +621,6 @@ def SAFEmailer(subject, to, template, template_dict, cc=None, cc_info=True):
                                  template=template,
                                  template_dict=simplejson.dumps(template_dict),
                                  email_cc=cc,
+                                 email_bcc=bcc,
                                  status = 'sent' if msg_status else 'failed',
                                  message_date=datetime.datetime.now())

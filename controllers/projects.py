@@ -974,7 +974,9 @@ def project_details():
                     coords = list(set([r.email for r in coords]))
                     
                     # Email the review panel
-                    SAFEmailer(to = coords,
+                    SAFEmailer(to = ['info@safeproject.net'],
+                               bcc = coords,
+                               cc_info = False,
                                subject='SAFE Project Proposal Review (' + str(project_id) + ')',
                                template =  'project_to_review.html',
                                template_dict = template_dict)
