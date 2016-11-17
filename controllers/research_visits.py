@@ -3,6 +3,7 @@ from gluon.storage import Storage
 import openpyxl
 import itertools
 from collections import Counter
+import StringIO
 
 ## -----------------------------------------------------------------------------
 ## RESEARCH VISITS
@@ -1897,9 +1898,6 @@ def export_my_research_visit():
         # check for unknown users
         name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
     
-        # lookup admin status
-        admin_status = db.research_visit(r.bed_reservations_safe.research_visit_id).admin_status
-    
         # calculate cost - food charge only
         cost = (r.bed_reservations_safe.departure_date - 
                 r.bed_reservations_safe.arrival_date).days * costs_dict['safe_costs']['food']['cost']
@@ -1908,7 +1906,7 @@ def export_my_research_visit():
         dat = [curr_row, r.bed_reservations_safe.arrival_date, 
                r.bed_reservations_safe.departure_date,
                r.bed_reservations_safe.research_visit_id, 
-               'SAFE booking', name, admin_status, cost]
+               'SAFE booking', name, v.admin_status, cost]
     
         # write it and move down a row
         write_event(*dat)
@@ -1922,8 +1920,6 @@ def export_my_research_visit():
     for r in maliau_data:
     
         name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
-    
-        admin_status = db.research_visit(r.bed_reservations_maliau.research_visit_id).admin_status
     
         # calculate cost - entry, bed and food costs
         days = (r.bed_reservations_maliau.departure_date -
@@ -1951,7 +1947,7 @@ def export_my_research_visit():
         dat = [curr_row, r.bed_reservations_maliau.arrival_date,
                r.bed_reservations_maliau.departure_date, 
                r.bed_reservations_maliau.research_visit_id,
-               'Maliau booking', content, admin_status, cost]
+               'Maliau booking', content, v.admin_status, cost]
     
         write_event(*dat)
         curr_row += 1
@@ -1965,8 +1961,6 @@ def export_my_research_visit():
     
         name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
     
-        admin_status = db.research_visit(r.transfers.research_visit_id).admin_status
-    
         # costs
         if r.transfers.transfer in ['SAFE to Tawau','Tawau to SAFE']:
             cost = costs_dict['transfers']['tawau_safe']['cost']
@@ -1979,7 +1973,7 @@ def export_my_research_visit():
         
         dat = [curr_row, r.transfers.transfer_date, r.transfers.transfer_date, 
                r.transfers.research_visit_id, 'Transfer', 
-               name + ': ' + r.transfers.transfer, admin_status, cost]
+               name + ': ' + r.transfers.transfer, v.admin_status, cost]
     
         write_event(*dat)
         curr_row += 1
@@ -1990,8 +1984,6 @@ def export_my_research_visit():
     
     for r in rassist_data:
     
-        admin_status = db.research_visit(r.research_visit_id).admin_status
-    
         # costs 
         if r.site_time in ['All day at SAFE', 'All day at Maliau']:
             cost = costs_dict['ra_costs']['full']
@@ -2001,7 +1993,7 @@ def export_my_research_visit():
         cost = cost[r.work_type]
     
         dat = [curr_row, r.start_date, r.finish_date, r.research_visit_id, 'RA booking',
-               r.site_time, admin_status, cost]
+               r.site_time, v.admin_status, cost]
     
         write_event(*dat)
         curr_row += 1
@@ -2181,9 +2173,6 @@ def export_ongoing_research_visits():
             # check for unknown users
             name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
         
-            # lookup admin status
-            admin_status = db.research_visit(r.bed_reservations_safe.research_visit_id).admin_status
-        
             # calculate cost - food charge only
             cost = (r.bed_reservations_safe.departure_date - 
                     r.bed_reservations_safe.arrival_date).days * costs_dict['safe_costs']['food']['cost']
@@ -2192,7 +2181,7 @@ def export_ongoing_research_visits():
             dat = [curr_row, r.bed_reservations_safe.arrival_date, 
                    r.bed_reservations_safe.departure_date,
                    r.bed_reservations_safe.research_visit_id, 
-                   'SAFE booking', name, admin_status, cost]
+                   'SAFE booking', name, v.admin_status, cost]
         
             # write it and move down a row
             write_event(*dat)
@@ -2206,8 +2195,6 @@ def export_ongoing_research_visits():
         for r in maliau_data:
         
             name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
-        
-            admin_status = db.research_visit(r.bed_reservations_maliau.research_visit_id).admin_status
         
             # calculate cost - entry, bed and food costs
             days = (r.bed_reservations_maliau.departure_date -
@@ -2235,7 +2222,7 @@ def export_ongoing_research_visits():
             dat = [curr_row, r.bed_reservations_maliau.arrival_date,
                    r.bed_reservations_maliau.departure_date, 
                    r.bed_reservations_maliau.research_visit_id,
-                   'Maliau booking', content, admin_status, cost]
+                   'Maliau booking', content, v.admin_status, cost]
         
             write_event(*dat)
             curr_row += 1
@@ -2249,8 +2236,6 @@ def export_ongoing_research_visits():
         
             name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
         
-            admin_status = db.research_visit(r.transfers.research_visit_id).admin_status
-        
             # costs
             if r.transfers.transfer in ['SAFE to Tawau','Tawau to SAFE']:
                 cost = costs_dict['transfers']['tawau_safe']['cost']
@@ -2263,7 +2248,7 @@ def export_ongoing_research_visits():
             
             dat = [curr_row, r.transfers.transfer_date, r.transfers.transfer_date, 
                    r.transfers.research_visit_id, 'Transfer', 
-                   name + ': ' + r.transfers.transfer, admin_status, cost]
+                   name + ': ' + r.transfers.transfer, v.admin_status, cost]
         
             write_event(*dat)
             curr_row += 1
@@ -2274,8 +2259,6 @@ def export_ongoing_research_visits():
         
         for r in rassist_data:
         
-            admin_status = db.research_visit(r.research_visit_id).admin_status
-        
             # costs 
             if r.site_time in ['All day at SAFE', 'All day at Maliau']:
                 cost = costs_dict['ra_costs']['full']
@@ -2285,7 +2268,7 @@ def export_ongoing_research_visits():
             cost = cost[r.work_type]
         
             dat = [curr_row, r.start_date, r.finish_date, r.research_visit_id, 'RA booking',
-                   r.site_time, admin_status, cost]
+                   r.site_time, v.admin_status, cost]
         
             write_event(*dat)
             curr_row += 1
@@ -2303,6 +2286,100 @@ def export_ongoing_research_visits():
                   'Content-Disposition':attachment + ';'})
 
 
+def export_ongoing_research_visits_text():
+    
+    """
+    This just creates text compiling ongoing and future research visit data
+    and pokes it out as an http download, so a button can call the controller
+    and return the file via the browser. Costs are loaded from the same costs 
+    json used to populate the logistics and costs page, so can be updated from 
+    a single location
+    """
+    
+    # load costs from the json data
+    f = os.path.join(request.folder, 'private','content/en/info/costs.json')
+    costs_dict = simplejson.load(open(f))
+    
+    # GET THE ONGOING RVs 
+    today =datetime.date.today()
+    
+    rv_query = (db.research_visit.departure_date >= today)
+    
+    # no records?
+    if db(rv_query).count() == 0:
+        session.flash = CENTER(B('No research visit data found', _style='color:red'))
+        redirect(URL('research_visits','research_visits'))
+    else:
+        # grab the data from those queries starting with the earliest arrivals
+        rv_data = db(rv_query).select(orderby=db.research_visit.arrival_date)
+    
+    # SETUP THE TEXT FILE
+    output = StringIO.StringIO()
+    output.write('Research visit plans for the SAFE Project as of {}'.format(today.isoformat()))
+    
+    # loop over the research visits.
+    for v in rv_data:
+        
+        output.write("\n\nProject " + str(v.project_id) + ": " + v.title  + ' [Status: ' + v.admin_status + ']\n')
+
+        # SAFE bed bookings
+        safe_query =  ((db.bed_reservations_safe.research_visit_id == v.id) & 
+                       (db.bed_reservations_safe.research_visit_member_id == db.research_visit_member.id))
+        safe_data = db(safe_query).select(orderby=db.bed_reservations_safe.arrival_date)
+        
+        for r in safe_data:
+        
+            # check for unknown users
+            name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
+            output.write('  SAFE Booking: ' + r.bed_reservations_safe.arrival_date.isoformat() + ' -- ' +
+                         r.bed_reservations_safe.departure_date.isoformat() + ' for ' + name + '\n')
+        
+        # MALIAU bed bookings
+        maliau_query =  ((db.bed_reservations_maliau.research_visit_id == v.id) & 
+                         (db.bed_reservations_maliau.research_visit_member_id == db.research_visit_member.id))
+        maliau_data = db(maliau_query).select(orderby=db.bed_reservations_maliau.arrival_date)
+        
+        for r in maliau_data:
+        
+            name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
+            
+            # content 
+            food_labels = ['B' if r.bed_reservations_maliau.breakfast else ''] + \
+                          ['L' if r.bed_reservations_maliau.lunch else ''] + \
+                          ['D' if r.bed_reservations_maliau.dinner else '']
+            content = name + ' (' + r.bed_reservations_maliau.type + ','+ ''.join(food_labels) + ')'
+            
+            output.write('  Maliau Booking: ' + r.bed_reservations_maliau.arrival_date.isoformat() + ' -- ' +
+                         r.bed_reservations_maliau.departure_date.isoformat() + ' for ' + content + '\n')
+        
+        #TRANSFERS
+        transfer_query =  ((db.transfers.research_visit_id == v.id) & 
+                         (db.transfers.research_visit_member_id == db.research_visit_member.id))
+        transfer_data = db(transfer_query).select(orderby=db.transfers.transfer_date)
+        
+        for r in transfer_data:
+        
+            name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
+            output.write('  Transfer: ' + r.transfers.transfer_date.isoformat() + ' from ' + 
+                         r.transfers.transfer + ' for ' + name + '\n')
+        
+        # RA requests
+        rassist_query =  ((db.research_assistant_bookings.research_visit_id == v.id))
+        rassist_data = db(rassist_query).select(orderby=db.research_assistant_bookings.start_date)
+        
+        for r in rassist_data:
+            output.write('  RA time: ' + r.start_date.isoformat() + ' -- ' + r.finish_date.isoformat() + 
+                         ' (' + r.site_time + ', ' + r.work_type + ')\n')
+     
+    # and now poke the text object out to the browser
+    response.headers['Content-Type'] = 'text/plain'
+    attachment = 'attachment;filename=SAFE_Research_Visit_details_{}.txt'.format(datetime.date.today().isoformat())
+    response.headers['Content-Disposition'] = attachment
+    raise HTTP(200, output.getvalue(),
+               **{'Content-Type':'text/plain',
+                  'Content-Disposition':attachment + ';'})
+    
+    output.close()
 
 
 def safe_bed_availability():
