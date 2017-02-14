@@ -1906,7 +1906,7 @@ def export_my_research_visit():
         dat = [curr_row, r.bed_reservations_safe.arrival_date, 
                r.bed_reservations_safe.departure_date,
                r.bed_reservations_safe.research_visit_id, 
-               'SAFE booking', name, v.admin_status, cost]
+               'SAFE booking', name, record.admin_status, cost]
     
         # write it and move down a row
         write_event(*dat)
@@ -1947,7 +1947,7 @@ def export_my_research_visit():
         dat = [curr_row, r.bed_reservations_maliau.arrival_date,
                r.bed_reservations_maliau.departure_date, 
                r.bed_reservations_maliau.research_visit_id,
-               'Maliau booking', content, v.admin_status, cost]
+               'Maliau booking', content, record.admin_status, cost]
     
         write_event(*dat)
         curr_row += 1
@@ -1973,7 +1973,7 @@ def export_my_research_visit():
         
         dat = [curr_row, r.transfers.transfer_date, r.transfers.transfer_date, 
                r.transfers.research_visit_id, 'Transfer', 
-               name + ': ' + r.transfers.transfer, v.admin_status, cost]
+               name + ': ' + r.transfers.transfer, record.admin_status, cost]
     
         write_event(*dat)
         curr_row += 1
@@ -1993,7 +1993,7 @@ def export_my_research_visit():
         cost = cost[r.work_type]
     
         dat = [curr_row, r.start_date, r.finish_date, r.research_visit_id, 'RA booking',
-               r.site_time, v.admin_status, cost]
+               r.site_time, record.admin_status, cost]
     
         write_event(*dat)
         curr_row += 1
