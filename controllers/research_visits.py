@@ -2052,7 +2052,7 @@ def export_ongoing_research_visits():
     costs_dict = simplejson.load(open(f))
     
     # set up the coordinates of the data block
-    curr_row = start_row = 13
+    curr_row = start_row = 20
     data_start_col = 4
     
     # GET THE ONGOING RVs 
@@ -2323,11 +2323,11 @@ def export_ongoing_research_visits():
     # Insert the summary information
     summary_row = 8
     
-    # set the order 
-    for k in summary.keys():
+    # loop over the (ordered) keys
+    for k in summary.summary.keys():
         
         c = ws.cell(row=summary_row, column=2)
-        c.value = summary_labels[k]
+        c.value = k
         
         for d, c in zip(dates, dates_column):
             c = ws.cell(row=summary_row, column=c)
