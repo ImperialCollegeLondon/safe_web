@@ -2,7 +2,7 @@ import datetime
 from gluon.storage import Storage
 import openpyxl
 import itertools
-from collections import Counter
+from collections import Counter, OrderedDict
 import StringIO
 
 ## -----------------------------------------------------------------------------
@@ -1321,10 +1321,6 @@ def create_late_research_visit():
     
     return dict(visit=visit)
 
-
-
-
-
 def uname(uid, rowid):
     
     """
@@ -2022,13 +2018,17 @@ class summary_tracker():
     
     def __init__(self, start, end):
         
-        # Initialise dictionary
+        # Initialise ordered dictionary to set the output order
         dates = date_range(start, end)
-        self.summary = {'safe_beds': {d: 0 for d in dates},
-                        'maliau_beds': {d: 0 for d in dates},
-                        'safe_ras': {d: 0 for d in dates},
-                        'maliau_ras': {d: 0 for d in dates},
-                        'transfers': {d: 0 for d in dates}}
+        counts = [("Beds requested at SAFE", {d: 0 for d in dates}),
+                  ("Beds requested at Maliau", {d: 0 for d in dates}),
+                  ("RAs requested at SAFE", {d: 0 for d in dates}),
+                  ("RAs requested at Maliau", {d: 0 for d in dates})]
+        self.summary = OrderedDict(counts)
+        
+        # add all the transfer types
+        for t in transfer_set:
+            self.summary[t] = {d: 0 for d in dates}
     
     def update(self, k, start, end):
         
@@ -2215,7 +2215,7 @@ def export_ongoing_research_visits():
         
             # write it, update the summary tracker and move down a row
             write_event(*dat)
-            summary.update('safe_beds', 
+            summary.update('Beds requested at SAFE', 
                            r.bed_reservations_safe.arrival_date, 
                            r.bed_reservations_safe.departure_date - datetime.timedelta(days=1))
             curr_row += 1
@@ -2258,7 +2258,7 @@ def export_ongoing_research_visits():
                    'Maliau booking', content, v.admin_status, cost]
         
             write_event(*dat)
-            summary.update('maliau_beds', 
+            summary.update('Beds requested at Maliau', 
                            r.bed_reservations_maliau.arrival_date, 
                            r.bed_reservations_maliau.departure_date - datetime.timedelta(days=1))
             
@@ -2288,10 +2288,10 @@ def export_ongoing_research_visits():
                    name + ': ' + r.transfers.transfer, v.admin_status, cost]
             
             write_event(*dat)
-            summary.update('transfers', 
+            # update the transfers summary, keying by the transfer type
+            summary.update(r.transfer.transfer, 
                            r.transfers.transfer_date,
                            r.transfers.transfer_date)
-            
             curr_row += 1
         
         # RA requests
@@ -2314,21 +2314,17 @@ def export_ongoing_research_visits():
             write_event(*dat)
             
             if r.site_time in ['All day at SAFE', 'Morning only at SAFE', 'Afternoon only at SAFE']:
-                summary.update('safe_ras', r.start_date, r.finish_date)
+                summary.update('RAs requested at SAFE', r.start_date, r.finish_date)
             else:
-                summary.update('maliau_ras', r.start_date, r.finish_date)
+                summary.update('RAs requested at Maliau', r.start_date, r.finish_date)
             
             curr_row += 1
     
     # Insert the summary information
-    summary_labels = {'safe_beds': "Beds requested at SAFE",
-                      'maliau_beds': "Beds requested at Maliau",
-                      'safe_ras': "RAs requested at SAFE",
-                      'maliau_ras': "RAs requested at Maliau",
-                      'transfers': "Transfers requested"}
     summary_row = 8
     
-    for k in ['safe_beds', 'safe_ras', 'maliau_beds', 'maliau_ras', 'transfers']:
+    # set the order 
+    for k in summary.keys():
         
         c = ws.cell(row=summary_row, column=2)
         c.value = summary_labels[k]
@@ -2384,14 +2380,23 @@ def export_ongoing_research_visits_text():
         # grab the data from those queries starting with the earliest arrivals
         rv_data = db(rv_query).select(orderby=db.research_visit.arrival_date)
     
-    # SETUP THE TEXT FILE
+    # get the date range for all the activities and create a summary tracker
+    start_all = min([r.arrival_date for r in rv_data])
+    end_all   = max([r.departure_date for r in rv_data])
+    summary = summary_tracker(start_all, end_all)
+    
+    # SETUP THE TEXT FILE AND DETAILS FILE. Because the summary is populated
+    # while the details are being written out, and because we want the summary
+    # at the top, keep two streams and then merge
+    
     output = StringIO.StringIO()
-    output.write('Research visit plans for the SAFE Project as of {}'.format(today.isoformat()))
+    details = StringIO.StringIO()
+    output.write('Research visit plans for the SAFE Project as of {}\n\n'.format(today.isoformat()))
     
     # loop over the research visits.
     for v in rv_data:
         
-        output.write("\n\nProject " + str(v.project_id) + ": " + v.title  + ' [Status: ' + v.admin_status + ']\n')
+        details.write("\n\nProject " + str(v.project_id) + ": " + v.title  + ' [Status: ' + v.admin_status + ']\n')
 
         # SAFE bed bookings
         safe_query =  ((db.bed_reservations_safe.research_visit_id == v.id) & 
@@ -2402,8 +2407,11 @@ def export_ongoing_research_visits_text():
         
             # check for unknown users
             name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
-            output.write('  SAFE Booking: ' + r.bed_reservations_safe.arrival_date.isoformat() + ' -- ' +
+            details.write('  SAFE Booking: ' + r.bed_reservations_safe.arrival_date.isoformat() + ' -- ' +
                          r.bed_reservations_safe.departure_date.isoformat() + ' for ' + name + '\n')
+            summary.update('Beds requested at SAFE', 
+                           r.bed_reservations_safe.arrival_date, 
+                           r.bed_reservations_safe.departure_date - datetime.timedelta(days=1))
         
         # MALIAU bed bookings
         maliau_query =  ((db.bed_reservations_maliau.research_visit_id == v.id) & 
@@ -2420,9 +2428,13 @@ def export_ongoing_research_visits_text():
                           ['D' if r.bed_reservations_maliau.dinner else '']
             content = name + ' (' + r.bed_reservations_maliau.type + ','+ ''.join(food_labels) + ')'
             
-            output.write('  Maliau Booking: ' + r.bed_reservations_maliau.arrival_date.isoformat() + ' -- ' +
+            details.write('  Maliau Booking: ' + r.bed_reservations_maliau.arrival_date.isoformat() + ' -- ' +
                          r.bed_reservations_maliau.departure_date.isoformat() + ' for ' + content + '\n')
-        
+            summary.update('Beds requested at Maliau', 
+                           r.bed_reservations_maliau.arrival_date, 
+                           r.bed_reservations_maliau.departure_date - datetime.timedelta(days=1))
+            
+            
         #TRANSFERS
         transfer_query =  ((db.transfers.research_visit_id == v.id) & 
                          (db.transfers.research_visit_member_id == db.research_visit_member.id))
@@ -2431,17 +2443,45 @@ def export_ongoing_research_visits_text():
         for r in transfer_data:
         
             name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
-            output.write('  Transfer: ' + r.transfers.transfer_date.isoformat() + ' from ' + 
+            details.write('  Transfer: ' + r.transfers.transfer_date.isoformat() + ' from ' + 
                          r.transfers.transfer + ' for ' + name + '\n')
+            # update the transfers summary, keying by the transfer type
+            summary.update(r.transfers.transfer, 
+                           r.transfers.transfer_date,
+                           r.transfers.transfer_date)
         
         # RA requests
         rassist_query =  ((db.research_assistant_bookings.research_visit_id == v.id))
         rassist_data = db(rassist_query).select(orderby=db.research_assistant_bookings.start_date)
         
         for r in rassist_data:
-            output.write('  RA time: ' + r.start_date.isoformat() + ' -- ' + r.finish_date.isoformat() + 
+            details.write('  RA time: ' + r.start_date.isoformat() + ' -- ' + r.finish_date.isoformat() + 
                          ' (' + r.site_time + ', ' + r.work_type + ')\n')
-     
+            
+            if r.site_time in ['All day at SAFE', 'Morning only at SAFE', 'Afternoon only at SAFE']:
+                summary.update('RAs requested at SAFE', r.start_date, r.finish_date)
+            else:
+                summary.update('RAs requested at Maliau', r.start_date, r.finish_date)
+    
+    # now add the summary to the output and then transfer the details at the bottom
+    output.write('Daily resource request totals for current projects\n'
+                 '==================================================\n\n')
+    
+    dates = date_range(start_all, end_all)
+    for d in dates:
+        # collect non zero counts as string and omit days where nothing happens
+        counts = ['    ' + str(summary.summary[k][d]) + " " + k 
+                  for k in summary.summary.keys() 
+                  if summary.summary[k][d] > 0]
+        if len(counts) > 0:
+            output.write(d.strftime('%a %d %b %Y') + '\n' + '\n'.join(counts) + '\n')
+    
+    # now add the details at the end
+    output.write('\n\nProject by project details\n'
+                 '==========================\n\n')
+    output.write(details.getvalue())
+    details.close()
+    
     # and now poke the text object out to the browser
     response.headers['Content-Type'] = 'text/plain'
     attachment = 'attachment;filename=SAFE_Research_Visit_details_{}.txt'.format(datetime.date.today().isoformat())
