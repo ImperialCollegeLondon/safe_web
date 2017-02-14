@@ -262,46 +262,46 @@ def lang_switch():
 ## -- TODO - secure the private key JSON file. Where to keep it?
 ## -- TODO - handle offline problems. Don't see how this would happen in reality.
 ## ----------------------------------------------------------------------------
-
-# create a global dictionary of calendar IDs
-calID = {'volunteers': 'k23sbip8av2nvv196n9kupj5ss@group.calendar.google.com',
-         'help_request': 'fber8126s5pdgccm3k13s90q58@group.calendar.google.com',
-         'booked_visits': 'rairu8u98scfb8cgn86qdrgtic@group.calendar.google.com'}
-
-
-def post_event_to_google_calendar(event, calendarId):
-    
-    """
-    Function to post an event to a calendar and return event details.
-    See:
-    https://developers.google.com/api-client-library/python/auth/service-accounts
-    """
-    
-    # we want the calendar API
-    scopes = 'https://www.googleapis.com/auth/calendar'
-    
-    # Load the service account credentials
-    # TODO -think about where to store this securely.
-    cred_json = os.path.join(request.folder, 'private/google_auth/SAFE-project-website-6a272f141d5a.json')
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(cred_json, scopes)
-    
-    # authorise those credentials with Google
-    http_auth = credentials.authorize(Http())
-    
-    # build the service handler
-    service = build('calendar', 'v3', http=http_auth)
-    
-    # run the insert
-    #try:
-    event = service.events().insert(calendarId=calendarId, body=event).execute()
-    # except AccessTokenRefreshError:
-    #     # The AccessTokenRefreshError exception is raised if the credentials
-    #     # have been revoked by the user or they have expired.
-    #     print ('The credentials have been revoked or expired, please re-run'
-    #            'the application to re-authorize')
-    
-    return event
-
+#
+# # create a global dictionary of calendar IDs
+# calID = {'volunteers': 'k23sbip8av2nvv196n9kupj5ss@group.calendar.google.com',
+#          'help_request': 'fber8126s5pdgccm3k13s90q58@group.calendar.google.com',
+#          'booked_visits': 'rairu8u98scfb8cgn86qdrgtic@group.calendar.google.com'}
+#
+#
+# def _post_event_to_google_calendar(event, calendarId):
+#
+#     """
+#     Function to post an event to a calendar and return event details.
+#     See:
+#     https://developers.google.com/api-client-library/python/auth/service-accounts
+#     """
+#
+#     # we want the calendar API
+#     scopes = 'https://www.googleapis.com/auth/calendar'
+#
+#     # Load the service account credentials
+#     # TODO -think about where to store this securely.
+#     cred_json = os.path.join(request.folder, 'private/google_auth/SAFE-project-website-6a272f141d5a.json')
+#     credentials = ServiceAccountCredentials.from_json_keyfile_name(cred_json, scopes)
+#
+#     # authorise those credentials with Google
+#     http_auth = credentials.authorize(Http())
+#
+#     # build the service handler
+#     service = build('calendar', 'v3', http=http_auth)
+#
+#     # run the insert
+#     #try:
+#     event = service.events().insert(calendarId=calendarId, body=event).execute()
+#     # except AccessTokenRefreshError:
+#     #     # The AccessTokenRefreshError exception is raised if the credentials
+#     #     # have been revoked by the user or they have expired.
+#     #     print ('The credentials have been revoked or expired, please re-run'
+#     #            'the application to re-authorize')
+#
+#     return event
+#
 
 ## ----------------------------------------------------------------------------
 ## EXPOSE VARIOUS USER FUNCTIONS

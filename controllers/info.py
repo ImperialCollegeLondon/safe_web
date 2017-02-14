@@ -114,9 +114,9 @@ def research_areas():
 
 
 
-def calendars():
-    
-    return response.render()
+# def calendars():
+#
+#     return response.render()
 
 def mailing_list():
     
