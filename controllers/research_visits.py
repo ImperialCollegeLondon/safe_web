@@ -2289,7 +2289,7 @@ def export_ongoing_research_visits():
             
             write_event(*dat)
             # update the transfers summary, keying by the transfer type
-            summary.update(r.transfer.transfer, 
+            summary.update(r.transfers.transfer, 
                            r.transfers.transfer_date,
                            r.transfers.transfer_date)
             curr_row += 1
@@ -2396,7 +2396,7 @@ def export_ongoing_research_visits_text():
     # loop over the research visits.
     for v in rv_data:
         
-        details.write("\n\nProject " + str(v.project_id) + ": " + v.title  + ' [Status: ' + v.admin_status + ']\n')
+        details.write("\nProject " + str(v.project_id) + ": " + v.title  + ' [Status: ' + v.admin_status + ']\n')
 
         # SAFE bed bookings
         safe_query =  ((db.bed_reservations_safe.research_visit_id == v.id) & 
