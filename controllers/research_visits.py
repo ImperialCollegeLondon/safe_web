@@ -2012,6 +2012,31 @@ def export_my_research_visit():
                   'Content-Disposition':attachment + ';'})
 
 
+class summary_tracker():
+    """
+    This class simply keeps track of the number of people requesting
+    different resources across a time range. The update method allows
+    this tracking to be incorporated into the individual row loops when
+    Excel or text reports are being created.
+    """
+    
+    def __init__(self, start, end):
+        
+        # Initialise dictionary
+        dates = date_range(start, end)
+        self.summary = {'safe_beds': {d: 0 for d in dates},
+                        'maliau_beds': {d: 0 for d in dates},
+                        'safe_ras': {d: 0 for d in dates},
+                        'maliau_ras': {d: 0 for d in dates},
+                        'transfers': {d: 0 for d in dates}}
+    
+    def update(self, k, start, end):
+        
+        dates = date_range(start, end)
+        for d in dates:
+            self.summary[k][d] += 1
+
+
 def export_ongoing_research_visits():
     
     """
@@ -2027,7 +2052,7 @@ def export_ongoing_research_visits():
     costs_dict = simplejson.load(open(f))
     
     # set up the coordinates of the data block
-    curr_row = start_row = 8
+    curr_row = start_row = 13
     data_start_col = 4
     
     # GET THE ONGOING RVs 
@@ -2070,6 +2095,9 @@ def export_ongoing_research_visits():
     head = openpyxl.styles.Font(size=14, bold=True)
     subhead = openpyxl.styles.Font(bold=True)
     warn = openpyxl.styles.Font(bold=True, color='FF0000')
+    zero_summary = openpyxl.styles.Font(color='BBBBBB')
+    non_zero_summary = openpyxl.styles.Font(bold=True)
+    
     cell_shade = {'Approved': openpyxl.styles.PatternFill(fill_type='solid', start_color='8CFF88'),
                   'Submitted': openpyxl.styles.PatternFill(fill_type='solid', start_color='FFCB8B'),
                   'Draft': openpyxl.styles.PatternFill(fill_type='solid', start_color='DDDDDD'),
@@ -2081,7 +2109,6 @@ def export_ongoing_research_visits():
     ws.title = 'Research visits'
     ws['A1'] = 'Research visit plans for the SAFE Project as of {}'.format(today.isoformat())
     ws['A1'].font = head
-    
     
     # Subheading 
     ws['A2'] = 'All research visits'
@@ -2151,6 +2178,9 @@ def export_ongoing_research_visits():
         c = ws.cell(row=row, column=3)
         c.value = cost
     
+    # initialise a summary tracker using the full date range
+    summary = summary_tracker(start_all, end_all)
+    
     # loop over the research visits.
     for v in rv_data:
         
@@ -2183,8 +2213,11 @@ def export_ongoing_research_visits():
                    r.bed_reservations_safe.research_visit_id, 
                    'SAFE booking', name, v.admin_status, cost]
         
-            # write it and move down a row
+            # write it, update the summary tracker and move down a row
             write_event(*dat)
+            summary.update('safe_beds', 
+                           r.bed_reservations_safe.arrival_date, 
+                           r.bed_reservations_safe.departure_date - datetime.timedelta(days=1))
             curr_row += 1
         
         # MALIAU bed bookings
@@ -2225,6 +2258,10 @@ def export_ongoing_research_visits():
                    'Maliau booking', content, v.admin_status, cost]
         
             write_event(*dat)
+            summary.update('maliau_beds', 
+                           r.bed_reservations_maliau.arrival_date, 
+                           r.bed_reservations_maliau.departure_date - datetime.timedelta(days=1))
+            
             curr_row += 1
         
         #TRANSFERS
@@ -2246,11 +2283,15 @@ def export_ongoing_research_visits():
             elif r.transfers.transfer in ['SAFE to Danum','Danum to SAFE']:
                 cost = costs_dict['transfers']['safe_danum']['cost']
             
-            dat = [curr_row, r.transfers.transfer_date, r.transfers.transfer_date, 
+            dat = [curr_row, r.transfers.transfer_date, r.transfers.transfer_date,
                    r.transfers.research_visit_id, 'Transfer', 
                    name + ': ' + r.transfers.transfer, v.admin_status, cost]
-        
+            
             write_event(*dat)
+            summary.update('transfers', 
+                           r.transfers.transfer_date,
+                           r.transfers.transfer_date)
+            
             curr_row += 1
         
         # RA requests
@@ -2264,18 +2305,48 @@ def export_ongoing_research_visits():
                 cost = costs_dict['ra_costs']['full']
             else:
                 cost = costs_dict['ra_costs']['half']
-        
+            
             cost = cost[r.work_type]
-        
+            
             dat = [curr_row, r.start_date, r.finish_date, r.research_visit_id, 'RA booking',
                    r.site_time, v.admin_status, cost]
-        
+            
             write_event(*dat)
+            
+            if r.site_time in ['All day at SAFE', 'Morning only at SAFE', 'Afternoon only at SAFE']:
+                summary.update('safe_ras', r.start_date, r.finish_date)
+            else:
+                summary.update('maliau_ras', r.start_date, r.finish_date)
+            
             curr_row += 1
-     
+    
+    # Insert the summary information
+    summary_labels = {'safe_beds': "Beds requested at SAFE",
+                      'maliau_beds': "Beds requested at Maliau",
+                      'safe_ras': "RAs requested at SAFE",
+                      'maliau_ras': "RAs requested at Maliau",
+                      'transfers': "Transfers requested"}
+    summary_row = 8
+    
+    for k in ['safe_beds', 'safe_ras', 'maliau_beds', 'maliau_ras', 'transfers']:
+        
+        c = ws.cell(row=summary_row, column=2)
+        c.value = summary_labels[k]
+        
+        for d, c in zip(dates, dates_column):
+            c = ws.cell(row=summary_row, column=c)
+            c.value = summary.summary[k][d]
+            if summary.summary[k][d] == 0:
+                c.font = zero_summary
+            else:
+                c.font = non_zero_summary
+                
+        summary_row += 1
+    
     # freeze the rows
     c = ws.cell(row=start_row, column=data_start_col)
     ws.freeze_panes = c
+    
     # and now poke the workbook object out to the browser
     response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     attachment = 'attachment;filename=SAFE_Bed_reservations_{}.xlsx'.format(datetime.date.today().isoformat())
