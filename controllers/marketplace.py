@@ -654,7 +654,10 @@ def help_request_details():
                 form.custom.widget.work_description['_rows'] = 4
                 form.custom.widget.start_date['_class'] = "form-control input-sm"
                 form.custom.widget.end_date['_class'] = "form-control input-sm"
-    
+            
+            # locally update the description representation to allow formatting
+            db.help_request.work_description.represent = lambda text, row: PRE(text)
+            
             form = FORM(DIV(DIV(panel_header, _class="panel-heading"),
                             DIV(form.custom.begin, 
                                 DIV(LABEL('Project:', _class="control-label col-sm-2" ),
