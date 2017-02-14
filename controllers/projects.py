@@ -64,9 +64,10 @@ def projects():
                                        _style='padding: 3px 5px 3px 5px;'))]
     
     # create a grid view on the join between project_id and project_details
-    query = (db.project_id.project_details_id == db.project_details.id)
+    query = ((db.project_id.project_details_id == db.project_details.id) &
+             (db.project_details.admin_status == 'Approved'))
     
-    form = SQLFORM.grid(db.project_id.project_details_id == db.project_details.id, csv=False, 
+    form = SQLFORM.grid(query, csv=False, 
                         fields=[db.project_details.title,
                                 db.project_details.start_date, 
                                 # db.project_details.end_date, 
@@ -595,7 +596,7 @@ def project_details():
                         datepicker_script(id = 'proj_datepicker',
                                           autoclose = 'true',
                                           startDate ='"+0d"',
-                                          endDate ='"+365d"'))
+                                          endDate ='"2020-01-01"')) # approx end date
         
         elif mode == 'view':
             
