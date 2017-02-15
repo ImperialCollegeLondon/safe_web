@@ -1,4 +1,6 @@
 import datetime
+import cStringIO
+from collections import OrderedDict
 
 """
 This model holds a set of functions that are shared between controllers
@@ -62,7 +64,6 @@ def datepicker_script(id, **settings):
     
     return CAT(STYLE(XML('.holiday {background: #FE9781;}')), javascript)
 
-
 def admin_decision_form(selector_options):
     
     """
@@ -90,11 +91,16 @@ def admin_decision_form(selector_options):
     
     return admin
 
-def SAFEmailer(subject, to, template, template_dict, cc=None, cc_info=True, bcc=None):
+def SAFEmailer(subject, to, template, template_dict, cc=None, 
+               reply_to=None, cc_info=True, bcc=None, 
+               attachment_string_objects=None):
     
     """
     Takes a template name, fills it in from the template dictionary
-    and then sends it
+    and then sends it.
+               
+    Attachments are currently handled for string representations of 
+    file objects as a dictionary of {'filename': contents}.
     """
     
     # get the html version, strip it down to text and combine
@@ -109,9 +115,18 @@ def SAFEmailer(subject, to, template, template_dict, cc=None, cc_info=True, bcc=
         else:
             cc.append('info@safeproject.net')
     
+    # handle string attachments by wrapping them in StringIO (which
+    # has a read() method)
+    if attachment_string_objects is not None:
+        attach = [mail.Attachment(payload=cStringIO.StringIO(v), filename=k) 
+                  for k, v in attachment_string_objects.iteritems()]
+    else:
+        attach = None
+    
     # send the mail
     msg_status = mail.send(to=to, subject=subject, message=msg,
-                           cc=cc, bcc=bcc, reply_to='info@safeproject.net')
+                           cc=cc, bcc=bcc, reply_to='info@safeproject.net',
+                           attachments=attach)
     
     # log it in the database
     db.safe_web_email_log.insert(email_to=to, 
@@ -127,6 +142,21 @@ def SAFEmailer(subject, to, template, template_dict, cc=None, cc_info=True, bcc=
 """
 The functions below provide files containing research visit summaries.
 """
+
+def uname(uid, rowid):
+    
+    """
+    The RV_member table contains a link to a user that can be NULL
+    - this helper function takes a user_id field (which references auth_user)
+      and a RVM row id to give a formatted name for both named and unknown users
+    """
+    
+    if uid is None:
+        nm = 'Unknown #' + str(rowid)
+    else:
+        nm = uid.last_name + ", " + uid.first_name
+        
+    return nm
 
 def date_range(start, end):
     
@@ -391,8 +421,11 @@ def single_rv_summary_excel(rv_id):
     c = ws.cell(row=start_row, column=data_start_col)
     ws.freeze_panes = c
     
-    # and now return the workbook object
-    return openpyxl.writer.excel.save_virtual_workbook(wb)
+    # and now return the workbook object as a string
+    try:
+        return str(openpyxl.writer.excel.save_virtual_workbook(wb))
+    finally:
+        del wb
 
 class summary_tracker():
     """
@@ -725,7 +758,11 @@ def all_rv_summary_excel():
     c = ws.cell(row=start_row, column=data_start_col)
     ws.freeze_panes = c
     
-    return openpyxl.writer.excel.save_virtual_workbook(wb)
+    # return as a string
+    try:
+        return str(openpyxl.writer.excel.save_virtual_workbook(wb))
+    finally:
+        del wb
 
 def all_rv_summary_text():
     
@@ -753,8 +790,8 @@ def all_rv_summary_text():
     # while the details are being written out, and because we want the summary
     # at the top, keep two streams and then merge
     
-    output = StringIO.StringIO()
-    details = StringIO.StringIO()
+    output = cStringIO.StringIO()
+    details = cStringIO.StringIO()
     output.write('Research visit plans for the SAFE Project as of {}\n\n'.format(today.isoformat()))
     
     # loop over the research visits.

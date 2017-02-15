@@ -2,8 +2,7 @@ import datetime
 from gluon.storage import Storage
 import openpyxl
 import itertools
-from collections import Counter, OrderedDict
-import StringIO
+from collections import Counter
 
 ## -----------------------------------------------------------------------------
 ## RESEARCH VISITS
@@ -1321,21 +1320,6 @@ def create_late_research_visit():
     
     return dict(visit=visit)
 
-def uname(uid, rowid):
-    
-    """
-    The RV_member table contains a link to a user that can be NULL
-    - this helper function takes a user_id field (which references auth_user)
-      and a RVM row id to give a formatted name for both named and unknown users
-    """
-    
-    if uid is None:
-        nm = 'Unknown #' + str(rowid)
-    else:
-        nm = uid.last_name + ", " + uid.first_name
-        
-    return nm
-
 def validate_research_visit_details(form):
     
     """
@@ -1762,7 +1746,7 @@ def export_my_research_visit():
     response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     attachment = 'attachment;filename=SAFE_Bed_reservations_{}.xlsx'.format(datetime.date.today().isoformat())
     response.headers['Content-Disposition'] = attachment
-    raise HTTP(200, str(excelfile),
+    raise HTTP(200, excelfile,
                **{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                   'Content-Disposition':attachment + ';'})
 
@@ -1790,7 +1774,7 @@ def export_ongoing_research_visits():
     response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     attachment = 'attachment;filename=SAFE_Bed_reservations_{}.xlsx'.format(today.isoformat())
     response.headers['Content-Disposition'] = attachment
-    raise HTTP(200, str(excel_file),
+    raise HTTP(200, excel_file,
                **{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                   'Content-Disposition':attachment + ';'})
 
