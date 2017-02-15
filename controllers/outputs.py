@@ -295,6 +295,9 @@ def output_details():
             dfile = ""
             uploader = DIV()
         
+        # make it clear the DOI should be a link
+        form.custom.widget.doi["_placeholder"] = "http://dx.doi.org/"
+        
         form =  CAT(form.custom.begin, 
                     DIV(DIV(H5('Output details', ), _class="panel-heading"),
                         DIV(DIV(LABEL('Title:', _class="control-label col-sm-2" ),
@@ -327,7 +330,7 @@ def output_details():
                             DIV(LABEL('Citation:', _class="control-label col-sm-2" ),
                                 DIV(form.custom.widget.citation,  _class="col-sm-10"),
                                 _class='row'),
-                            DIV(LABEL('DOI:', _class="control-label col-sm-2" ),
+                            DIV(LABEL('URL for DOI:', _class="control-label col-sm-2" ),
                                 DIV(form.custom.widget.doi,  _class="col-sm-10"),
                                 _class='row'),
                             DIV(LABEL('URL:', _class="control-label col-sm-2" ),
