@@ -837,8 +837,24 @@ def research_visit_details():
             # combine the panels into a single form, along with a hidden field containing
             # the research visit id to allow the validation to cross check.
             # - insert anchors between panels to bring the URL back to the pane that was edited
+            
+            # add a big banner warning about draft status
+            if record.admin_status == 'Draft':
+                draft_banner = DIV(H4('Warning: Draft proposal'), ("This is currently "
+                                     "a draft research visit proposal, allowing you to come back "
+                                     "to edit and update the details. Once you have finished the "
+                                     "proposal you "), TAG.U('must press the submit button '), ('below. '
+                                     "The admin team will not see your proposal until it is submitted "
+                                     "and your proposal must be submitted and approved before you come "
+                                     "to the field."),
+                                    _class="alert alert-info", _style='background:gray', _role="alert")
+                
+            else:
+                draft_banner = DIV()
+            
             console =  FORM(A(_name='console'),
                             H3('Proposed research visit details'),
+                            draft_banner,
                             DIV(DIV(visitors, _class='col-sm-5'),
                                 DIV(DIV(accom_test, _class='row'),
                                    DIV(transfers_panel, _class='row'),
@@ -849,6 +865,7 @@ def research_visit_details():
                             DIV(maliau_table),
                             DIV(transfer_table),
                             DIV(ra_table),
+                            draft_banner,
                             DIV(submit_panel),
                             INPUT(_name='id', _id='id', _value=rv_id, _type='hidden'),
                            _id='console')
