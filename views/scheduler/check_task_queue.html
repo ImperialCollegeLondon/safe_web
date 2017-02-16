@@ -1,0 +1,28 @@
+{{extend 'layout.html'}}
+
+
+<h2>Scheduler Task Information</h2>
+
+<p>This page shows the status and some history of the current scheduler tasks. These are a set of actions which will run on a schedule to automate some basic admin tasks. The basic structure is that there is a set of task functions, each of which is added to a task queue, which periodically runs that function on a particular schedule.</p>
+
+
+<h4>Task function checker</h4>
+
+<p>The table below shows the set of currently defined tasks and then the results of double checking if that task is present in the task queue.</p>
+
+<p>Loading this page will automatically recreate any tasks in expected set that are missing from the scheduler and the table below will show that this has happened. Tasks shouldn't just drop off the list, so you are going to want to dig into <strong>why</strong> any tasks are missing.</p>
+
+{{=tasks_checker}}
+
+<h4>Active tasks</h4>
+
+<p>The table below provides a summary of activity for the existing active tasks, the number of times each task has been run, how many runs have failed and the next scheduled run time. If any runs have failed, there is a problem!</p>
+
+{{=active_tasks}}
+
+<h4>Run status</h4>
+
+<p>The table below shows - for each task above - when the most recent run was that resulted in particular run status. Hopefully, only Completed status runs will show below, but this will show when problem runs have occurred.</p>
+
+{{=run_status}}
+

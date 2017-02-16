@@ -386,6 +386,34 @@ Next, install extensions that will be used from the admin extension manager:
     etc
 
 
+## Web2py Scheduler
+
+The web2py framework includes a scheduling system for automating regular jobs. For the SAFE website, we currently only need relatively simple infrequent (daily) tasks which are mostly reminder emails and the like. However, I've set up the standard Scheduler system because it gives power and flexibility in case we need it.
+
+It has a number of moving parts:
+
+1) The scheduler.py model
+
+Creating an instance of the web2py Scheduler() class creates a set of tables in a database (in this case, in the same database as the other tables). The key tables are `scheduler_task` and `scheduler_run`. Each row in `scheduler_task` points to a function to be run, when it should be run and how often and when it should repeat (along with a lot of other detail). Each row in `scheduler_run` records the outcome of an attempt to run one of those tasks. 
+
+The Scheduler instance is created in the model ('scheduler.py') and the functions to do the tasks are also stored there.
+
+2) The scheduler.py controller
+
+Adding tasks to the `scheduler_task` table can be done simply through the application admin interface. This has advantages as it is behind the appadmin password, so is inaccessible to mere website admins! However it is also possible to queue tasks programatically. This isn't code that needs to run for every page load so putting it in the model file is unneccessary and - unless the code logic checks for existing tasks of a given name - will keep scheduling new instances of a task with each page load!
+
+So, the scheduler.py controller contains a function `check_task_queue` which provides an admin-only URL that will check if the set of tasks are queued and re-queue them if not. This URL _should_ only need to be run once after the website is set up but can be used as a quick interface to double check what is going on with the tasks.
+
+3) The workers
+
+This is the tricky bit. The website code just sits there, reacting to page requests, so has no way of triggering tasks at given intervals. This requires a separate web2py process - called a worker - that runs on the computer and periodically checks in to see if it has anything to do: basically a queued task with a start time older than now.
+
+You can just set a worker process going on the server using:
+
+    python web2py.py -K safe_web &
+
+More elegantly, you can create a web2py worker service that will allow you to stop, restart and start on server startup. The example provided by web2py uses `upstart`, which handily is installed and running on the AWS Ubuntu.
+
 ## Backup and restore in production
 
 We want to do two things: i) copy the contents of database out of the RDS and onto the  volume mounted at `/home/www-data`; and then ii) use the AWS snapshot mechanism to backup the volume.
