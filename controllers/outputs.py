@@ -296,7 +296,8 @@ def output_details():
             uploader = DIV()
         
         # make it clear the DOI should be a link
-        form.custom.widget.doi["_placeholder"] = "http://dx.doi.org/"
+        if not readonly:
+            form.custom.widget.doi["_placeholder"] = "http://dx.doi.org/"
         
         form =  CAT(form.custom.begin, 
                     DIV(DIV(H5('Output details', ), _class="panel-heading"),

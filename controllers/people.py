@@ -136,8 +136,109 @@ def user_details():
                   footer,
                   _class="panel panel-primary")
         
+        
+        # Now add a MySAFE like summary of their activities
+        
+        # for most simple tables, provide a look up of which tables and columns to query
+        # - the dictionary key is a tag used to populate boostrap nav tabs
+        # - query selects a chunk of data containing the fields to display
+        # - select details which fields to recover from the query
+        # - 'none' provides a message if there aren't any rows that the user is a member of
+        # - 'display' provides a field that is to be shown for each item
+        # - 'cntr' and 'view' provide the controller and view for the linked URL
+        # - 'url_args' provides a list of fields used to specify the URL
+        # - 'status' provides a field to match into the status icons. 
+        # There is currently no provision for a display grid without status icons.
+    
+        membership_dict = {'projects': {'query': (db.project_members.user_id == record.id) &
+                                                 (db.project_members.project_id == db.project_id.id) &
+                                                 (db.project_details.id == db.project_id.project_details_id) &
+                                                 (db.project_details.admin_status == "Approved"),
+                                        'select': [db.project_details.project_id, db.project_details.version, db.project_details.title],
+                                        'none': '{} is not a member of any projects'.format(record.first_name),
+                                        'cntr': 'projects', 'view': 'project_details',
+                                        'display': db.project_details.title,
+                                        'url_args': [db.project_details.project_id, db.project_details.version],
+                                        'header': 'Projects'},
+                           'outputs':  {'query': (db.outputs.user_id == record.id) &
+                                                 (db.outputs.admin_status == "Approved"),
+                                        'select': [db.outputs.id, db.outputs.title],
+                                        'none': '{} has not uploaded any outputs.'.format(record.first_name),
+                                        'cntr': 'outputs', 'view': 'output_details',
+                                        'display': db.outputs.title,
+                                        'url_args': [db.outputs.id],
+                                        'header': 'Outputs'},
+                           'blogs':    {'query': (db.blog_posts.user_id == record.id) &
+                                                 (db.blog_posts.admin_status == "Approved"),
+                                        'select': [db.blog_posts.id, db.blog_posts.title],
+                                        'none': '{} has not blogged'.format(record.first_name),
+                                        'cntr': 'blogs', 'view': 'blog_details',
+                                        'display': db.blog_posts.title,
+                                        'url_args': [db.blog_posts.id],
+                                        'header': 'Blog posts'},
+                           'volunteer':{'query': (db.help_offered.user_id == record.id) &
+                                                 (db.help_offered.admin_status == "Approved"),
+                                        'select': [db.help_offered.id, db.help_offered.statement_of_interests],
+                                        'none': '{} has no volunteer offers'.format(record.first_name),
+                                        'cntr': 'marketplace', 'view': 'volunteer_details',
+                                        'display': db.help_offered.statement_of_interests,
+                                        'url_args': [db.help_offered.id],
+                                        'header': 'Volunteer offers'},
+                           'request':  {'query': (db.help_request.user_id == record.id) &
+                                                 (db.help_request.admin_status == "Approved"),
+                                        'select': [db.help_request.id, db.help_request.work_description],
+                                        'none': '{} has no project help requests'.format(record.first_name),
+                                        'cntr': 'marketplace', 'view': 'help_request_details',
+                                        'display': db.help_request.work_description,
+                                        'url_args': [db.help_request.id],
+                                        'header': 'Help requests'}
+                          }
+    
+        # Loop over the dictionary, populating tables for each grid of results
+        grids = {}
+    
+        for k, v in membership_dict.iteritems():
+        
+            query = v['query']
+        
+            # run the query and see how many rows are returned
+            if db(query).count() > 0:
+            
+                # select the rows if there are any
+                rows = db(query).select(*v['select'])
+            
+                # build a table row containing the display name with a URL link
+                rows = [TR(TD(A(r[v['display']], 
+                                _href= URL(v['cntr'], v['view'], 
+                                           args=[r[x] for x in v['url_args']]))))
+                        for r in rows]
+            
+                # package into a table
+                grids[k] = TABLE(*rows, _class='table table-striped', _style='width:100%')
+            
+            else:
+                # give a simple message back if there are no rows
+                grids[k] = TABLE(TR(TD(B(CENTER(v['none'])))), _class='table table-striped', _style='width:100%')
+        
+        # build the HTML programatically - have to include some args indirectly because
+        # they contain hyphens
+        ul_tags = {'_class':"nav nav-tabs nav-justified", '_data-tabs':"tabs"}
+        a_tags = {'_data-toggle':"tab"}
+        
+        headers = [v['header'] for k,v in membership_dict.iteritems()]
+        keys = membership_dict.keys()
+        
+        # need a UL defining the tabs and a DIV containing tab contents as tab pane DIVs .
+        tabs = UL([LI(A(h, _href='#'+k , **a_tags), _role='presentation', _name=k) for k, h in zip(keys, headers)], **ul_tags)
+        content = DIV([DIV(grids[k], _class="tab-pane", _id=k) for k in keys], _class="tab-content")
+        
+        # amend the tabs and content to make one active on load
+        active = 'projects'
+        tabs.element('li[name=' + active + ']')['_class'] = 'active'
+        content.element('#' + active)['_class'] += ' active'
+        
         # pass components to the view
-        return dict(usr=usr)
+        return dict(usr=usr, grids = CAT(tabs, content))
 
 @auth.requires_login()
 def vcard():
