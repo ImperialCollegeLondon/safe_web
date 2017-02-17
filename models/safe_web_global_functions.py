@@ -92,15 +92,17 @@ def admin_decision_form(selector_options):
     return admin
 
 def SAFEmailer(subject, to, template, template_dict, cc=None, 
-               reply_to=None, cc_info=True, bcc=None, 
+               reply_to='info@safeproject.net', cc_info=True, bcc=None, 
                attachment_string_objects=None):
     
     """
     Takes a template name, fills it in from the template dictionary
     and then sends it.
-               
+    
     Attachments are currently handled for string representations of 
-    file objects as a dictionary of {'filename': contents}.
+    file objects as a dictionary of {'filename': contents}. This is because 
+    we're typically attaching virtual files made on the fly. The contents
+    object must have a read method. 
     """
     
     # get the html version, strip it down to text and combine
@@ -125,10 +127,22 @@ def SAFEmailer(subject, to, template, template_dict, cc=None,
     
     # send the mail
     msg_status = mail.send(to=to, subject=subject, message=msg,
-                           cc=cc, bcc=bcc, reply_to='info@safeproject.net',
+                           cc=cc, bcc=bcc, reply_to=reply_to,
                            attachments=attach)
     
     # log it in the database
+    # first - Sanitise the template dictionary. There are cases
+    # where we want to pass gluon objects to email templates. That's
+    # fine, but then that object can't be serialized into JSON. So,
+    # using the easier to ask forgiveness principle run everything 
+    # through the xml() method and catch objects that don't have one.
+    
+    for k, v in template_dict.iteritems():
+        try:
+            template_dict[k] = v.xml()
+        except:
+            pass
+    
     db.safe_web_email_log.insert(email_to=to, 
                                  subject=subject, 
                                  template=template,

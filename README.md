@@ -408,11 +408,11 @@ So, the scheduler.py controller contains a function `check_task_queue` which pro
 
 This is the tricky bit. The website code just sits there, reacting to page requests, so has no way of triggering tasks at given intervals. This requires a separate web2py process - called a worker - that runs on the computer and periodically checks in to see if it has anything to do: basically a queued task with a start time older than now.
 
-You can just set a worker process going on the server using:
+You can just set some worker processes (two in this case) going on the server using:
 
-    python web2py.py -K safe_web &
+    python web2py.py -K safe_web,safe_web &
 
-More elegantly, you can create a web2py worker service that will allow you to stop, restart and start on server startup. The example provided by web2py uses `upstart`, which handily is installed and running on the AWS Ubuntu.
+More elegantly, you can create a web2py worker service that will allow you to stop, restart and start on server startup. The example provided by web2py uses `upstart`, which handily is installed and running on the AWS Ubuntu. I haven't done this yet.
 
 ## Backup and restore in production
 

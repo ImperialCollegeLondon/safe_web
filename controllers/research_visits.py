@@ -738,14 +738,16 @@ def research_visit_details():
             return row
         
         if len(maliau_select) > 0:
-            maliau_table = DIV(DIV(H5('Requested accomodation at Maliau'),_class="panel-heading"),
-                               TABLE(TR(TH('Visitor'), TH('Arrival date'), TH('Departure date'), 
-                                        TH('Type'), TH('Food'), delete_column_head),
-                                    *[pack_maliau(r, readonly) for r in maliau_select],
-                                    _class='table table-striped'),
+            # keep this in two parts to reuse in approval emails to MBCA
+            maliau_table = TABLE(TR(TH('Visitor'), TH('Arrival date'), TH('Departure date'), 
+                                  TH('Type'), TH('Food'), delete_column_head),
+                              *[pack_maliau(r, readonly) for r in maliau_select],
+                              _class='table table-striped')
+            maliau_div = DIV(DIV(H5('Requested accomodation at Maliau'),_class="panel-heading"),
+                                 maliau_table,
                                _class="panel panel-primary")
         else:
-            maliau_table = DIV()
+            maliau_div = DIV()
         
         # G) Booked transfers
         
@@ -829,7 +831,7 @@ def research_visit_details():
             console =  CAT(H3('Proposed research visit details'),
                            DIV(visitors),
                            DIV(safe_table),
-                           DIV(maliau_table),
+                           DIV(maliau_div),
                            DIV(transfer_table),
                            DIV(ra_table))
         
@@ -862,7 +864,7 @@ def research_visit_details():
                                    _class='col-sm-7'),
                                 _class='row'),
                             DIV(safe_table),
-                            DIV(maliau_table),
+                            DIV(maliau_div),
                             DIV(transfer_table),
                             DIV(ra_table),
                             draft_banner,
@@ -1157,6 +1159,26 @@ def research_visit_details():
                            template =  'research_visit_approved.html',
                            template_dict = template_dict)
                 
+                # Also email MBCA with any requests for Maliau booking
+                if len(maliau_select) > 0:
+                    
+                    # reuse the maliau table
+                    if proposer.title in ['', None, ' ', 'None']:
+                        proposer_name = " ".join((proposer.first_name, proposer.last_name))
+                    else:
+                        proposer_name = " ".join((proposer.title, proposer.first_name, proposer.last_name))
+                    
+                    maliau_email_dict = {'count': len(maliau_select),
+                                         'maliau_table': maliau_table,
+                                         'proposer_name': proposer_name}
+                    
+                    SAFEmailer(to='roserlie5@gmail.com',
+                               cc=[proposer.email],
+                               reply_to=proposer.email,
+                               subject='Request for accommodation from the SAFE Project',
+                               template='maliau_beds_email.html',
+                               template_dict=maliau_email_dict)
+                    
             elif admin.vars.decision == 'Resubmit':
                 
                 SAFEmailer(to=proposer.email,
