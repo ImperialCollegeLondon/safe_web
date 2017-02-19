@@ -285,6 +285,12 @@ It all needs to go into `/etc/apache2/sites-available/web2py.conf` and then we n
     sudo a2ensite web2py.conf 
     sudo service apache2 reload
 
+### Certificate renewal
+
+Handily, the letsencrypt installation provides the `certbot` script that has a `renew` command that leaves all those fixes alone and just updates the certificate. So from now on, when the 3 months per certificate runs out, all that is needed is this:
+
+    cd /home/www-data/letsencrypt
+    ./certbot-auto renew
 
 ## Install Dokuwiki
 
@@ -682,8 +688,3 @@ The config file to map all this up is:
     
 
 Once this has been set up, in the access control section of the Configuration Manager on Dokuwiki, change the `authtype` to  `authpgsql`. You'll be kicked out and need to log back in as a web2py admin user to make further changes.
-
-
-
-
-
