@@ -207,15 +207,15 @@ At this point, the IP address for your instance has been changed, so your SSH co
 
 We're  using the LetsEncrypt open source certification. These commands install LetsEncrypt and load any required packages.
 
-    ssh -i AWS_SAFE_Web.pem ubuntu@beta.safeproject.net
+    ssh -i AWS_SAFE_Web.pem ubuntu@www.safeproject.net
     cd /home/www-data/
     git clone https://github.com/letsencrypt/letsencrypt
     cd letsencrypt
     ./letsencrypt-auto --help
 
-The next command then requests the certificate request, which will look up the IP address registered for the machine against the DN registrar and create the certificate. You will need to specify a contact email for emergencies and should specify that all HTTP traffic is redirected to HTTPS.
+The next command then requests and installs the configuration for the certificate request, which will look up the IP address registered for the machine against the DN registrar and create the certificate. You will need to specify a contact email for emergencies and should specify that all HTTP traffic is redirected to HTTPS.
 
-    ./letsencrypt-auto --apache -d beta.safeproject.net
+    ./letsencrypt-auto --apache -d www.safeproject.net
 
 The installation creates an Apache site config file and enables it:
 
@@ -229,7 +229,7 @@ However, in order to get http:// working, I had to edit the apache configuration
 
     <VirtualHost *:80>
             ServerAdmin webmaster@localhost
-            ServerName beta.safeproject.net
+            ServerName www.safeproject.net
     
             HostnameLookups Off
             UseCanonicalName On
@@ -246,7 +246,7 @@ So, any http request to this server is now forwarded on to use https, for all si
 
 The installation suggests checking the resulting domain name using:
 
-    https://www.ssllabs.com/ssltest/analyze.html?d=beta.safeproject.net
+    https://www.ssllabs.com/ssltest/analyze.html?d=www.safeproject.net
 
 
 ### Fix the Apache configuration 
@@ -281,7 +281,7 @@ It all needs to go into `/etc/apache2/sites-available/web2py.conf` and then we n
 
     sudo vi /etc/apache2/sites-available/000-default-le-ssl.conf
     # comment out the line: DocumentRoot /var/www/html
-    sudo a2dissite default.conf
+    sudo a2dissite default.conf:
     sudo a2ensite web2py.conf 
     sudo service apache2 reload
 
@@ -290,7 +290,7 @@ It all needs to go into `/etc/apache2/sites-available/web2py.conf` and then we n
 
 First, you will need to ssh into the EC2 instance:
 
-    ssh -i AWS_SAFE_Web.pem ubuntu@beta.safeproject.net
+    ssh -i AWS_SAFE_Web.pem ubuntu@www.safeproject.net
 
 Then, broadly following the instructions [here](https://www.dokuwiki.org/install:ubuntu)
 
@@ -365,7 +365,7 @@ Now copy that into the list of sites available to apache2 and enable it:
  
  That should expose the wiki site here:
  
-    http://beta.safeproject.net/dokuwiki/install.php
+    http://www.safeproject.net/dokuwiki/install.php
 
 The `install.php` site exposes an initial configuration page:
 
