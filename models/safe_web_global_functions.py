@@ -898,6 +898,6 @@ def all_rv_summary_text():
     details.close()
     
     try:
-        return output.getvalue()
+        return output.getvalue().replace('\n', '\r\n')
     finally:
         output.close()
