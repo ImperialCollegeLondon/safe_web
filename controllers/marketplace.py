@@ -414,7 +414,7 @@ def help_requests():
     
     # links to custom view page
     links = [dict(header = '', 
-                 body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
+                 body = lambda row: A(SPAN('',_class="glyphicon glyphicon-zoom-in"),
                                       SPAN('View', _class="buttontext button"),
                                       _class="button btn btn-default", 
                                       _href=URL("marketplace","view_help_request", 
@@ -422,11 +422,27 @@ def help_requests():
                                       _style='padding: 3px 5px 3px 5px;'))]
     
     # create a link using the project name
-    db.project_details.title.represent = lambda value, row: A(value, _href=URL('projects','project_view',
-                                                              args=row.project_details.project_id))
+    def link_formatter(value, row):
+        if row.help_request.available:
+            return A(value, _href=URL('projects','project_view',
+                                      args=row.project_details.project_id),
+                     _style='text-decoration:line-through') + ' (Vacancy no longer available)'
+        else:
+            return A(value, _href=URL('projects','project_view',
+                                      args=row.project_details.project_id))
+
+    db.project_details.title.represent = lambda value, row: link_formatter(value, row)
+    
+    # update how paid and unpaid are displayed
+    paid = {True: I(_class='glyphicon glyphicon-ok-circle',
+                    _style="color:green;font-size: 1.3em;"),
+            False: I(_class='glyphicon glyphicon-remove-circle',
+                     _style="color:red;font-size: 1.3em;")}
+    db.help_request.paid_position.represent = lambda value, row: paid[row.help_request.paid_position]
     
     # hide the ID fields which are used in row information in links
     db.help_request.id.readable = False
+    db.help_request.available.readable = False
     db.project_details.project_id.readable = False
     
     form = SQLFORM.grid(query=approved_posts, csv=False, 
@@ -435,8 +451,9 @@ def help_requests():
                                 db.project_details.project_id,
                                 db.help_request.start_date,
                                 db.help_request.end_date,
-                                db.help_request.work_description,
-                                db.help_request.paid_position
+                                db.help_request.vacancy_type,
+                                db.help_request.paid_position,
+                                db.help_request.available
                                 ], 
                         headers = {'project_details.title': 'Project Title'},
                         maxtextlength=250,
@@ -481,7 +498,12 @@ def view_help_request():
         else:
             email = DIV()
         
-        req = DIV(DIV(H5('Vacancy Advert'), _class="panel-heading"),
+        if record.available:
+            hdr = 'This vacancy is no longer available'
+        else:
+            hdr = 'Vacancy Advert'
+        
+        req = DIV(DIV(H5(hdr), _class="panel-heading"),
                   DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
                       DIV(A(row.project_details.title, 
                             _href=URL("projects","project_view", args=[row.project_details.id])),
@@ -497,6 +519,9 @@ def view_help_request():
                   DIV(LABEL('Work description:', _class="control-label col-sm-2" ),
                       DIV(XML(row.help_request.work_description.replace('\n', '<br />')),  _class="col-sm-10"),
                       _class='row', _style='margin:10px 10px'),
+                  DIV(LABEL('Vacancy type:', _class="control-label col-sm-2" ),
+                      DIV(XML(row.help_request.vacancy_type),  _class="col-sm-10"),
+                      _class='row', _style='margin:10px 10px'),                      
                   DIV(LABEL('Paid position?', _class="control-label col-sm-2" ),
                       DIV(CAT('This ', B('is' if row.help_request.paid_position else 'is not') , ' a paid position'),
                           _class="col-sm-10"),
@@ -552,7 +577,11 @@ def help_request_details():
             readonly = False
         else:
             readonly = True if record.admin_status == 'Submitted' else False
-            buttons =  [TAG.BUTTON('Update and resubmit', _type="submit", _class="button btn btn-default",
+            fill_label = "Mark as available" if record.available else "Mark as unavailable"
+            buttons =  [TAG.BUTTON(fill_label, _type="submit", _class="button btn btn-default",
+                                   _style='padding: 5px 15px 5px 15px;', _name='available'), 
+                        XML('&nbsp;')*5,
+                        TAG.BUTTON('Update and resubmit', _type="submit", _class="button btn btn-default",
                                    _style='padding: 5px 15px 5px 15px;', _name='update')]
         
         # Restrict the project choices
@@ -580,6 +609,7 @@ def help_request_details():
                                     'start_date',
                                     'end_date',
                                     'work_description',
+                                    'vacancy_type',
                                     'paid_position',
                                     'url'],
                             readonly = readonly,
@@ -590,37 +620,49 @@ def help_request_details():
             if form.validate(onvalidation=validate_help_request):
             
                 req_keys = request.vars.keys()
-            
-                # get and add a comment to the history
-                hist_str = '[{}] {} {}\\n -- {}\\n'
-                new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
-                                                           auth.user.first_name,
-                                                           auth.user.last_name,
-                                                           'Vacancy advert created' if request_id is None else "Vacancy advert updated")
-            
-                if 'update' in req_keys:
-                    id = record.update_record(admin_status = 'Submitted',
-                                              admin_history = new_history + record.admin_history,
-                                              **db.help_request._filter_fields(form.vars))
+                if 'available' in req_keys:
+                    # provide a simple toggle option for the availability
+                    hist_str = '[{}] {} {}\\n -- Vacancy marked as {}\\n'
+                    new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                  auth.user.first_name,
+                                                  auth.user.last_name,
+                                                  "available" if record.available else "unavailable")
+                    id = record.update_record(available = not record.available,
+                                              admin_history = new_history + record.admin_history)
                     id = id.id
-                    msg = CENTER(B('Vacancy advert updated and resubmitted for approval.'), _style='color: green')
-                elif 'create' in req_keys:
-                    id = db.help_request.insert(admin_status = 'Submitted',
-                                                admin_history=new_history, 
-                                                **db.help_request._filter_fields(form.vars))
-                    msg = CENTER(B('Vacancy advert created and submitted for approval.'), _style='color: green')
+                    msg = CENTER(B('Vacancy availability updated.'), _style='color: green')
                 else:
-                    pass
+                    
+                    # get and add a comment to the history
+                    hist_str = '[{}] {} {}\\n -- {}\\n'
+                    new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                                               auth.user.first_name,
+                                                               auth.user.last_name,
+                                                               'Vacancy advert created' if request_id is None else "Vacancy advert updated")
             
-                # Email the link
-                template_dict = {'name': auth.user.first_name, 
-                                 'url': URL('marketplace', 'help_request_details', args=[id], scheme=True, host=True),
-                                 'submission_type': 'project help request'}
+                    if 'update' in req_keys:
+                        id = record.update_record(admin_status = 'Submitted',
+                                                  admin_history = new_history + record.admin_history,
+                                                  **db.help_request._filter_fields(form.vars))
+                        id = id.id
+                        msg = CENTER(B('Vacancy advert updated and resubmitted for approval.'), _style='color: green')
+                    elif 'create' in req_keys:
+                        id = db.help_request.insert(admin_status = 'Submitted',
+                                                    admin_history=new_history, 
+                                                    **db.help_request._filter_fields(form.vars))
+                        msg = CENTER(B('Vacancy advert created and submitted for approval.'), _style='color: green')
+                    else:
+                        pass
             
-                SAFEmailer(to=auth.user.email,
-                           subject='SAFE: Vacancy advert submitted',
-                           template =  'generic_submitted.html',
-                           template_dict = template_dict)
+                    # Email the link
+                    template_dict = {'name': auth.user.first_name, 
+                                     'url': URL('marketplace', 'help_request_details', args=[id], scheme=True, host=True),
+                                     'submission_type': 'project help request'}
+            
+                    SAFEmailer(to=auth.user.email,
+                               subject='SAFE: Vacancy advert submitted',
+                               template =  'generic_submitted.html',
+                               template_dict = template_dict)
             
                 session.flash = msg
                 redirect(URL('marketplace','help_request_details', args=[id]))
@@ -659,7 +701,11 @@ def help_request_details():
             db.help_request.work_description.represent = lambda text, row: PRE(text)
             
             form = FORM(DIV(DIV(panel_header, _class="panel-heading"),
-                            DIV(form.custom.begin, 
+                            DIV(form.custom.begin,
+                                DIV(LABEL('Availability:', _class="control-label col-sm-2" ),
+                                    DIV("Vacancy is marked as unavailable" if record.available else
+                                        "Vacancy is currently available" ,  _class="col-sm-10"),
+                                    _class='row', _style='margin:10px 10px'),
                                 DIV(LABEL('Project:', _class="control-label col-sm-2" ),
                                     DIV(form.custom.widget.project_id,  _class="col-sm-10"),
                                     _class='row', _style='margin:10px 10px'),
@@ -674,10 +720,13 @@ def help_request_details():
                                         _class='col-sm-10'),
                                     _class='row', _style='margin:10px 10px'),
                                 HR(),
-                                DIV(P('If this is a paid position, please check the box and provide a URL for any application details.'),
+                                DIV(P('Choose a vacancy type. If the post is paid, check the box and where '
+                                      'possible provide a link for any further details and the application procedure.'),
                                     _class='row', _style='margin:10px 10px'),
-                                DIV(LABEL(form.custom.widget.paid_position, 'Paid Position', 
-                                    _class="control-label col-sm-2 col-sm-offset-2"),
+                                DIV(LABEL('Vacancy type:', _class="control-label col-sm-2" ),
+                                    DIV(form.custom.widget.vacancy_type, _class='col-sm-7'),
+                                    LABEL(form.custom.widget.paid_position, 'Paid Position', 
+                                          _class="control-label col-sm-3"),
                                     _class='row', _style='margin:10px 10px'),
                                 DIV(LABEL('Website for details', _class="control-label col-sm-2" ),
                                     DIV(form.custom.widget.url,  _class="col-sm-10"),

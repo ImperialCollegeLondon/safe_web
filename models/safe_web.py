@@ -27,6 +27,8 @@ research_tags = ["Water Resources", "Biodiversity", "Plant Science", "Zoology", 
                  "Meteorology and Atmospheric Science", "Biogeochemistry", "Microclimate", 
                  "Policy", "Other", "Riparian", "Invasive Species", "Education and training"]
 
+vacancy_type = ['Technical Intern','Field Intern', 'Volunteer', 'Field Assistant', 'PhD Position', 'Other']
+
 data_use_set = ['Undergraduate Project','Masters Project', 'PhD Thesis','Research Grant','Other']
 
 project_status_set = ['Draft', 'Submitted', 'In Review', 'Approved', 'Resubmit']
@@ -271,8 +273,10 @@ db.define_table('help_request',
     Field('start_date','date', notnull=True),
     Field('end_date','date', notnull=True),
     Field('work_description','text', notnull=True),
+    Field('vacancy_type', requires=IS_IN_SET(vacancy_type), notnull=True),
     Field('paid_position','boolean', notnull=True, default=False),
     Field('url', 'string',requires = IS_NULL_OR(IS_URL())),
+    Field('available', 'boolean', default=False),
     # The fields below are to handle approval of new records
     Field('admin_status','string', requires=IS_IN_SET(admin_status_set), default='Submitted'), 
     Field('admin_history','text'))
