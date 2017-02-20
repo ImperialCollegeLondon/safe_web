@@ -67,8 +67,10 @@ def remind_about_unknowns():
                    template_dict=template_dict)
     
     ids = [str(o.research_visit.id) for o in offenders]
-    return 'Emailed proposers of the following research visits: ' + ','.join(ids)
-
+    if len(ids) > 0:
+    	return 'Emailed proposers of the following research visits: ' + ','.join(ids)
+    else: 
+    	return 'No incomplete research visits found within the next week' 
 
 def update_deputy_coordinator():
     
@@ -83,7 +85,7 @@ def update_deputy_coordinator():
         attach = {'SAFE_visits_{}.txt'.format(datetime.date.today().isoformat()): schedule}
     
         SAFEmailer(subject='Weekly research visit summary',
-                   to='d.orme@imperial.ac.uk', # 'deputy.coord@safeproject.net',
+                   to= 'deputy.coord@safeproject.net',
                    template='weekly_rv_summary.html',
                    template_dict=dict(),
                    attachment_string_objects=attach)
