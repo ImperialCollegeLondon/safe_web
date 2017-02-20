@@ -176,14 +176,14 @@ def user_details():
                                         'display': db.blog_posts.title,
                                         'url_args': [db.blog_posts.id],
                                         'header': 'Blog posts'},
-                           'volunteer':{'query': (db.help_offered.user_id == record.id) &
-                                                 (db.help_offered.admin_status == "Approved"),
-                                        'select': [db.help_offered.id, db.help_offered.statement_of_interests],
-                                        'none': '{} has no volunteer offers'.format(record.first_name),
-                                        'cntr': 'marketplace', 'view': 'volunteer_details',
-                                        'display': db.help_offered.statement_of_interests,
-                                        'url_args': [db.help_offered.id],
-                                        'header': 'Volunteer offers'},
+                           # 'volunteer':{'query': (db.help_offered.user_id == record.id) &
+                           #                       (db.help_offered.admin_status == "Approved"),
+                           #              'select': [db.help_offered.id, db.help_offered.statement_of_interests],
+                           #              'none': '{} has no volunteer offers'.format(record.first_name),
+                           #              'cntr': 'marketplace', 'view': 'volunteer_details',
+                           #              'display': db.help_offered.statement_of_interests,
+                           #              'url_args': [db.help_offered.id],
+                           #              'header': 'Volunteer offers'},
                            'request':  {'query': (db.help_request.user_id == record.id) &
                                                  (db.help_request.admin_status == "Approved"),
                                         'select': [db.help_request.id, db.help_request.work_description],
