@@ -58,12 +58,16 @@ def remind_about_unknowns():
                          'title': offence.research_visit.title,
                          'count': offence.count,
                          'url': URL('research_visit', 'research_visit_details',
-                                    args=[offence.research_visit.id], scheme=True, host=True)}
+                                    args=[offence.research_visit.id], scheme='https', 
+                                    host='www.safeproject.net')}
         # email this offender
         SAFEmailer(subject='SAFE Research Visit details',
                    to=offence.auth_user.email,
                    template='research_visit_details_reminder.html',
                    template_dict=template_dict)
+        
+        # commit changes to the db - necessary for things running from models
+        db.commit()
     
     ids = [str(o.research_visit.id) for o in offenders]
     if len(ids) > 0:
@@ -89,9 +93,15 @@ def update_deputy_coordinator():
                    template_dict=dict(),
                    attachment_string_objects=attach)
         
+        # commit changes to the db - necessary for things running from models
+        db.commit()
+        
         return 'Weekly research visit summary emailed'
     except:
         return 'Failed to email weekly research visit summary'
+
+# remind_about_unknowns()
+# update_deputy_coordinator()
 
 # Load the scheduler and set the task names, setting a slow 1 hour heartbeat.
 # As the current tasks are daily activities at most, there is no need for
