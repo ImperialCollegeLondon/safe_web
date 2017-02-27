@@ -176,11 +176,13 @@ def research_visit_details():
             buttons = [TAG.button('Create proposal',_type="submit",
                                    _name='save_proposal', _style='padding: 5px 15px 5px 15px;')]
         
-        # Use SQLFORM for DB input
+        # Use SQLFORM for DB input - fix the proposer ID here
+        db.research_visit.proposer_id.default = auth.user.id
+        db.research_visit.proposer_id.writable = False
         visit = SQLFORM(db.research_visit, 
                         record = record,
                         readonly = readonly,
-                        fields = ['title','arrival_date',
+                        fields = ['title','arrival_date','proposer_id',
                                   'departure_date','purpose','licence_details'],
                         buttons = buttons,
                         showid = False)
@@ -290,6 +292,9 @@ def research_visit_details():
         visit = FORM(DIV(DIV(DIV(H5('Research visit summary', _class='col-sm-9'), status, _class='row', _style='margin:0px 0px'),
                             _class="panel-heading"),
                         DIV(visit.custom.begin, proj_row,
+                            DIV(LABEL('Proposer :', _class="control-label col-sm-2" ),
+                                DIV(visit.custom.widget.proposer_id,  _class="col-sm-10"),
+                                _class='row', _style='margin:10px 10px'),
                             DIV(LABEL('Visit title:', _class="control-label col-sm-2" ),
                                 DIV(visit.custom.widget.title,  _class="col-sm-10"),
                                 _class='row', _style='margin:10px 10px'),
