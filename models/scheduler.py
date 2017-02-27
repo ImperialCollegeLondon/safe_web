@@ -27,9 +27,9 @@ def remind_about_unknowns():
     
     # Select a summary to populate the task - implement
     # the SQL query below using the DAL:
-    #   select a.first_name, a.email, v.title, v.id, count(v.id)
+    #   select a.first_name, a.email, v.title, v.id, count(m.id)
     #       from auth_user a join research_visit v on (a.id = v.proposer_id)
-    #           left join research_visit_member m on (m.research_visit_id = v.id)
+    #           join research_visit_member m on (m.research_visit_id = v.id)
     #       where m.user_id is null and
     #             v.arrival_date <= now() + interval '7' day and
     #             v.arrival_date > now()
@@ -39,15 +39,14 @@ def remind_about_unknowns():
     query = db((db.research_visit.arrival_date <= one_week_from_now) &
                (db.research_visit.arrival_date > today) &
                (db.auth_user.id == db.research_visit.proposer_id) &
+               (db.research_visit_member.research_visit_id == db.research_visit.id) &
                (db.research_visit_member.user_id == None))
     
     offenders = query.select(db.auth_user.first_name,
                              db.auth_user.email,
                              db.research_visit.title,
                              db.research_visit.id,
-                             db.research_visit.id.count().with_alias('count'),
-                             left = [db.research_visit_member.on(db.research_visit_member.research_visit_id == 
-                                                                  db.research_visit.id)],
+                             db.research_visit_member.id.count().with_alias('count'),
                              groupby = [db.auth_user.first_name, db.auth_user.email, 
                                         db.research_visit.id, db.research_visit.title])
     
@@ -85,7 +84,7 @@ def update_deputy_coordinator():
         attach = {'SAFE_visits_{}.txt'.format(datetime.date.today().isoformat()): schedule}
     
         SAFEmailer(subject='Weekly research visit summary',
-                   to= 'deputy.coord@safeproject.net',
+                   to= 'd.orme@imperial.ac.uk',
                    template='weekly_rv_summary.html',
                    template_dict=dict(),
                    attachment_string_objects=attach)
