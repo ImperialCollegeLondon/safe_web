@@ -134,14 +134,22 @@ def resend_email():
 	# since this decision was made on the original send and so
 	# cc is already populated.
 	
+	# also need to extract multiple emails from formatted strings:
+	# '|xxx@yyy|xxx@yyy|xxx@yyy\'
+	
+	def string_to_list(item):
+		
+		return [ml for ml in item.split('|') if ml != '' ] if item is not None else None
+	
+	to = string_to_list(rec.email_to)
+	cc = string_to_list(rec.email_cc)
+	bcc = string_to_list(rec.email_bcc)
+	rep = string_to_list(rec.reply_to)
+	
 	SAFEmailer(subject=rec.subject,
 				template=rec.template,
 				template_dict=simplejson.loads(rec.template_dict),
-				to=rec.email_to,
-				cc=rec.email_cc,
-				cc_info=False, 
-				bcc=rec.email_bcc,
-				reply_to=rec.reply_to)
+				to=to, cc=cc, cc_info=False, bcc=bcc, reply_to=rep)
 	
 	rec.update_record(status='resent')
 	
