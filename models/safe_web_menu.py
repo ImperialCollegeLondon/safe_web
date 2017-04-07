@@ -147,6 +147,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                              T('  Help requests')), True, URL('marketplace', 'administer_help_requests'), []),
                         LI(_class="divider"),
                         (T('Impersonate another user'), True, URL('user', 'impersonate')),
+                        (T('Email failures'), True, URL('scheduler', 'email_failures')),
                         (T('Check scheduler tasks'), True, URL('scheduler', 'check_task_queue')),
                         (T('Database admin'), True, URL('appadmin', 'index'))
                       ])]

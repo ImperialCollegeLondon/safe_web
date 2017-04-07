@@ -149,6 +149,7 @@ def SAFEmailer(subject, to, template, template_dict, cc=None,
                                  template_dict=simplejson.dumps(template_dict),
                                  email_cc=cc,
                                  email_bcc=bcc,
+                                 reply_to=reply_to,
                                  status = 'sent' if msg_status else 'failed',
                                  message_date=datetime.datetime.now())
 
