@@ -1,4 +1,3 @@
-
 import datetime
 import dateutil.parser
 import requests
@@ -128,7 +127,7 @@ def newsletter():
     r = requests.get('https://us6.api.mailchimp.com/3.0/campaigns', auth=('apikey','c028335ab2baec6ee9710ed466cd9146-us6'), params={'count': 100})
     data =  r.json()['campaigns']
     
-    table = [ [r['archive_url'], r['settings']['title'], dateutil.parser.parse(r['create_time'])] for r in data]
+    table = [ [r['archive_url'], r['settings']['title'], dateutil.parser.parse(r['create_time'])] for r in data if r['status'] == 'sent']
     
     # sort by date going back
     table.sort(key = lambda r: r[2], reverse=True)
@@ -147,5 +146,3 @@ def public_holidays():
                          details=False)
     
     return dict(form=form)
-    
-    

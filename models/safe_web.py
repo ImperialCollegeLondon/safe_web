@@ -60,6 +60,9 @@ transfer_set = ['Tawau to SAFE', 'SAFE to Tawau', 'SAFE to Maliau', 'Maliau to S
 approval_icons = {'Approved': SPAN('',_class="glyphicon glyphicon-ok-sign", 
                                       _style="color:green;font-size: 1.3em;", 
                                       _title='Approved'),
+                  'Rejected': SPAN('',_class="glyphicon glyphicon-exclamation-sign", 
+                                      _style="color:red;font-size: 1.3em;", 
+                                      _title='Changes required'),
                   'Resubmit': SPAN('',_class="glyphicon glyphicon-exclamation-sign", 
                                       _style="color:red;font-size: 1.3em;", 
                                       _title='Changes required'),
@@ -510,4 +513,3 @@ db.define_table('safe_web_email_log',
 db.define_table('public_holidays',
                 Field('date','date'),
                 Field('title','string'))
-

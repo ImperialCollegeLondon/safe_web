@@ -131,8 +131,11 @@ def research_visit_details():
     elif record.project_id is None and auth.user.id == record.proposer_id:
         # The proposer is editing his own look see visit.
         readonly = False
+    elif auth.has_membership('admin'):
+        # The proposal is being viewed by an admin (and none of the cases above are true)
+        readonly = False
     else:
-        # just a random viewer, so no right access
+        # just a random viewer, so no write access
         readonly = True
     
     ## SECTION 2) CAPTURE THE BASIC VISIT DETAILS
@@ -1178,7 +1181,8 @@ def research_visit_details():
                                          'proposer_name': proposer_name}
                     
                     SAFEmailer(to='roserlie5@gmail.com',
-                               cc=[proposer.email],
+                               cc=[proposer.email, 'inid69@yahoo.com',
+				   'jarizul.gjule@gmail.com', 'deputy.coord@safeproject.net'],
                                reply_to=proposer.email,
                                subject='Request for accommodation from the SAFE Project',
                                template='maliau_beds_email.html',
