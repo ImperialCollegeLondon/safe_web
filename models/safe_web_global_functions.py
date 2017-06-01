@@ -125,8 +125,10 @@ def SAFEmailer(subject, to, template, template_dict, cc=None,
 	else:
 		attach = None
 	
-	# send the mail
-	msg_status = mail.send(to=to, subject=subject, message=msg,
+	# send the mail - the mail.send method actually extends the list of
+	# addresses in 'to' by reference to include cc and bcc, so pass it as
+	# a sliced copy, to avoid this
+	msg_status = mail.send(to=to[:], subject=subject, message=msg,
 						   cc=cc, bcc=bcc, reply_to=reply_to,
 						   attachments=attach)
 	
