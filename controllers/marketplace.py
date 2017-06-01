@@ -697,15 +697,26 @@ def help_request_details():
                 form.custom.widget.start_date['_class'] = "form-control input-sm"
                 form.custom.widget.end_date['_class'] = "form-control input-sm"
             
+            # set up availability header
+            if record is not None:
+                if record.available:
+                    avail = DIV(LABEL('Availability:', _class="control-label col-sm-2" ),
+                                DIV("Vacancy is currently available" ,  _class="col-sm-10"),
+                                _class='row', _style='margin:10px 10px')
+                else:
+                    avail = DIV(LABEL('Availability:', _class="control-label col-sm-2" ),
+                                DIV("Vacancy is  marked as unavailable" ,  _class="col-sm-10"),
+                                _class='row', _style='margin:10px 10px')
+            else:
+                # blank DIV for new headers
+                avail = DIV()
+            
             # locally update the description representation to allow formatting
             db.help_request.work_description.represent = lambda text, row: PRE(text)
             
             form = FORM(DIV(DIV(panel_header, _class="panel-heading"),
                             DIV(form.custom.begin,
-                                DIV(LABEL('Availability:', _class="control-label col-sm-2" ),
-                                    DIV("Vacancy is marked as unavailable" if record.available else
-                                        "Vacancy is currently available" ,  _class="col-sm-10"),
-                                    _class='row', _style='margin:10px 10px'),
+                                avail,
                                 DIV(LABEL('Project:', _class="control-label col-sm-2" ),
                                     DIV(form.custom.widget.project_id,  _class="col-sm-10"),
                                     _class='row', _style='margin:10px 10px'),
