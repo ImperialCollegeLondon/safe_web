@@ -500,11 +500,11 @@ def research_visit_details():
             # - don't remove people who are already members - needed for replacement
             if record.project_id is None:
                 # anyone can join a look see visit
-                users = db(db.auth_user.id > 0).select()
+                users = db(db.auth_user.id > 0).select(orderby=db.auth_user.last_name|db.auth_user.first_name)
             else:
                 # select the rows from auth_users for project members
                 users = db((db.project_members.project_id == record.project_id) & 
-                           (db.project_members.user_id == db.auth_user.id)).select(db.auth_user.ALL)
+                           (db.project_members.user_id == db.auth_user.id)).select(db.auth_user.ALL, orderby=db.auth_user.last_name|db.auth_user.first_name)
             
             options = [OPTION(u.last_name + ', ' + u.first_name, _value=u.id) for u in users]
             
