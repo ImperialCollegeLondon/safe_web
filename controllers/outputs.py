@@ -63,6 +63,14 @@ def view_output():
     else:
         url = ""
     
+    if output.citation not in [None, 'NA', '']:
+        citation = CAT(local_hr,
+                       DIV(DIV(B('Citation:'), _class='col-sm-2'), 
+                           DIV(output.citation, _class='col-sm-10'),
+                           _class='row'))
+    else:
+        citation = ""
+    
     if output.doi not in [None, 'NA', '']:
         doi = DIV(DIV(B('Output DOI:'), _class='col-sm-2'), 
                   DIV(A(output.doi, _href=output.doi), _class='col-sm-10'),
