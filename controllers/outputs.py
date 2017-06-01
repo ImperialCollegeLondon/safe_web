@@ -64,10 +64,10 @@ def view_output():
         url = ""
     
     if output.citation not in [None, 'NA', '']:
-        citation = CAT(local_hr,
-                       DIV(DIV(B('Citation:'), _class='col-sm-2'), 
+        citation = CAT(DIV(DIV(B('Citation:'), _class='col-sm-2'), 
                            DIV(output.citation, _class='col-sm-10'),
-                           _class='row'))
+                           _class='row'),
+			local_hr)
     else:
         citation = ""
     
@@ -108,7 +108,7 @@ def view_output():
                                         _href=URL("outputs","outputs", user_signature=True),
                                         _class='pull-right', _style='color:white'),
                                     _class="panel-heading"),
-                                DIV(url, doi, dfile, 
+                                DIV(citation, url, doi, dfile, 
                                     lay_summary, 
                                     local_hr,
                                     DIV(LABEL('Abstract:', _class="control-label col-sm-2" ),
