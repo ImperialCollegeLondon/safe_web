@@ -249,6 +249,37 @@ db.define_table('project_outputs',
     Field('user_id','reference auth_user'),
     Field('date_added','date'))
 
+## -----------------------------------------------------------------------------
+## DATASETS 
+## - holds information on uploaded datasets
+## - Zenodo link selected to point to the concept record id
+##   rather than the specific
+## -----------------------------------------------------------------------------
+
+db.define_table('datasets',
+    # fields to handle the file upload and checking
+    Field('uploader_id', 'reference auth_user'),
+    Field('project_id', 'reference project_id'),
+    Field('file','upload',
+          uploadfolder= os.path.join(request.folder, 'uploads/datasets'),
+          autodelete=True),
+    Field('file_name', 'string'),
+    Field('file_hash', 'string'),
+    Field('file_size', 'integer'),
+    Field('upload_datetime','datetime'),
+    # fields to handle the local formatting check
+    Field('check_outcome','text'),
+    Field('check_report','text'),
+    Field('n_warnings', 'integer'),
+    Field('title', 'string'),
+    Field('description', 'string'),
+    Field('summary', 'json'),
+    # fields to handle zenodo publication
+    Field('zenodo_submission_date', 'datetime'),
+    Field('zenodo_submission_status', 'string'),
+    Field('zenodo_response', 'json'), 
+    Field('zenodo_concept_url', 'string', requires=IS_EMPTY_OR(IS_URL())),
+    Field('zenodo_version_doi', 'string', requires=IS_EMPTY_OR(IS_URL())))
 
 ## -----------------------------------------------------------------------------
 ## MARKET PLACE
