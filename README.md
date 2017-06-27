@@ -633,9 +633,9 @@ The config file to map all this up is:
      */
     $conf['authtype'] = "authpgsql";
     $conf['plugin']['authpgsql']['debug'] = 0;
-    $conf['plugin']['authpgsql']['server'] = 'earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com';
-    $conf['plugin']['authpgsql']['user'] = 'safe_admin';
-    $conf['plugin']['authpgsql']['password'] = 'Safe2016';
+    $conf['plugin']['authpgsql']['server'] = 'xxxxx.eu-west-1.rds.amazonaws.com';
+    $conf['plugin']['authpgsql']['user'] = 'xxxxxxxxx';
+    $conf['plugin']['authpgsql']['password'] = 'xxxxxxx';
     $conf['plugin']['authpgsql']['database'] = 'safe_web2py';
     $conf['plugin']['authpgsql']['forwardClearPass'] = 0;
      
