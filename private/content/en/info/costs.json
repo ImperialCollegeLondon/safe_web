@@ -14,7 +14,8 @@
 	"op": {"name": "OP1, OP2, OP3","drive_time":"90 minutes", "cost":150},
 	"lf": {"name": "LF1, LF2, LF3","drive_time":"150 minutes", "cost":250}},
 "safe_costs":{
-	"food":{"name":"SAFE food costs per night", "cost":25}},
+	"food":{"name":"SAFE cost per night (International students and researchers)", "cost":40},
+	"local_food":{"name":"SAFE cost per night (Malaysian students and researchers)", "cost":20}},
 "maliau_entry":{
 	"admin": {"name":"Administration fee" ,"standard": 40, "discount":25, "month":"---"},
 	"cons": {"name":"Conservation fee" ,"standard":  15,   "discount":50,  "month":"---"},

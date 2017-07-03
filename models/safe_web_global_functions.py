@@ -250,7 +250,9 @@ def single_rv_summary_excel(rv_id):
 	ws['A2'] = 'Research visit #' + str(record.id) + ": " + title
 	ws['A2'].font = subhead
 	
-	ws['A3'] = 'Costs are estimated and do not include site transport costs at SAFE'
+	ws['A3'] = ('Costs are estimated and do not include site transport costs at SAFE. Accomodation '
+				'costs at SAFE are estimated assuming all visitors are international and will be '
+				'cheaper if your visit includes Malaysian staff or students')
 	ws['A3'].font = warn
 	
 	# Populate the sheet with the date information
@@ -545,7 +547,9 @@ def all_rv_summary_excel():
 	ws['A2'] = 'All research visits'
 	ws['A2'].font = subhead
 	
-	ws['A3'] = 'Costs are estimated and do not include site transport costs at SAFE'
+	ws['A3'] = ('Costs are estimated and do not include site transport costs at SAFE. Accomodation '
+				'costs at SAFE are estimated assuming all visitors are international and will be '
+				'cheaper if your visit includes Malaysian staff or students')
 	ws['A3'].font = warn
 	
 	# Populate the sheet with the date information
