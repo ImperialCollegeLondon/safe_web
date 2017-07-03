@@ -114,7 +114,8 @@
       {{pass}} -->
 
       <div class="{{=middle_column}}">
-        <div class="flash">{{=response.flash or session.flash or ' '}}</div>
+        <div class="w2p_flash alert alert-dismissable">{{=response.flash or session.flash or ''}}</div>
+        <!-- <div class="flash">{{=response.flash or session.flash or ' '}}</div> -->
         {{block center}}
         {{include}}
         {{end}}
@@ -135,11 +136,6 @@
     <footer class="footer">
       <div class="container-fluid">
         <div class="copyright pull-left">{{=T('Copyright')}} &#169; {{=request.now.year}}</div>
-	<!-- TODO ? add funder and supporter logos-->
-	<!-- <img src="../static/images/supporters/logo-searrp-2015k_crop.png" height="35" alt="Logo Searrp 2015k">
-	<img src="../static/images/supporters/royal_society_logo.gif" height="35" alt="Royal Society Logo">
-
-	<img src="../static/images/supporters/imperial_college_logo.png" height="35" alt="Imperial College Logo"> -->
          <div id="poweredBy" class="pull-right">
             {{=T('Powered by')}}
             <a href="http://www.web2py.com/">web2py</a>

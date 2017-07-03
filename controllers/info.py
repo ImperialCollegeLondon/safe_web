@@ -86,7 +86,11 @@ def research_areas():
     and looks up the number of projects associated with each area
     """
     
-    proj_query = db(db.project_id.project_details_id == db.project_details.id)
+    
+    # get the research areas of the most recent version of approved projects
+    proj_query = db((db.project_id.project_details_id == db.project_details.id) &
+                    (db.project_details.admin_status == 'Approved'))
+    
     research_areas = proj_query.select(db.project_details.research_areas)
     
     ra_list = [r.research_areas for r in research_areas]
@@ -99,13 +103,15 @@ def research_areas():
     content_formatted = []
     for k in content.keys():
         block = DIV(H3(k),
-                    IMG(_src=URL('static', str(content[k]['image'])), 
-                        _width=150, _align='left', 
-                        _style='margin:0px 15px 15px 0px'),
-                    P(XML(content[k]['text'])),
-                    P(B(ra_table[k], ' projects'), ' are currently tagged with this research area. See them ',
-                      A('here', _href=URL('projects','projects', 
-                        vars={'keywords':'project_details.research_areas contains "' + k + '"'}))))
+                    DIV(IMG(_src=URL('static', str(content[k]['image'])), 
+                            _width=150, _align='left', 
+                            _style='margin:0px 15px 15px 0px'),
+                        _class="media-left"),
+                    DIV(P(XML(content[k]['text'])),
+                        P(B(ra_table[k], ' projects'), ' are currently tagged with this research area. See them ',
+                          A('here', _href=URL('projects','projects', 
+                            vars={'keywords':'project_details.research_areas contains "' + k + '"'}))),
+                    _class="media-body"))
         
         content_formatted.append(block)
     
