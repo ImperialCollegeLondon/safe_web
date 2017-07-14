@@ -1113,7 +1113,10 @@ def research_visit_details():
                                                             auth.user.first_name,
                                                             auth.user.last_name)
                     history_update += ''.join(new_history)
-                    history_update += record.admin_history
+                    if record.admin_history is not None:
+                        history_update += record.admin_history
+                    else:
+                        history_update = record.admin_history
                     record.update_record(admin_history = history_update)
                 
                 # reload the page to update changes
