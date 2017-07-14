@@ -124,9 +124,9 @@ def gazeteer():
     # Set the fields available for searching
     sfields = [db.gazeteer.location, db.gazeteer.geom_type]
     
-    # If the grid has set up some search keywords, then
-    # use them to select those rows, otherwise get all rows
-    if 'keywords' in request.get_vars:
+    # If the grid has set up some search keywords, and the keywords aren't an empty 
+    # string then use them to select those rows, otherwise get all rows
+    if 'keywords' in request.get_vars and request.vars.keywords != '':
         qry = SQLFORM.build_query(sfields, keywords=request.vars.keywords)
     else:
         qry = db.gazeteer
