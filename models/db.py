@@ -88,6 +88,7 @@ titles_set = [None, 'Dr','Prof', 'Assist. Prof', 'Assoc. Prof']
 auth.settings.extra_fields['auth_user']= [
     Field('title', 'string', requires=IS_IN_SET(titles_set)), 
     Field('nationality', 'string'),
+    Field('malaysian_researcher', 'boolean', default=False),
     Field('academic_status', 'string', requires=IS_IN_SET(academic_status_set)),
     Field('supervisor_id', 'reference auth_user'),
     Field('institution', 'string'),

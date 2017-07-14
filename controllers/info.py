@@ -3,6 +3,7 @@ import dateutil.parser
 import requests
 from collections import Counter
 from gluon.contrib import simplejson
+from gluon.serializers import json
 import os
 
 ## -----------------------------------------------------------------------------
@@ -117,6 +118,36 @@ def research_areas():
     
     return dict(content = content_formatted)
 
+
+def gazeteer():
+    
+    # Set the fields available for searching
+    sfields = [db.gazeteer.location, db.gazeteer.geom_type]
+    
+    # If the grid has set up some search keywords, then
+    # use them to select those rows, otherwise get all rows
+    if 'keywords' in request.get_vars:
+        qry = SQLFORM.build_query(sfields, keywords=request.vars.keywords)
+    else:
+        qry = db.gazeteer
+    
+    # get the (selected) rows and turn them into geojson
+    rws = db(qry).select()
+    rws = [{"type": "Feature", "properties": r.properties, 
+            "geometry": {"type": r.geom_type,"coordinates": r.geom_coords}}
+            for r in rws]
+    
+    form = SQLFORM.grid(db.gazeteer, fields=sfields,
+                        csv=False,
+                        maxtextlength=250,
+                        deletable=False,
+                        editable=False,
+                        create=False,
+                        details=False)
+    
+    search_form = form.element('.web2py_console')[1]
+    
+    return dict(form=form, sitedata=json(rws), search_form=search_form)
 
 
 # def calendars():

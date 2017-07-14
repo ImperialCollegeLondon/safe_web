@@ -254,6 +254,8 @@ db.define_table('project_outputs',
 ## - holds information on uploaded datasets
 ## - Zenodo link selected to point to the concept record id
 ##   rather than the specific
+## - store the md5 hash for preventing uploads of identical files and for
+##   comparison to the md5 output of files published to Zenodo.
 ## -----------------------------------------------------------------------------
 
 db.define_table('datasets',
@@ -264,7 +266,7 @@ db.define_table('datasets',
           uploadfolder= os.path.join(request.folder, 'uploads/datasets'),
           autodelete=True),
     Field('file_name', 'string'),
-    Field('file_hash', 'string'),
+    Field('file_hash', 'string'), 
     Field('file_size', 'integer'),
     Field('upload_datetime','datetime'),
     # fields to handle the local formatting check
@@ -278,8 +280,20 @@ db.define_table('datasets',
     Field('zenodo_submission_date', 'datetime'),
     Field('zenodo_submission_status', 'string'),
     Field('zenodo_response', 'json'), 
-    Field('zenodo_concept_url', 'string', requires=IS_EMPTY_OR(IS_URL())),
+    Field('zenodo_concept_record', 'string', requires=IS_EMPTY_OR(IS_URL())),
+    Field('zenodo_concept_doi', 'string', requires=IS_EMPTY_OR(IS_URL())),    
     Field('zenodo_version_doi', 'string', requires=IS_EMPTY_OR(IS_URL())))
+
+## -----------------------------------------------------------------------------
+## GAZETEER
+## - holds the set of recognized locations
+## -----------------------------------------------------------------------------
+
+db.define_table('gazeteer',
+    Field('location', 'string', unique=True),
+    Field('properties', 'json'),
+    Field('geom_type', 'string'),
+    Field('geom_coords', 'json'))
 
 ## -----------------------------------------------------------------------------
 ## MARKET PLACE
