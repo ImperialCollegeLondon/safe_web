@@ -207,7 +207,8 @@ def research_visit_details():
                                             'url': URL('research_visits', 'research_visit_details',
                                                        args=[visit.vars.id], scheme=True, host=True)})
                 
-                db.research_visit(visit.vars.id).update_record(admin_status = 'Draft')
+                db.research_visit(visit.vars.id).update_record(admin_status = 'Draft',
+                                                               admin_history = 'Draft proposal created: {}'.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ')))
                 session.flash = CENTER(B('Research visit proposal created'), _style='color: green')
                 
             else:
@@ -701,11 +702,59 @@ def research_visit_details():
         ## NOW BUILD THE TABLES OF THE EXISTING BOOKINGS
         ##
         
+        # Get the SAFE costs message:
+        # - Get the number of beds for malaysian, international and unknown visitors
+        # - The query below gets counts for malaysian_researcher is True, False and 
+        #   None (missing)
+        # qry = db(db.bed_reservations_safe.research_visit_id == rv_id)
+        #
+        # rws = qry.select((db.bed_reservations_safe.departure_date - db.bed_reservations_safe.arrival_date).sum(),
+        #                   db.auth_user.malaysian_researcher,
+        #                   db.
+        #                  join = db.research_visit_member.on(
+        #                            db.bed_reservations_safe.research_visit_member_id == db.research_visit_member.id),
+        #                  left = db.auth_user.on(db.research_visit_member.user_id == db.auth_user.id),
+        #                  groupby=db.auth_user.malaysian_researcher)
+
+        # Are any SAFE beds booked?
+        # if len(rws) > 0:
+        #     # simplify row data to a dictionary
+        #     rw_data = {rw.auth_user.malaysian_researcher: rw._extra.values()[0] for rw in rws}
+        #
+        #     # load costs from the json data
+        #     f = os.path.join(request.folder, 'private','content/en/info/costs.json')
+        #     costs_dict = simplejson.load(open(f))
+        #     daily_costs = {True: costs_dict['safe_costs']['local_food']['cost'],
+        #                    False: costs_dict['safe_costs']['food']['cost'],
+        #                    None: costs_dict['safe_costs']['food']['cost']}
+        #
+        #     # get the summary for the message grouped by international, local
+        #     # add group specific rows.
+        #     safe_cost_alt = {False: "International researchers: {:d} person nights at RM {} per night",
+        #                      True: "Malaysian researchers: {:d} person nights at RM {} per night",
+        #                      None: "Unknowns: {:d} person nights at RM {} per night"}
+        #
+        #     safe_cost_breakdown = [safe_cost_alt[ky].format(int(rw_data[ky]), daily_costs[ky]) for ky in rw_data]
+        #
+        #     safe_cost_msg = DIV(P("With effect from 1st August 2017, accomodation costs for ",
+        #                                   "the SAFE camp ", TAG.u(B("must be paid in cash on arrival")),
+        #                                   ". The SAFE accomodation costs for this proposal are ",
+        #                                   B("RM " + str(sum([daily_costs[ky] * rw_data[ky] for ky in rw_data]))),
+        #                                   " (", ", ".join(safe_cost_breakdown), ")",
+        #                                   ". Please ensure you bring this amount with you to camp."),
+        #                         _class="alert alert-info",  _role="alert")
+        # else:
+        #     safe_cost_msg = DIV()
+        
         # E ) Booked SAFE accommodation
         
-        # grab the rows joined to the RVM table to get user references and pack into a table
-        safe_select = db((db.bed_reservations_safe.research_visit_id == rv_id) &
-                         (db.bed_reservations_safe.research_visit_member_id == db.research_visit_member.id)).select()
+        # grab the rows joined to the RVM table to get user references and to the\
+        # user table to get International/Malaysian/None (Unknown)
+        qry = db(db.bed_reservations_safe.research_visit_id == rv_id)
+        
+        safe_select = qry.select(join = db.research_visit_member.on(
+                                   db.bed_reservations_safe.research_visit_member_id == db.research_visit_member.id),
+                                 left = db.auth_user.on(db.research_visit_member.user_id == db.auth_user.id))
         
         def pack_safe(r, readonly):
             
@@ -717,13 +766,46 @@ def research_visit_details():
             return row
         
         if len(safe_select) > 0:
+            
+            # get the total days per group
+            days = {False: 0, True: 0, None: 0}
+            for rw in safe_select:
+                n_days = (rw.bed_reservations_safe.departure_date - rw.bed_reservations_safe.arrival_date)
+                days[rw.auth_user.malaysian_researcher] += (n_days.days - 1)
+            
+            # drop empty groups
+            days = {ky: vl for ky, vl in days.iteritems() if vl > 0}
+            
+            # get costs
+            f = os.path.join(request.folder, 'private','content/en/info/costs.json')
+            costs_dict = simplejson.load(open(f))
+            daily_costs = {True: costs_dict['safe_costs']['local_food']['cost'],
+                           False: costs_dict['safe_costs']['food']['cost'],
+                           None: costs_dict['safe_costs']['food']['cost']}
+            
+            # summary text by group
+            safe_cost_alt = {False: "International researchers: {:d} person nights at RM {} per night",
+                             True: "Malaysian researchers: {:d} person nights at RM {} per night",
+                             None: "Unknowns: {:d} person nights at RM {} per night"}
+            safe_cost_breakdown = [safe_cost_alt[ky].format(int(days[ky]), daily_costs[ky]) for ky in days]
+            
+            # build the full cost message
+            safe_cost_msg = P("With effect from 1st August 2017, accomodation costs for ",
+                              "the SAFE camp ", TAG.u(B("must be paid in cash on arrival")),
+                              ". The SAFE accomodation costs for this proposal are ",
+                              TAG.u(B("RM " + str(sum([daily_costs[ky] * days[ky] for ky in days])))),
+                              " (", ", ".join(safe_cost_breakdown), ")",
+                              ". Please ensure you bring this amount with you to camp.")
+            
             safe_table = DIV(DIV(H5('Requested accomodation at SAFE'),_class="panel-heading"),
                              TABLE(TR(TH('Visitor'), TH('Arrival date'), TH('Departure date'), delete_column_head),
                                    *[pack_safe(r, readonly) for r in safe_select],
                                    _class='table table-striped'),
+                             DIV(safe_cost_msg, _class='panel-body'),
                              _class="panel panel-primary")
         else:
             safe_table = DIV()
+            safe_cost_msg = ""
         
         # F) Booked MALIAU Accommodation
         
@@ -803,7 +885,7 @@ def research_visit_details():
         ## I) SUBMIT BUTTON PANEL 
         
         # switch the button class from active to inactive based on
-        # number of researchers named
+        # number of researchers named and at least some accomodation
         number_of_visitors = db(db.research_visit_member.research_visit_id == rv_id).count()
         nights_at_safe = db(db.bed_reservations_safe.research_visit_id == rv_id).count()
         nights_at_maliau = db(db.bed_reservations_maliau.research_visit_id == rv_id).count()
@@ -1133,7 +1215,7 @@ def research_visit_details():
                           _class="panel panel-primary"))
     else:
         history = DIV()
-        
+    
     # If the visit record has been created and an admin is viewing, expose the 
     # decision panel
     if rv_id is not None and auth.has_membership('admin') and record.admin_status == 'Submitted':
@@ -1157,12 +1239,15 @@ def research_visit_details():
             proposer = record.proposer_id
             template_dict = {'name': proposer.first_name, 
                              'url': URL('research_visits', 'research_visit_details', args=[rv_id], scheme=True, host=True),
-                             'admin': auth.user.first_name + ' ' + auth.user.last_name}
+                             'admin': auth.user.first_name + ' ' + auth.user.last_name,
+                             'safe_cost_msg': safe_cost_msg}
             
             # pick an decision
             if admin.vars.decision == 'Approved':
                 
+                # send email message to the proposer and CC Ryan.
                 SAFEmailer(to=proposer.email,
+                           cc=['deputy.coord@safeproject.net'],
                            subject='SAFE: research visit proposal approved',
                            template =  'research_visit_approved.html',
                            template_dict = template_dict)
@@ -1211,8 +1296,9 @@ def research_visit_details():
         admin_warning = DIV()
         
     
-    return dict(visit_record = record, visit=visit, instructions = instructions,
-                console=console, history=history, admin=admin, admin_warning=admin_warning)
+    return dict(visit_record = record, visit=visit, instructions = instructions, 
+                console=console, history=history,
+                admin=admin, admin_warning=admin_warning)
 
 
 
@@ -1315,7 +1401,8 @@ def create_late_research_visit():
                                          'url': URL('research_visits', 'research_visit_details',
                                                     args=[visit.vars.id], scheme=True, host=True)})
                 
-            db.research_visit(visit.vars.id).update_record(admin_status = 'Draft')
+            db.research_visit(visit.vars.id).update_record(admin_status = 'Draft',
+                                                           admin_history = 'Draft proposal created: {}'.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ')))
             session.flash = CENTER(B('Research visit proposal created'), _style='color: green')
             
             redirect(URL('research_visits','research_visit_details', args=visit.vars.id))

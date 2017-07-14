@@ -82,6 +82,7 @@ def remind_about_unknowns():
     else: 
     	return 'No incomplete research visits found within the next week' 
 
+
 def update_deputy_coordinator():
     
     """
@@ -105,21 +106,26 @@ def update_deputy_coordinator():
         
         return 'Weekly research visit summary emailed'
     except:
-        return 'Failed to email weekly research visit summary'
+        raise RuntimeError('Failed to email weekly research visit summary')
 
-def verify_dataset(id):
+
+def verify_dataset(id, email=False):
     """
     Scheduler task to run dataset checks on an uploaded file. There
     are three possible outcomes for a dataset: PASS or FAIL if the check
     catches known formatting problems and ERROR if check hits an exception,
     which probably means an update to the checker code to handle the new
     and exciting way of getting the file wrong.
-
+    
+    The email argument allows the function to be run by admins without
+    spamming the uploader. Useful in error checking problem uploads.
+    
     Args:
-        id: the id of the record from the dataset table that is to be checked.
-
+        id: The id of the record from the dataset table that is to be checked.
+        email: Should the dataset uploader be emailed the outcome?
+    
     Returns:
-        A string indicating the outcome of the check
+        A string describing the outcome of the check
     """
 
     # get the record
@@ -139,17 +145,27 @@ def verify_dataset(id):
             report = messages.report().getvalue()
             # substitute in the user name for the local web2py filename
             report = report.replace(fname, record.file_name)
-            # wrap the formatted report text so that it appears correctly in html 
-            report = PRE(report)
-    
+            
             # get the summary metadata as json, to store in the database
             summary = check_results['summary']
             summary_json = simplejson.dumps(summary)
-    
+            
+            # double check the project ID from the file matches the submission
+            if ('project_id' in summary) and (summary['project_id'] != record.project_id):
+                report += ('\n! Project IDs in dataset and when submitting do not match\n')
+                messages.n_warnings += 1
+                outcome = 'FAIL'
+                record.update_record(check_outcome=outcome,
+                                     check_report=PRE(report),
+                                     n_warnings=messages.n_warnings,
+                                     title=summary['title'] if 'title' in summary else None,
+                                     description=summary['description'] if 'description' in summary else None,
+                                     summary = summary_json)
+            
             if messages.n_warnings:
                 outcome = 'FAIL'
                 record.update_record(check_outcome=outcome,
-                                     check_report=report,
+                                     check_report=PRE(report),
                                      n_warnings=messages.n_warnings,
                                      title=summary['title'],
                                      description=summary['description'],
@@ -157,7 +173,7 @@ def verify_dataset(id):
             else:
                 outcome = 'PASS'
                 record.update_record(check_outcome=outcome,
-                                     check_report=report,
+                                     check_report=PRE(report),
                                      n_warnings=0,
                                      title=summary['title'],
                                      description=summary['description'],
@@ -172,14 +188,15 @@ def verify_dataset(id):
                 'FAIL': ['Dataset failed checks', 'dataset_check_fail.html'],
                 'ERROR': ['Error checking dataset', 'dataset_check_error.html']}
         res = opts[outcome]
-
-        SAFEmailer(to=record.uploader_id.email,
-                   subject=res[0],
-                   template=res[1],
-                   template_dict= {'id': id, 
-                                   'report': report, 
-                                   'filename': record.file_name,
-                                   'name': record.uploader_id.first_name})
+        
+        if email:
+            SAFEmailer(to=record.uploader_id.email,
+                       subject=res[0],
+                       template=res[1],
+                       template_dict= {'id': id, 
+                                       'report': report, 
+                                       'filename': record.file_name,
+                                       'name': record.uploader_id.first_name})
 
         return 'Verifying dataset ID {}: {}'.format(id, outcome)
 
@@ -187,7 +204,14 @@ def verify_dataset(id):
 def submit_dataset_to_zenodo(id):
     
     """
-    Controller to submit a dataset to Zenodo
+    Controller to submit a dataset to Zenodo and to update the
+    dataset record with the result of that attempt.
+    
+    Args:
+        id: The id of the dataset table record to be submitted
+    
+    Returns:
+        A string describing the outcome.
     """
     
     # check the record exists and hasn't already been submitted
@@ -200,6 +224,72 @@ def submit_dataset_to_zenodo(id):
     elif record.zenodo_submission_status == 'Published':
         return 'Publishing dataset: record ID {} already published'.format(id)
     else:
+        
+        # A) BUILD THE METADATA FOR THIS DATASET
+        # - load the check summary from the database to populate the contents
+        summary = simplejson.loads(record.summary)
+        
+        # basic contents
+        metadata = {
+            'metadata': {
+                	"upload_type": "dataset",
+                	"publication_date": datetime.date.today().isoformat(),
+                	"title": summary['title'], 
+                	"keywords": summary['keywords'],
+                    "license": 'cc-by',
+                	"contributors": [
+                		{"name": "The SAFE Project", "type": "ContactPerson", 
+                         "affiliation": "Imperial College London", 
+                         "orcid": "0000-0003-3378-2814"},
+                	],
+                	"communities": [{"identifier": "safe"}]
+            }
+        }
+        
+        # set up the access rights
+        if summary['access_status'] == 'Embargo':
+            metadata['metadata']['access_right'] = 'embargoed'
+            metadata['metadata']['embargo_date'] = summary['embargo_date']
+        elif summary['access_status'] == 'Open':
+            metadata['metadata']['access_right'] = 'open'
+        else:
+            return 'Publishing dataset: record ID {} has unknown access status'.format(id)
+        
+        # set up the dataset creators
+        metadata['metadata']['creators'] = []
+        for auth in  summary['authors']:
+            creator = {ky: auth[ky] for ky in ('name', 'affiliation')}
+            if auth['orcid'] is not None:
+                creator['orcid'] = auth['orcid']
+            
+            metadata['metadata']['creators'].append(creator)
+        
+        # set up the Description
+        # - get a project link back to the website (although Zenodo doesn't support links)
+        qry = db((db.project_id.id == record.project_id))
+        proj = qry.select(left=db.project_id.on(db.project_id.project_details_id == db.project_details.id))
+        title = proj.first().project_details.title
+        
+        desc = ('This dataset was collected as part of the following SAFE research project:<br><b>{}</b> '
+                 '<br><br>For more information see:<br> https://www.safeproject.net/projects/project_view/{}').format(title, record.project_id)
+        
+        desc += '<br><br><b>Description</b><br>'+ summary['description'].replace('\n', '<br>')
+        desc += '<br><br>There are {} data worksheets in this dataset:<br><br>'.format(len(summary['data_worksheets']))
+        
+        sheet_desc = "<b>{}</b> (Worksheet '{}')<br>Dimensions: {} rows by {} columns <br> Description: {}<br>Fields:"
+        field_desc = "<li><em>{}</em> ({}): {}"
+        
+        for ds in summary['data_worksheets']:
+            desc += sheet_desc.format(ds['title'], ds['worksheet'], ds['nrow'], ds['ncol'], ds['description'])
+            desc += '<ul>'
+            for fld in ds['fields']:
+                desc += field_desc.format(fld['field_name'],  fld['field_type'], fld['description'])
+            desc += '</ul>'
+        
+        metadata['metadata']['description'] = desc
+        
+        
+        # B) NOW PUSH TO ZENODO
         # get the authentication token from the private folder
         auth = os.path.join(request.folder, 'private','zenodo_token.json')
         token = simplejson.load(open(auth))
@@ -211,6 +301,11 @@ def submit_dataset_to_zenodo(id):
         dep = requests.post('https://sandbox.zenodo.org/api/deposit/depositions', 
                              params=token, json={}, headers= hdr)
         
+        # NOTES - for new versions of files, need to request a newversion from the original record (not concept)
+        # and then edit the latest draft deposit
+        # new_draft = requests.post('https://sandbox.zenodo.org/api/deposit/depositions/{}/actions/newversion'.format('77504'), params=token)
+        # dep = new_draft.json()['links']['latest_draft']
+        
         # trap errors in creating the resource
         if dep.status_code != 201:
             record.update_record(zenodo_submission_status = 'Failed to obtain deposit',
@@ -219,33 +314,7 @@ def submit_dataset_to_zenodo(id):
         
         # get the links dictionary out of the deposit resource
         links = dep.json()['links']
-        
-        # Now build the metadata to attach to this deposit
-        metadata = {
-            'metadata': {
-                	"upload_type": "dataset",
-                	"publication_date": "2017-06-26",
-                	"title": "My dataset title",
-                	"creators": [
-                		{"name": "Orme, David", "affiliation": "Imperial College London", "orcid": "0000-0002-7005-1394"},
-                		{"name": "Ewers, Rob", "affiliation": "Imperial College London", "orcid": "0000-0002-7005-1394"},
-                		{"name": "Other, Annie", "affiliation": "Imperial College London", "orcid": "0000-0002-7005-1394"}
-                	],
-                	"description": "Description",
-                	"access_right": "embargoed",
-                	"embargo_date": "2018-06-26",
-                	"access_conditions": "TBD",
-                	"keywords": ["TBD"],
-                	"notes": "TBD",
-                	"contributors": [
-                		{"name": "Orme, David", "type": "ContactPerson", "affiliation": "Imperial College London", "orcid": "0000-0002-7005-1394"},
-                		{"name": "Ewers, Rob", "type": "DataCollector", "affiliation": "Imperial College London", "orcid": "0000-0002-7005-1394"}
-                	],
-                	"communities": [{"identifier": "safe"}]
-            }
-        }
-        
-        
+                
         # attach the metadata to the deposit resource
         mtd = requests.put(links['self'], params=token, data=simplejson.dumps(metadata), headers=hdr)
         
@@ -262,9 +331,16 @@ def submit_dataset_to_zenodo(id):
         fls = requests.post(links['files'], params=token, 
                             files={'file': open(fname, 'rb')})
         
-        # trap errors in uploading metadata
+        # trap errors in uploading file
+        # - no success or mismatch in md5 checksums
         if fls.status_code != 201:
             record.update_record(zenodo_submission_status = 'Failed to upload dataset',
+                                 zenodo_submission_date=datetime.datetime.now(),
+                                 zenodo_response = fls.json())
+            delete = requests.delete(links['self'], params=token)
+            return "Failed to upload dataset"
+        elif fls.json()['checksum'] != record.file_hash:
+            record.update_record(zenodo_submission_status = 'Mismatch in local and uploaded MD5 hashes',
                                  zenodo_submission_date=datetime.datetime.now(),
                                  zenodo_response = fls.json())
             delete = requests.delete(links['self'], params=token)
@@ -295,16 +371,20 @@ def submit_dataset_to_zenodo(id):
         else:
             # modify the record html to point to the concept url
             record_url = pub.json()['links']['record_html']
-            concept_url = record_url.replace(str(pub.json()['record_id']),
+            concept_record = record_url.replace(str(pub.json()['record_id']),
+                                                str(pub.json()['conceptrecid']))
+            record_doi = pub.json()['doi_url']
+            concept_doi = record_doi.replace(str(pub.json()['record_id']),
                                              str(pub.json()['conceptrecid']))
             
             record.update_record(zenodo_submission_status = 'Published',
                                  zenodo_submission_date=datetime.datetime.now(),
                                  zenodo_response = pub.json(),
-                                 zenodo_concept_url = concept_url,
-                                 zenodo_version_doi = pub.json()['doi_url'])
+                                 zenodo_concept_record = concept_record,
+                                 zenodo_concept_doi = concept_doi,
+                                 zenodo_version_doi = record_doi)
             
-            return "Published dataset to {}".format(concept_url)
+            return "Published dataset to {}".format(concept_record)
 
 
 # Load the scheduler and set the task names, setting a 5 minute heartbeat.

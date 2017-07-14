@@ -1,0 +1,103 @@
+{{extend 'layout.html'}}
+
+<style>
+.my-div-icon
+{
+  background:red;
+  border:5px solid rgba(255,255,255,0.5);
+  color:blue;
+  font-weight:bold;
+  text-align:center;
+  border-radius:50%;
+  line-height:30px;
+}
+</style>
+
+
+<div class='container'>
+	<h2>SAFE Gazeteer</h2>
+
+	<div class='alert alert-info'>The gazeteer is a work in progress - the riparian transects and sampling points still need to be added, along with further information on the locations and tools to download GIS or GPS information.</div>
+	
+	<p>The map below shows the primary fieldwork locations used in the SAFE Project. These core locations provide a set of standard names that can be used to record where data is collected, although researchers will typically also collect GPS coordinates to provide details of local spatial structure in their sampling.</p>
+	
+	<p>The search table below the map will update the set of locations shown on the map.</p>
+	{{#=search_form}}
+	<div id="mapid" style='height: 600px; border: 3px solid white;'></div>
+	
+	{{=form}}
+</div> 
+{{block page_js}}
+
+<script  type="text/javascript">
+
+	var mymap = L.map('mapid').setView([4.75, 117.25], 9);
+
+	var Esri_WorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+		attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+	}).addTo(mymap);
+
+	// var geojsonFeature = {
+	//     "type": "Feature",
+	//     "properties": {
+	//         "name": "Coors Field",
+	//         "amenity": "Baseball Stadium",
+	//         "popupContent": "This is where the Rockies play!"
+	//     },
+	//     "geometry": {
+	//         "type": "Point",
+	//         "coordinates": [116, 4.5]
+	//     }
+	// };
+	//
+	// L.geoJSON(geojsonFeature).addTo(mymap);
+	//
+	
+	// Add the markers from the db
+	var markers = JSON.parse('{{=XML(sitedata)}}')
+	
+	// var markers = [
+	//    {"type": "Feature",
+	//     "properties": {
+	//         "name": "Coors Field",
+	//         "amenity": "Baseball Stadium",
+	//         "popupContent": "This is where the Rockies play!"
+	//     },
+	//     "geometry": {
+	//         "type": "Point",
+	//         "coordinates": [115, 4.5]
+	//     }},
+	//    {"type": "Feature",
+	//     "properties": {
+	//         "name": "Coors Field",
+	//         "amenity": "Baseball Stadium",
+	//         "popupContent": "This is where the Rockies play!"
+	//     },
+	//     "geometry": {
+	//         "type": "Point",
+	//         "coordinates": [114, 4.5]
+	// 	}}]
+	
+	var geojsonMarkerOptions = {
+	    radius: 4,
+	    fillColor: "#2367F9",
+	    color: "#000",
+	    weight: 1,
+	    opacity: 1,
+	    fillOpacity: 0.8
+	};
+	
+	$.each(markers, function(key){
+		var m = markers[key];
+		var marker = L.geoJSON(m, {
+    		pointToLayer: function (feature, latlng) {
+        		return L.circleMarker(latlng, geojsonMarkerOptions);
+    		}}).addTo(mymap);
+		
+		// marker.bindPopup(String(m.properties.Location));
+		marker.bindTooltip(String(m.properties.Location));
+	});
+	
+</script>
+	
+{{end page_js}}

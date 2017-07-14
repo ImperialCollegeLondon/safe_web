@@ -175,6 +175,34 @@ Edit that using `vi` to fill in the details for the DB and SMTP.
 
   3. **Cross your fingers**. The URL http://<Public DNS>/safe_web/default/index should now open the web application. There will be a delay as on the initial deployment, the application has to run the file `model/zzz_fixtures.py`, which is responsible for loading all the legacy data.
 
+### Python setup ###
+
+The dataset handling part of the website uses a python module that checks the metadata formatting: 
+
+    cd /home/www-data/web2py/applications/safe_web/modules/
+    curl -O https://raw.githubusercontent.com/ImperialCollegeLondon/safe_dataset_checker/master/safe_dataset_checker.py
+
+That in turn uses the ete2 python package for checking taxon names against the NCBI Taxonomy database, which also requires a local build of the NCBI database. The DB download and build can take quite a long time - it is a 300 MB dataset to repackage into a SQLite DB.
+
+    sudo pip install ete2
+    nohup python -c "from ete2 import NCBITaxa; createDB = NCBITaxa()" > ete2_install.txt &
+
+ The other stupid thing about this package is that for a global install, it always looks for the database in the user account home, and automatically rebuilds it if it doesn't find it. So, unless you want to build it twice (and this hung the server once), then you need to copy it to the $HOME (`/var/www`) of the www-data user as well.
+ 
+    sudo cp -r ~/.etetoolkit/ /var/www
+    sudo chown -R www-data:www-data /var/www/.etetoolkit/
+
+Check this works by logging in as www-data (which doesn't normally have a login):
+
+    su -
+    su -s /bin/bash www-data
+    cd /home/www-data/
+    nohup python -c "from ete2 import NCBITaxa;ncbi=NCBITaxa();print ncbi.get_name_translator(['Aves'])" > nohup.log
+
+The nohup.log file should contain:
+
+    {'Aves': [8782]}
+
 ### Setting the default application 
 
 Rather than including `safe\_web` in every URL, we can set a default application for the web2py server. Create a file called `routes.py` in the base of the web2py installation (_outside_ of the git repo) with the contents:
@@ -303,7 +331,7 @@ Then, broadly following the instructions [here](https://www.dokuwiki.org/install
  First, update the system and install / update web services:
 
     sudo apt-get update && sudo apt-get upgrade
-    sudo apt-get install apache2 libapache2-mod-php5
+    sudo apt-get install php libapache2-mod-php php-mcrypt php-mysql
 
 Now enable the Apache Rewrite module in order to get cleaner URLs
  
@@ -420,7 +448,7 @@ You can just set some worker processes (two in this case) going on the server us
 
 More elegantly, you can create a web2py worker service that will allow you to stop, restart and start on server startup. The example provided by web2py uses `upstart`, which handily is installed and running on the AWS Ubuntu. I haven't done this yet.
 
-## Backup and restore in production
+## Backup in production
 
 We want to do two things: i) copy the contents of database out of the RDS and onto the  volume mounted at `/home/www-data`; and then ii) use the AWS snapshot mechanism to backup the volume.
 
@@ -492,6 +520,52 @@ Having installed everything, we can take an snapshot of the server volume - this
 
     python vm_snapshot.py
 
+This should be run before any major changes to the server, to provide a recent fallback to relaunch in case, for example, a python package installation completely locks up the system... If those changes are succesful, it should also be run afterwards to bring the snapshot up to date!
+
+## Restoring in production (aka Disaster recovery)
+
+Has the server instance running https://safeproject.net just died/frozen/exploded/started hosting goatse? Right, roll up your sleeves and follow the guide below:
+
+### Bring up a new instance of the webserver
+
+We're going to need a new server. Log in to AWS and go to the EC2 console and then:
+
+1) In EBS > Snapshots, find the most recent snapshot of the server volume (you have been making them, right?)
+2) Select that and make an image of it - make sure to change paravirtual to hardware assisted virtualisation.
+3) Once that appears in Images > AMI, launch it, and use the existing AWS_SAFE_Web key pair.
+
+### Add the data volume
+
+The website runs out of /home/www-data/ which is a regularly backed up data volume.  Ideally, we detach the volume from the borked server and reattach it to the new one:
+
+1) In EBS > Volumes, select the SAFE Web data and detach it.
+2) Once that has completed, reattach it to the new Server, taking note of the mount point code.
+3) SSH into the instance - now is probably a good time to run any system updates!
+
+    ssh -i "AWS_SAFE_Web.pem" ubuntu@ec2-34-251-132-154.eu-west-1.compute.amazonaws.com
+    do-release-upgrade
+
+
+4) If a restart is required, then you'll need to log back in again. Mount the attached volume, note that the mount point might have been changed: for example, from /dev/sdf to /dev/xvdf.
+
+    sudo mount /dev/xvdf /home/www-data
+
+### Swap onto the Elastic IP
+
+In an ideal world, the webserver will now be up and running on the Public DNS of the new instance. Check that!
+
+If it is, the next step is to detach the Elastic IP from the broken server and swap it onto the new one. In the EC2 console, go to Network and Security > Elastic IPs, select the IP and choose the Associate action, which also allows you to forcibly reassociate from the existing assocation.
+
+
+
+
+
+
+
+
+
+
+
 ## Resetting the DB in development 
 
 As noted above, in production, the DB is the ultimate source of truth, but in the startup, this is populated from the `zzz_fixtures.py file`. In order to reset the development version, the following steps are used. It is wise to disable the app from the web2py admin site before updating! The web server provides a nice maintenance banner whilst it is disabled.
@@ -534,6 +608,8 @@ This should now be the DB empty of data, ready to repopulate everything, once th
     sudo service apache2 restart
 
 **Remember**: once the system is in production this is a disasterous thing to do and you should use the production reset recipe.
+
+
 
 
 ## Random disorganised thoughts
