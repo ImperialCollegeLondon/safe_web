@@ -19,6 +19,11 @@ def view_datasets():
     db.datasets.zenodo_concept_record.represent = lambda value, row: 'Not yet published' if value is None else A(value, _href=value) 
     db.datasets.zenodo_concept_doi.represent = lambda value, row: 'Not yet published' if value is None else A(value, _href=value) 
     
+    
+    # button to link to custom view
+    links = [dict(header = '', body = lambda row: A('Details',_class='button btn btn-sm btn-default'
+                  ,_href=URL("datasets","view_dataset", vars={'dataset_id': row.id})))]
+    
     # provide a grid display
     form = SQLFORM.grid(db.datasets.check_outcome == 'PASS',
                         fields = [db.datasets.project_id,
@@ -33,11 +38,28 @@ def view_datasets():
                         maxtextlength = 100,
                         deletable=False,
                         editable=False,
-                        details=True,
+                        details=False,
                         create=False,
-                        csv=True)
+                        csv=False,
+                        links=links)
     
     return dict(form=form)
+
+def view_dataset():
+    
+    ds_id = request.vars['dataset_id']
+    record = db.datasets[ds_id]
+    
+    if ds_id is None:
+        # no id provided
+        record = None
+    elif record is None:
+        # non-existent id provided
+        session.flash = "Database record id does not exist"
+        redirect(URL('datasets','view_datasets'))
+    
+    return(dict(record=record))
+
 
 
 @auth.requires_membership('admin')

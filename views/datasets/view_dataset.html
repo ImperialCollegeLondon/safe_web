@@ -1,0 +1,5 @@
+{{extend 'layout.html'}}
+
+{{=H2('SAFE Project Dataset')}}
+
+{{=XML(record.zenodo_response['metadata']['description'])}}
