@@ -289,9 +289,31 @@ db.define_table('datasets',
 ## - holds the set of recognized locations
 ## -----------------------------------------------------------------------------
 
+"""
+display_order	order to add to leaflet map to make sure nothing gets masked by 
+				overlying polygons etc.
+				SAFE fragments (1) > carbon plots (2) > TART quadrats (3) >
+				Carbon subplots (4) > Polylines (5) > all points (6)
+fractal_order	only for SAFE Points
+transect_order	only_for SAFE Points
+"""
+
+gaz_types = ['SAFE Fragment', 'SAFE Sampling point', 'Carbon plot', 'Carbon subplot',
+             'Riparian transect', 'Riparian transect station', 'TART quadrat', 'TART corner post']
+gaz_regions = ['SAFE', 'Maliau', 'Danum']
+
+
 db.define_table('gazeteer',
     Field('location', 'string', unique=True),
-    Field('properties', 'json'),
+    Field('type', 'string', requires=IS_IN_SET(gaz_types)),
+    Field('parent', 'string'),
+    Field('display_order', 'integer'),
+    Field('region','string', requires=IS_IN_SET(gaz_regions)),
+    Field('plot_size', 'string'),
+    Field('fractal_order', 'integer'),
+    Field('transect_order', 'integer'),
+    Field('centroid_x', 'float'),
+    Field('centroid_y', 'float'),
     Field('geom_type', 'string'),
     Field('geom_coords', 'json'))
 

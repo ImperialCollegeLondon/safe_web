@@ -5,6 +5,7 @@ from collections import Counter
 from gluon.contrib import simplejson
 from gluon.serializers import json
 import os
+from gpxpy import gpx
 
 ## -----------------------------------------------------------------------------
 ## A collection of controllers handling mostly static information pages
@@ -121,34 +122,107 @@ def research_areas():
 
 def gazeteer():
     
-    # Set the fields available for searching
-    sfields = [db.gazeteer.location, db.gazeteer.geom_type]
+    """
+    Controller to provide a map view of the gazeteer data and a searchable
+    interface with GPX download.
+    """
     
     # If the grid has set up some search keywords, and the keywords aren't an empty 
     # string then use them to select those rows, otherwise get all rows
+    sfields = [db.gazeteer.location, db.gazeteer.type, db.gazeteer.plot_size, 
+               db.gazeteer.fractal_order, db.gazeteer.transect_order]
+    
     if 'keywords' in request.get_vars and request.vars.keywords != '':
         qry = SQLFORM.build_query(sfields, keywords=request.vars.keywords)
     else:
         qry = db.gazeteer
     
-    # get the (selected) rows and turn them into geojson
-    rws = db(qry).select()
-    rws = [{"type": "Feature", "properties": r.properties, 
-            "geometry": {"type": r.geom_type,"coordinates": r.geom_coords}}
-            for r in rws]
+    # get the (selected) rows and turn them into geojson, ordering them
+    # so that the bottom ones get added to the leaflet map first
+    rws = db(qry).select(orderby=db.gazeteer.display_order)
     
-    form = SQLFORM.grid(db.gazeteer, fields=sfields,
-                        csv=False,
+    # Need to put together the tooltip for the gazeteer
+    # using a subset of the available columns
+    loc = ['<B>' + rw['location'] + '</B></BR>' for rw in rws]
+    info = [[key + ': ' + str(rw[key]) for key in ['type','plot_size','parent','fractal_order','transect_order']
+             if rw[key] is not None] for rw in rws]
+    
+    # combine, removing trailing break
+    tooltips = [l + '</BR>'.join(i) for l, i in zip(loc, info)]
+    
+    rws = [{"type": "Feature", "tooltip": tl, 
+            "geometry": {"type": r.geom_type,"coordinates": r.geom_coords}}
+            for r, tl in zip(rws, tooltips)]
+    
+    # provide a single export format - GPX
+    export = dict(gpx=(ExporterGPX, 'GPX'), csv_with_hidden_cols=False,
+                  csv=False, xml=False, html=False, json=False,
+                  tsv_with_hidden_cols=False, tsv=False)
+    
+    # hide these fields - don't use the fields argument because that
+    # excludes those fields from form.rows and we need them for GPX
+    # output and populating the leaflet map
+    db.gazeteer.id.readable = False
+    db.gazeteer.centroid_x.readable = True
+    db.gazeteer.centroid_y.readable = True
+    db.gazeteer.display_order.readable = False
+    db.gazeteer.geom_type.readable = False
+    db.gazeteer.geom_coords.readable = False
+    db.gazeteer.region.readable = False
+    db.gazeteer.parent.readable = False
+    
+    form = SQLFORM.grid(db.gazeteer,
+                        csv=True,
+                        exportclasses=export,
                         maxtextlength=250,
                         deletable=False,
                         editable=False,
                         create=False,
                         details=False)
     
-    search_form = form.element('.web2py_console')[1]
+    # format the HTML to move the export button into the search console
+    # get a button themed link
+    exp_menu = form.element('.w2p_export_menu')
+    exp_gpx = A("Export GPX", _class="btn btn-default",
+                _href=exp_menu[1].attributes['_href'],
+                _style='padding:6px 12px;line-height:20px')
+    console = form.element('.web2py_console form')
+    console.insert(len(console), exp_gpx)
+    # get the existing export menu index (a DIV within FORM) and delete it
+    export_menu_idx = [x.attributes['_class'] for x in form].index('w2p_export_menu')
+    del form[export_menu_idx]
     
-    return dict(form=form, sitedata=json(rws), search_form=search_form)
+    return dict(form=form, sitedata=json(rws))
 
+
+class ExporterGPX(object):
+    
+    """
+    Used to export a GPX file of the selected rows in SQLFORM grid
+    """
+    
+    file_ext = "gpx"
+    content_type = "text/xml"
+
+    def __init__(self, rows):
+        self.rows = rows
+
+    def export(self):
+        if self.rows:
+            # print self.rows
+            # create a new gpx file
+            gpx_data = gpx.GPX()
+            
+            # exclude rows with no centroid data (polylines at present)
+            to_gpx = (rw for rw in self.rows if rw.centroid_x is not None)
+            
+            # add the centroids into the file
+            for pt in to_gpx:
+                gpx_data.waypoints.append(gpx.GPXWaypoint(name=pt.location, longitude=pt.centroid_x, latitude=pt.centroid_y))
+            
+            return gpx_data.to_xml()
+        else:
+            return ''
 
 # def calendars():
 #

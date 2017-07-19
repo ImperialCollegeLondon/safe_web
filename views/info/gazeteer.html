@@ -17,15 +17,18 @@
 <div class='container'>
 	<h2>SAFE Gazeteer</h2>
 
-	<div class='alert alert-info'>The gazeteer is a work in progress - the riparian transects and sampling points still need to be added, along with further information on the locations and tools to download GIS or GPS information.</div>
+	<div class='alert alert-info'>The gazeteer is a work in progress - the riparian tree plots still need to be added</div>
 	
 	<p>The map below shows the primary fieldwork locations used in the SAFE Project. These core locations provide a set of standard names that can be used to record where data is collected, although researchers will typically also collect GPS coordinates to provide details of local spatial structure in their sampling.</p>
 	
-	<p>The search table below the map will update the set of locations shown on the map.</p>
-	{{#=search_form}}
+	<p>We also provide a <a href={{=URL('static','/files/gis/gazeteer.zip')}}>zip file</a> containing this data in GeoJSON format: this single file contains all the polygons, lines and points in the gazeteer and is widely readable in GIS applications</p>
+	
+	<p>The searchable table below the map will update the set of locations shown on the map. It also provides a GPX download button to return the coordinates of selected sampling locations for use in a GPS. We provide <strong>the polygon centroid</strong> as a GPX waypoint for polygons, since these locations are simple enough that the centroid lies within the sampling location. We deliberately <strong>do not provide any centroid </strong> for linear sampling locations, such as riparian transects. There is no guarantee that the line centroid will fall on the line - use the GPX waypoints for the individual stations on a transect instead.</p>
+
 	<div id="mapid" style='height: 600px; border: 3px solid white;'></div>
 	
 	{{=form}}
+	</br>
 </div> 
 {{block page_js}}
 
@@ -36,48 +39,12 @@
 	var Esri_WorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
 		attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
 	}).addTo(mymap);
-
-	// var geojsonFeature = {
-	//     "type": "Feature",
-	//     "properties": {
-	//         "name": "Coors Field",
-	//         "amenity": "Baseball Stadium",
-	//         "popupContent": "This is where the Rockies play!"
-	//     },
-	//     "geometry": {
-	//         "type": "Point",
-	//         "coordinates": [116, 4.5]
-	//     }
-	// };
-	//
-	// L.geoJSON(geojsonFeature).addTo(mymap);
-	//
 	
 	// Add the markers from the db
 	var markers = JSON.parse('{{=XML(sitedata)}}')
 	
-	// var markers = [
-	//    {"type": "Feature",
-	//     "properties": {
-	//         "name": "Coors Field",
-	//         "amenity": "Baseball Stadium",
-	//         "popupContent": "This is where the Rockies play!"
-	//     },
-	//     "geometry": {
-	//         "type": "Point",
-	//         "coordinates": [115, 4.5]
-	//     }},
-	//    {"type": "Feature",
-	//     "properties": {
-	//         "name": "Coors Field",
-	//         "amenity": "Baseball Stadium",
-	//         "popupContent": "This is where the Rockies play!"
-	//     },
-	//     "geometry": {
-	//         "type": "Point",
-	//         "coordinates": [114, 4.5]
-	// 	}}]
-	
+	// Set a style for points, represented by 
+	// simple circle markers
 	var geojsonMarkerOptions = {
 	    radius: 4,
 	    fillColor: "#2367F9",
@@ -87,15 +54,15 @@
 	    fillOpacity: 0.8
 	};
 	
+	// loop over the markers adding them into the map
 	$.each(markers, function(key){
 		var m = markers[key];
 		var marker = L.geoJSON(m, {
     		pointToLayer: function (feature, latlng) {
         		return L.circleMarker(latlng, geojsonMarkerOptions);
     		}}).addTo(mymap);
-		
-		// marker.bindPopup(String(m.properties.Location));
-		marker.bindTooltip(String(m.properties.Location));
+		// Add the tooltip, styled on the server side
+		marker.bindTooltip(m.tooltip);
 	});
 	
 </script>
