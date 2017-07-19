@@ -51,10 +51,10 @@ response.form_label_separator = myconf.take('forms.separator')
 ## - authorization (role based authorization)
 ## ----------------------------------------------------------------------------
 
-from gluon.tools import Auth #, Service, PluginManager
+from gluon.tools import Auth, Service #, PluginManager
 
 auth = Auth(db)
-# service = Service()
+service = Service()
 # plugins = PluginManager()
 
 ## -----------------------------------------------------------------------------

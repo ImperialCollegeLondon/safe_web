@@ -335,6 +335,11 @@ def download():
     return response.download(request, db)
 
 
+## ----------------------------------------------------------------------------
+## Expose specific data services
+## - get_locations: JSON array of location names
+## ----------------------------------------------------------------------------
+
 def call():
     """
     exposes services. for example:
@@ -342,4 +347,17 @@ def call():
     decorate with @services.jsonrpc the functions to expose
     supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv
     """
+    session.forget()
     return service()
+
+@service.json
+def get_locations():
+    """
+    Simple service to return a JSON array of valid locations
+    """
+    
+    locations = db().select(db.gazetteer.location)
+    locs = [rw.location for rw in locations]
+    
+    return dict(locations=locs)
+
