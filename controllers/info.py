@@ -120,28 +120,28 @@ def research_areas():
     return dict(content = content_formatted)
 
 
-def gazeteer():
+def gazetteer():
     
     """
-    Controller to provide a map view of the gazeteer data and a searchable
+    Controller to provide a map view of the gazetteer data and a searchable
     interface with GPX download.
     """
     
     # If the grid has set up some search keywords, and the keywords aren't an empty 
     # string then use them to select those rows, otherwise get all rows
-    sfields = [db.gazeteer.location, db.gazeteer.type, db.gazeteer.plot_size, 
-               db.gazeteer.fractal_order, db.gazeteer.transect_order]
+    sfields = [db.gazetteer.location, db.gazetteer.type, db.gazetteer.plot_size, 
+               db.gazetteer.fractal_order, db.gazetteer.transect_order]
     
     if 'keywords' in request.get_vars and request.vars.keywords != '':
         qry = SQLFORM.build_query(sfields, keywords=request.vars.keywords)
     else:
-        qry = db.gazeteer
+        qry = db.gazetteer
     
     # get the (selected) rows and turn them into geojson, ordering them
     # so that the bottom ones get added to the leaflet map first
-    rws = db(qry).select(orderby=db.gazeteer.display_order)
+    rws = db(qry).select(orderby=db.gazetteer.display_order)
     
-    # Need to put together the tooltip for the gazeteer
+    # Need to put together the tooltip for the gazetteer
     # using a subset of the available columns
     loc = ['<B>' + rw['location'] + '</B></BR>' for rw in rws]
     info = [[key + ': ' + str(rw[key]) for key in ['type','plot_size','parent','fractal_order','transect_order']
@@ -162,16 +162,16 @@ def gazeteer():
     # hide these fields - don't use the fields argument because that
     # excludes those fields from form.rows and we need them for GPX
     # output and populating the leaflet map
-    db.gazeteer.id.readable = False
-    db.gazeteer.centroid_x.readable = True
-    db.gazeteer.centroid_y.readable = True
-    db.gazeteer.display_order.readable = False
-    db.gazeteer.geom_type.readable = False
-    db.gazeteer.geom_coords.readable = False
-    db.gazeteer.region.readable = False
-    db.gazeteer.parent.readable = False
+    db.gazetteer.id.readable = False
+    db.gazetteer.centroid_x.readable = True
+    db.gazetteer.centroid_y.readable = True
+    db.gazetteer.display_order.readable = False
+    db.gazetteer.geom_type.readable = False
+    db.gazetteer.geom_coords.readable = False
+    db.gazetteer.region.readable = False
+    db.gazetteer.parent.readable = False
     
-    form = SQLFORM.grid(db.gazeteer,
+    form = SQLFORM.grid(db.gazetteer,
                         csv=True,
                         exportclasses=export,
                         maxtextlength=250,

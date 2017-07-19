@@ -285,7 +285,7 @@ db.define_table('datasets',
     Field('zenodo_version_doi', 'string', requires=IS_EMPTY_OR(IS_URL())))
 
 ## -----------------------------------------------------------------------------
-## GAZETEER
+## GAZETTEER
 ## - holds the set of recognized locations
 ## -----------------------------------------------------------------------------
 
@@ -303,7 +303,7 @@ gaz_types = ['SAFE Fragment', 'SAFE Sampling point', 'Carbon plot', 'Carbon subp
 gaz_regions = ['SAFE', 'Maliau', 'Danum']
 
 
-db.define_table('gazeteer',
+db.define_table('gazetteer',
     Field('location', 'string', unique=True),
     Field('type', 'string', requires=IS_IN_SET(gaz_types)),
     Field('parent', 'string'),

@@ -15,14 +15,14 @@
 
 
 <div class='container'>
-	<h2>SAFE Gazeteer</h2>
+	<h2>SAFE gazetteer</h2>
 
-	<div class='alert alert-info'><p>The coordinates of these sampling locations are nearly all taken from field GPS data and some of them <strong>are not particularly accurate</strong>. If you have better data, please let us know so we can update the gazeteer.</p>
-<p>The gazeteer is also a work in progress - for example, the riparian tree plot locations still need to be added. If we are missing some key locations, please tell us!</p></div>
+	<div class='alert alert-info'><p>The coordinates of these sampling locations are nearly all taken from field GPS data and some of them <strong>are not particularly accurate</strong>. If you have better data, please let us know so we can update the gazetteer.</p>
+<p>The gazetteer is also a work in progress - for example, the riparian tree plot locations still need to be added. If we are missing some key locations, please tell us!</p></div>
 	
-	<p>The map below shows the primary fieldwork locations used in the SAFE Project. These core locations provide a set of standard names that can be used to record where data is collected, although researchers will typically also collect GPS coordinates to provide details of local spatial structure in their sampling.</p>
+	<p>The map below shows the primary fieldwork locations used in the SAFE Project. These core locations provide a set of standard names that can be used to record where data is collected, although researchers will typically also collect GPS coordinates to provide details of local spatial structure in their sampling. For more information about the different types of location included in the gazetteer, see the decription page on <a href='https://safeproject.net/dokuwiki/working_at_safe/sampling_locations'>the SAFE wiki</a>.</p>
 	
-	<p>We also provide a <a href={{=URL('static','/files/gis/gazeteer.zip')}}>zip file</a> containing this data in GeoJSON format: this single file contains all the polygons, lines and points in the gazeteer and is widely readable in GIS applications</p>
+	<p>We also provide a <a href={{=URL('static','/files/gis/gazetteer.zip')}}>zip file</a> containing this data in GeoJSON format: this single file contains all the polygons, lines and points in the gazetteer and is widely readable in GIS applications</p>
 	
 	<p>The searchable table below the map will update the set of locations shown on the map. It also provides a GPX download button to return the coordinates of selected sampling locations for use in a GPS. We provide <strong>the polygon centroid</strong> as a GPX waypoint for polygons, since these locations are simple enough that the centroid lies within the sampling location. We deliberately <strong>do not provide any centroid </strong> for linear sampling locations, such as riparian transects. There is no guarantee that the line centroid will fall on the line - use the GPX waypoints for the individual stations on a transect instead.</p>
 
@@ -37,9 +37,12 @@
 
 	var mymap = L.map('mapid').setView([4.75, 117.25], 9);
 
+
 	var Esri_WorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
 		attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
 	}).addTo(mymap);
+
+	L.control.scale({imperial:false}).addTo(mymap);
 	
 	// Add the markers from the db
 	var markers = JSON.parse('{{=XML(sitedata)}}')
