@@ -154,24 +154,17 @@ def gazetteer():
             "geometry": {"type": r.geom_type,"coordinates": r.geom_coords}}
             for r, tl in zip(rws, tooltips)]
     
-    # provide a single export format - GPX
-    export = dict(gpx=(ExporterGPX, 'GPX'), csv_with_hidden_cols=False,
+    # provide GPX and GeoJSON downloaders and use the magic 
+    # 'with_hidden_cols' suffix to allow the Exporter to access
+    # fields that aren't shown in the table
+    export = dict(gpx_with_hidden_cols=(ExporterGPX, 'GPX'), 
+                  geojson_with_hidden_cols=(ExporterGeoJSON, 'GeoJson'), 
+                  csv_with_hidden_cols=False,
                   csv=False, xml=False, html=False, json=False,
                   tsv_with_hidden_cols=False, tsv=False)
     
-    # hide these fields - don't use the fields argument because that
-    # excludes those fields from form.rows and we need them for GPX
-    # output and populating the leaflet map
-    db.gazetteer.id.readable = False
-    db.gazetteer.centroid_x.readable = True
-    db.gazetteer.centroid_y.readable = True
-    db.gazetteer.display_order.readable = False
-    db.gazetteer.geom_type.readable = False
-    db.gazetteer.geom_coords.readable = False
-    db.gazetteer.region.readable = False
-    db.gazetteer.parent.readable = False
-    
     form = SQLFORM.grid(db.gazetteer,
+                        fields=sfields,
                         csv=True,
                         exportclasses=export,
                         maxtextlength=250,
@@ -184,10 +177,14 @@ def gazetteer():
     # get a button themed link
     exp_menu = form.element('.w2p_export_menu')
     exp_gpx = A("Export GPX", _class="btn btn-default",
-                _href=exp_menu[1].attributes['_href'],
+                _href=exp_menu[2].attributes['_href'],
                 _style='padding:6px 12px;line-height:20px')
+    exp_geojson = A("Export GeoJSON", _class="btn btn-default",
+                    _href=exp_menu[1].attributes['_href'],
+                    _style='padding:6px 12px;line-height:20px')
     console = form.element('.web2py_console form')
-    console.insert(len(console), exp_gpx)
+    console.insert(len(console), CAT(exp_gpx, exp_geojson))
+    
     # get the existing export menu index (a DIV within FORM) and delete it
     export_menu_idx = [x.attributes['_class'] for x in form].index('w2p_export_menu')
     del form[export_menu_idx]
@@ -209,7 +206,6 @@ class ExporterGPX(object):
 
     def export(self):
         if self.rows:
-            # print self.rows
             # create a new gpx file
             gpx_data = gpx.GPX()
             
@@ -224,6 +220,44 @@ class ExporterGPX(object):
         else:
             return ''
 
+
+class ExporterGeoJSON(object):
+    
+    """
+    Used to export a GPX file of the selected rows in SQLFORM grid
+    """
+    
+    file_ext = "geojson"
+    content_type = "application/vnd.geo+json"
+
+    def __init__(self, rows):
+        self.rows = rows
+
+    def export(self):
+        if self.rows:
+            
+            # get a list of dictionaries of the values
+            ft_as_dicts = self.rows.as_dict().values()
+            
+            # pop out the geometry components and id
+            id_number = [ft.pop('id') for ft in ft_as_dicts]
+            geom_type = [ft.pop('geom_type') for ft in ft_as_dicts]
+            geom_coords = [ft.pop('geom_coords') for ft in ft_as_dicts]
+            
+            # assemble the features list
+            features = [{'type': "Feature", 'id': idn, 'properties': prop,
+                         'geometry': {'type': tp, 'coordinates': crds}} for 
+                         (idn, prop, tp, crds) in zip(id_number, ft_as_dicts, geom_type, geom_coords)]
+            
+            # embed that in the Feature collection
+            feature_collection = {"type": "FeatureCollection",
+                                  "crs": {"type": "name",
+                                          "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
+                                  "features": features}
+            
+            return simplejson.dumps(feature_collection)
+        else:
+            return ''
 # def calendars():
 #
 #     return response.render()

@@ -22,9 +22,14 @@
 	
 	<p>The map below shows the primary fieldwork locations used in the SAFE Project. These core locations provide a set of standard names that can be used to record where data is collected, although researchers will typically also collect GPS coordinates to provide details of local spatial structure in their sampling. For more information about the different types of location included in the gazetteer, see the decription page on <a href='https://safeproject.net/dokuwiki/working_at_safe/sampling_locations'>the SAFE wiki</a>.</p>
 	
-	<p>We also provide a <a href={{=URL('static','/files/gis/gazetteer.zip')}}>zip file</a> containing this data in GeoJSON format: this single file contains all the polygons, lines and points in the gazetteer and is widely readable in GIS applications</p>
 	
-	<p>The searchable table below the map will update the set of locations shown on the map. It also provides a GPX download button to return the coordinates of selected sampling locations for use in a GPS. We provide <strong>the polygon centroid</strong> as a GPX waypoint for polygons, since these locations are simple enough that the centroid lies within the sampling location. We deliberately <strong>do not provide any centroid </strong> for linear sampling locations, such as riparian transects. There is no guarantee that the line centroid will fall on the line - use the GPX waypoints for the individual stations on a transect instead.</p>
+	<p>The searchable table below the map will update the set of locations shown on the map. The export buttons allow you to download a set of locations (or all the locations) in two formats:</p>
+		
+<dl><dt><strong>GeoJSON</strong></dt>
+	<dd>This is a GIS format that can be used with most GIS programs. The single download file can contain a mixture of polygon, line and point data. The file contains the attributes of each location as well as the full coordinates for each location.</dd>
+	<dt><strong>GPX</strong></dt>
+	<dd>This format is for use in GPS devices and the download file contains a waypoint for each location. For polygon features, we provide a centroid as a GPX waypoint, since these locations are simple enough that the centroid lies within the sampling location. We deliberately <strong>do not provide any centroid </strong> for linear sampling locations, such as riparian transects. There is no guarantee that the line centroid will fall on the line - use the GPX waypoints for the individual stations on a transect instead.</dd>
+</dl>
 
 	<div id="mapid" style='height: 600px; border: 3px solid white;'></div>
 	
