@@ -174,20 +174,22 @@ def gazetteer():
                         details=False)
     
     # format the HTML to move the export button into the search console
-    # get a button themed link
+    # get a button themed link. Check to make sure there is an export menu
+    # as it will be missing if a search returns no rows
     exp_menu = form.element('.w2p_export_menu')
-    exp_gpx = A("Export GPX", _class="btn btn-default",
-                _href=exp_menu[2].attributes['_href'],
-                _style='padding:6px 12px;line-height:20px')
-    exp_geojson = A("Export GeoJSON", _class="btn btn-default",
-                    _href=exp_menu[1].attributes['_href'],
+    if exp_menu is not None:
+        exp_gpx = A("Export GPX", _class="btn btn-default",
+                    _href=exp_menu[2].attributes['_href'],
                     _style='padding:6px 12px;line-height:20px')
-    console = form.element('.web2py_console form')
-    console.insert(len(console), CAT(exp_gpx, exp_geojson))
+        exp_geojson = A("Export GeoJSON", _class="btn btn-default",
+                        _href=exp_menu[1].attributes['_href'],
+                        _style='padding:6px 12px;line-height:20px')
+        console = form.element('.web2py_console form')
+        console.insert(len(console), CAT(exp_gpx, exp_geojson))
     
-    # get the existing export menu index (a DIV within FORM) and delete it
-    export_menu_idx = [x.attributes['_class'] for x in form].index('w2p_export_menu')
-    del form[export_menu_idx]
+        # get the existing export menu index (a DIV within FORM) and delete it
+        export_menu_idx = [x.attributes['_class'] for x in form].index('w2p_export_menu')
+        del form[export_menu_idx]
     
     return dict(form=form, sitedata=json(rws))
 

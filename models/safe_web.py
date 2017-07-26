@@ -298,9 +298,14 @@ fractal_order	only for SAFE Points
 transect_order	only_for SAFE Points
 """
 
-gaz_types = ['SAFE Fragment', 'SAFE Sampling point', 'Carbon plot', 'Carbon subplot',
-             'Riparian transect', 'Riparian transect station', 'TART quadrat', 'TART corner post']
+gaz_types = ["SAFE basecamp", "Flux tower", "SAFE Sampling point", "SAFE forest fragment", 
+             "SAFE riparian strip", "Flight intercept traps", "Ant and dungbeetle transects", 
+             "Dungbeetle pitfall stations", "Palm herbivory stations", "Ant bait stations", 
+             "Carbon plot", "Carbon subplot", "Virgin Jungle Reserve", "Ant and termite corner post", 
+             "Ant and termite plot", "Riparian transect station", "Riparian transect"]
+
 gaz_regions = ['SAFE', 'Maliau', 'Danum']
+geom_types = ["MultiPolygon", "Point", "Polygon", "LineString"]
 
 
 db.define_table('gazetteer',
@@ -314,8 +319,9 @@ db.define_table('gazetteer',
     Field('transect_order', 'integer'),
     Field('centroid_x', 'float'),
     Field('centroid_y', 'float'),
-    Field('geom_type', 'string'),
-    Field('geom_coords', 'json'))
+    Field('geom_type', 'string', requires=IS_IN_SET(geom_types)),
+    Field('geom_coords', 'json'),
+    Field('source', 'text'))
 
 ## -----------------------------------------------------------------------------
 ## MARKET PLACE

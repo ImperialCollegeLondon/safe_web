@@ -47,8 +47,8 @@
 		attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
 	}).addTo(mymap);
 
-	L.control.scale({imperial:false}).addTo(mymap);
-	
+	L.control.scale({imperial:false, position:'topright'}).addTo(mymap);
+	 
 	// Add the markers from the db
 	var markers = JSON.parse('{{=XML(sitedata)}}')
 	
