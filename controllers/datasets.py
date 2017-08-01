@@ -1,13 +1,13 @@
 import hashlib
 import datetime
-import openpyxl
 import safe_dataset_checker
 
 
 def view_datasets():
     """
-    Grid view to display datasets that have passed checking. The view
-    of an individual dataset is basically outsourced to Zenodo.
+    Grid view to display datasets that have been published. There
+    is a simple internal view, but it basically duplicates the information
+    passed to Zenodo.
     
     Dev note: Standard DOI URL shows the DOI and the link redirects
     to the Zenodo record, but this doesn't work for the Zenodo Sandbox
@@ -16,21 +16,23 @@ def view_datasets():
     
     # format fields for the display
     db.datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects','project_view', args=[value])) 
-    db.datasets.zenodo_concept_record.represent = lambda value, row: 'Not yet published' if value is None else A(value, _href=value) 
-    db.datasets.zenodo_concept_doi.represent = lambda value, row: 'Not yet published' if value is None else A(value, _href=value) 
-    
+    db.datasets.zenodo_concept_record.represent = lambda value, row: A(value, _href=value) 
+    db.datasets.zenodo_concept_record.represent = lambda value, row:  A(IMG(_src=row.zenodo_response['links']['conceptbadge']), _href=value)
     
     # button to link to custom view
     links = [dict(header = '', body = lambda row: A('Details',_class='button btn btn-sm btn-default'
                   ,_href=URL("datasets","view_dataset", vars={'dataset_id': row.id})))]
     
+    db.datasets.zenodo_response.readable=False
+    
     # provide a grid display
-    form = SQLFORM.grid(db.datasets.check_outcome == 'PASS',
+    form = SQLFORM.grid((db.datasets.check_outcome == 'PASS') &
+                        (db.datasets.zenodo_submission_status == 'Published'),
                         fields = [db.datasets.project_id,
                                   # db.datasets.uploader_id,
                                   db.datasets.title,
                                   db.datasets.zenodo_concept_record,
-                                  #db.datasets.zenodo_concept_doi
+                                  db.datasets.zenodo_response
                                   ],
                         headers = {'datasets.zenodo_concept_record': 'Zenodo',
                                    'datasets.zenodo_concept_doi': 'DOI',
@@ -63,7 +65,7 @@ def view_dataset():
 
 
 @auth.requires_membership('admin')
-def manage_datasets():
+def administer_datasets():
     
     """
     Grid view to display datasets to admin.
@@ -401,7 +403,7 @@ def run_verify_dataset():
     
     if manage:
         session.flash = res
-        redirect(URL('datasets','manage_datasets'))
+        redirect(URL('datasets','administer_datasets'))
     else:
         return res
 
@@ -432,7 +434,7 @@ def run_submit_dataset_to_zenodo():
     
     if manage:
         session.flash = res
-        redirect(URL('datasets','manage_datasets'))
+        redirect(URL('datasets','administer_datasets'))
     else:
         return res
 
@@ -473,7 +475,7 @@ def run_delete_dataset():
         
     if manage:
         session.flash = res
-        redirect(URL('datasets','manage_datasets'))
+        redirect(URL('datasets','administer_datasets'))
     else:
         return res
 

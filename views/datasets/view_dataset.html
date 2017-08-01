@@ -2,4 +2,35 @@
 
 {{=H2('SAFE Project Dataset')}}
 
-{{=XML(record.zenodo_response['metadata']['description'])}}
+<DIV class='panel panel-default'>
+<DIV class='panel-heading'>
+	<DIV class='row'>
+		{{=H4(record.title)}}
+	</DIV>
+</DIV>
+<DIV class='panel-body'>
+<DIV class='row'>
+	<DIV class='col-sm-2'> <strong>Zenodo record</strong> </DIV>
+	<DIV class='col-sm-10'> {{=A(IMG(_src=record.zenodo_response['links']['conceptbadge']), _href=record.zenodo_concept_record)}} </DIV>
+</DIV>
+<DIV class='row'>
+	<DIV class='col-sm-2'> <strong>Uploaded</strong> </DIV>
+	<DIV class='col-sm-10'> 
+		{{=record.upload_datetime.date().isoformat() + ' by ' + 
+		  record.uploader_id.first_name + ' ' + record.uploader_id.last_name}}
+	</DIV>
+</DIV>
+<DIV class='row'>
+	<DIV class='col-sm-2'> <strong>Published</strong> </DIV>
+	<DIV class='col-sm-10'> 
+		{{=record.zenodo_submission_date.date().isoformat()}}
+	</DIV>
+</DIV>
+<DIV class='row'>
+	<DIV class='col-sm-2'> <strong>Description</strong> </DIV>
+	<DIV class='col-sm-10'> 
+		{{=XML(record.zenodo_response['metadata']['description'])}}
+	</DIV>
+</DIV>
+</DIV>
+</DIV>

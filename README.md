@@ -556,15 +556,11 @@ In an ideal world, the webserver will now be up and running on the Public DNS of
 
 If it is, the next step is to detach the Elastic IP from the broken server and swap it onto the new one. In the EC2 console, go to Network and Security > Elastic IPs, select the IP and choose the Associate action, which also allows you to forcibly reassociate from the existing assocation.
 
+### Restart the web2py workers!
 
+Get some worker processes going to run the scheduler tasks
 
-
-
-
-
-
-
-
+    python web2py.py -K safe_web,safe_web &
 
 ## Resetting the DB in development 
 

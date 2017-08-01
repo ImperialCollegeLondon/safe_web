@@ -202,10 +202,30 @@ def project_view():
         else:
             
             project_links = DIV()
+        
+        # dataset links
+        datasets = db((db.datasets.project_id == project_record.id) &
+                      (db.datasets.check_outcome == 'PASS')).select()
+        
+        if len(datasets) > 0:
+            datasets_table = TABLE(TR(TH('Dataset title')),
+                                  *[TR(TD(A(r.title, 
+                                            _href=URL('datasets','view_dataset', vars={'dataset_id': r.id}))))
+                                       for r in datasets],
+                                  _class='table table-striped', _style='width:100%')
+
+            datasets = DIV(DIV('Project datasets', _class="panel-heading"),
+                          datasets_table,
+                          DIV(_class='panel-footer'),
+                          _class="panel panel-primary")
+        else:
+            datasets = DIV()
+        
     
     # pass components to the view
     return dict(project_id = project_id, project_details = project_details,
-                members = members, outputs=outputs, project_links = project_links)
+                members = members, outputs=outputs, project_links = project_links,
+                datasets=datasets)
 
 
 ## -----------------------------------------------------------------------------

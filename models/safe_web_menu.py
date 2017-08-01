@@ -40,6 +40,7 @@ response.menu = [
         (T('Blog'), True, URL('blogs', 'blogs'), []),
         (T('Species profiles'), True, URL('species', 'species'), []),
         (T('Outputs'), True, URL('outputs', 'outputs'), []),
+        (T('Datasets'), True, URL('datasets', 'view_datasets'), []),
         (T('SAFE Newsletter'), True, URL('info', 'newsletter'), []),
     ]),
     (T('Working at SAFE'), True, None, [
@@ -118,6 +119,12 @@ for key, field in n_dict.iteritems():
     n[key] = db(field.belongs(['Pending', 'pending', 'Submitted', 'In Review'])).count()
     badge_class[key] = 'label badge-danger' if n[key] == 0 else 'label label-danger'
 
+# datasets don't quite work the same - need to tell admin about passed datasets that have
+# not been submitted or where submit failed
+n['dat'] = db((db.datasets.check_outcome == 'PASS') &
+              ((db.datasets.zenodo_submission_status == None) or 
+               (db.datasets.zenodo_submission_status != 'Published'))).count()
+badge_class['dat'] = 'label badge-danger' if n['dat'] == 0 else 'label label-danger'
 
 if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
     response.menu += [('Admin',  False,  None, [
@@ -138,6 +145,8 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                              T('  Project proposals')), True, URL('projects', 'administer_projects'), []),
                         (CAT(SPAN(n['out'], _class=badge_class['out']),
                              T('  New outputs')), True, URL('outputs', 'administer_outputs'), []),
+                        (CAT(SPAN(n['dat'], _class=badge_class['dat']),
+                             T('  New datasets')), True, URL('datasets', 'administer_datasets'), []),
                         (CAT(SPAN(n['vis'], _class=badge_class['vis']),
                              T('  Research visits')), True,
                              URL('research_visits', 'administer_research_visits'), []),
