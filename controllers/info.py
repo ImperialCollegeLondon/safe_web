@@ -163,6 +163,9 @@ def gazetteer():
                   csv=False, xml=False, html=False, json=False,
                   tsv_with_hidden_cols=False, tsv=False)
     
+    # hide display order from search and export
+    db.gazetteer.display_order.readable = False
+    
     form = SQLFORM.grid(db.gazetteer,
                         fields=sfields,
                         csv=True,

@@ -303,10 +303,8 @@ gaz_types = ["SAFE basecamp", "Flux tower", "SAFE Sampling point", "SAFE forest 
              "Dungbeetle pitfall stations", "Palm herbivory stations", "Ant bait stations", 
              "Carbon plot", "Carbon subplot", "Virgin Jungle Reserve", "Ant and termite corner post", 
              "Ant and termite plot", "Riparian transect station", "Riparian transect"]
-
 gaz_regions = ['SAFE', 'Maliau', 'Danum']
 geom_types = ["MultiPolygon", "Point", "Polygon", "LineString"]
-
 
 db.define_table('gazetteer',
     Field('location', 'string', unique=True),
@@ -319,6 +317,10 @@ db.define_table('gazetteer',
     Field('transect_order', 'integer'),
     Field('centroid_x', 'float'),
     Field('centroid_y', 'float'),
+    Field('bbox_xmin', 'float'),
+    Field('bbox_xmax', 'float'),
+    Field('bbox_ymin', 'float'),
+    Field('bbox_ymax', 'float'),
     Field('geom_type', 'string', requires=IS_IN_SET(geom_types)),
     Field('geom_coords', 'json'),
     Field('source', 'text'))

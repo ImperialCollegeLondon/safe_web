@@ -40,15 +40,33 @@
 
 <script  type="text/javascript">
 
-	var mymap = L.map('mapid').setView([4.75, 117.25], 9);
+	// Two alternative basemaps 
+	var topo = L.tileLayer('http://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+		maxZoom: 17,
+		attribution: 'Map data: &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+	});
 
-
-	var Esri_WorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+	var imagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
 		attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-	}).addTo(mymap);
-
+	});
+	
+	var baseMaps = {
+		"Imagery": imagery,
+		"Topography": topo
+	};
+	
+	// launch the map instance
+	var mymap = L.map('mapid', {
+						center: [4.75, 117.25], 
+						zoom: 9,
+						layers: [imagery],
+						dragging: true,
+						doubleClickZoom: true});
+	
+	// Add a scale and the layer control
 	L.control.scale({imperial:false, position:'topright'}).addTo(mymap);
-	 
+	L.control.layers(baseMaps).addTo(mymap);
+	
 	// Add the markers from the db
 	var markers = JSON.parse('{{=XML(sitedata)}}')
 	
