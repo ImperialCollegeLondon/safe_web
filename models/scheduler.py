@@ -140,7 +140,7 @@ def verify_dataset(id, email=False):
             fname = os.path.join(request.folder,'uploads','datasets', record.file)
             # use a local locations file - there is some issue with using the service from within the code
             locs = os.path.join(request.folder,'static','files','locations.json')
-            check_results = safe_dataset_checker.check_file(fname, verbose=False)
+            check_results = safe_dataset_checker.check_file(fname, verbose=False, locations_json=locs)
             
             # get the report
             messages = check_results['messages']
