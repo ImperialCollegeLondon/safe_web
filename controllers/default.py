@@ -373,6 +373,8 @@ def get_locations_bbox():
                             db.gazetteer.bbox_xmax,
                             db.gazetteer.bbox_ymin,
                             db.gazetteer.bbox_ymax)
+    # reformat
+    locations = [(r.location, (r.bbox_xmin, r.bbox_xmax, r.bbox_ymin, r.bbox_ymax)) for r in locations]
     
     return locations
 
