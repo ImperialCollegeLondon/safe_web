@@ -361,3 +361,36 @@ def get_locations():
     
     return dict(locations=locs)
 
+
+@service.json
+def get_locations_bbox():
+    """
+    Service to return a JSON array of valid locations and their bounding boxes
+    """
+    
+    locations = db().select(db.gazetteer.location, 
+                            db.gazetteer.bbox_xmin,
+                            db.gazetteer.bbox_xmax,
+                            db.gazetteer.bbox_ymin,
+                            db.gazetteer.bbox_ymax)
+    
+    return locations
+
+
+
+
+@service.xml
+def test():
+    """
+    Exploring using services to server XML. I don't think this is the
+    way to go, but this doc on semantic representation of tables
+    is enlightening about what should probably happen:
+    http://www.web2py.com/semantic/static/semantic.pdf
+    """
+    test = {'MD_Keywords': [{'keyword': {'CharacterString': 'Some data'}},
+                                {'keyword': {'CharacterString': 'To test'}},
+                                {'keyword': {'CharacterString': 'The system'}}]}
+
+    return test
+
+
