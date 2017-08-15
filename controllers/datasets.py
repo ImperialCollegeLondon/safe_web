@@ -57,8 +57,7 @@ def view_dataset():
         session.flash = "Database record id does not exist"
         redirect(URL('datasets','view_datasets'))
     
-    metadata = simplejson.loads(record.dataset_metadata)
-    description = _dataset_description(metadata)
+    description = _dataset_description(record.dataset_metadata)
     return(dict(record=record, description=description))
 
 

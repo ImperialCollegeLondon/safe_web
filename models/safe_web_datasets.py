@@ -110,36 +110,24 @@ def verify_dataset(id, email=False):
         
         # At this point, we have a Dataset object, so can populate the record with 
         # what information is available, regardless of Error, Fail or Pass
-        # i) the sample locations as JSON
-        if dataset.locations is not None:
-            locations_json = simplejson.dumps(list(dataset.locations))
-        else:
-            locations_json = simplejson.dumps([])
+        # - The DAL handles conversion of the python structure into JSON, so
+        #   can just pass the objects. Previously, used simplejson.dumps, which 
+        #   meant they were stored as a string, so needed reloading rather than 
+        #   being saved natively as JSON
         
-        # ii) the taxon index as JSON
-        if dataset.taxon_index is not None:
-            taxon_index_json = simplejson.dumps(dataset.taxon_index)
-        else:
-            taxon_index_json = simplejson.dumps([])
-        
-        # iii) the check report as str
+        # First, need to extract the check report from the StringIO object and
+        # substitute in the user filename for the local web2py filename. Also,
+        # wrap it in <pre> for display purposes.
         report_text = dataset.report().getvalue()
+        report_text = PRE(report_text.replace(fname, record.file_name))
         
-        # substitute in the user filename for the local web2py filename
-        report_text = report_text.replace(fname, record.file_name)
-        
-        # iv) the dataset metadata, converting to JSON using a convertor
-        #   to handle datetime objects.
-        metadata = dataset.export_metadata_dict()
-        metadata_json = simplejson.dumps(metadata, default=json_datetime)
-            
         record.update_record(dataset_check_outcome=outcome,
-                             dataset_check_report=PRE(report_text),
+                             dataset_check_report=report_text,
                              dataset_check_error=dataset_check_error,
                              dataset_title = dataset.title,
-                             dataset_metadata = metadata_json,
-                             dataset_taxon_index = taxon_index_json,
-                             dataset_locations = locations_json)
+                             dataset_metadata = dataset.export_metadata_dict(),
+                             dataset_taxon_index = dataset.taxon_index,
+                             dataset_locations = dataset.locations)
         
         ret_dict = {'id': id, 'report': report_text, 
                     'filename': record.file_name,
@@ -159,14 +147,14 @@ def verify_dataset(id, email=False):
     return ret_msg
 
 
-def json_datetime(obj):
-    """JSON serializer for objects not serializable by default json code"""
-
-    if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
-        serial = obj.isoformat()
-        return serial
-
-    raise TypeError("Type %s not serializable" % type(obj))
+# def json_datetime(obj):
+#     """JSON serializer for objects not serializable by default json code"""
+#
+#     if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
+#         serial = obj.isoformat()
+#         return serial
+#
+#     raise TypeError("Type %s not serializable" % type(obj))
 
 
 def submit_dataset_to_zenodo(recid):
@@ -195,7 +183,7 @@ def submit_dataset_to_zenodo(recid):
         
         # A) BUILD THE METADATA FOR THIS DATASET
         # - load the metadata from the database to populate the contents
-        metadata = simplejson.loads(record.dataset_metadata)
+        metadata = record.dataset_metadata
         
         # basic contents
         zenodo_metadata = {
@@ -390,7 +378,7 @@ def generate_inspire_xml(record):
     """
     
     # get the dataset and zenodo metadata
-    dataset_md = simplejson.loads(record.dataset_metadata)
+    dataset_md = record.dataset_metadata
     zenodo_md = record.zenodo_metadata
     
     # parse the XML template and get the namespace map
