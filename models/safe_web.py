@@ -270,19 +270,24 @@ db.define_table('datasets',
     Field('file_size', 'integer'),
     Field('upload_datetime','datetime'),
     # fields to handle the local formatting check
-    Field('check_outcome','text'),
-    Field('check_report','text'),
-    Field('n_warnings', 'integer'),
-    Field('title', 'string'),
-    Field('description', 'string'),
-    Field('summary', 'json'),
-    # fields to handle zenodo publication
+    Field('dataset_check_outcome','text'),
+    Field('dataset_check_error','text', default=''),
+    Field('dataset_check_report','text', default=''),
+    Field('dataset_title', 'text'),
+    Field('dataset_metadata', 'json'),
+    Field('dataset_taxon_index', 'json'),
+    Field('dataset_locations', 'json'),
+    # fields to handle zenodo publication - most data is stored in
+    # the metadata field as JSON, but for quick recall, a few are store
+    # directly.
     Field('zenodo_submission_date', 'datetime'),
     Field('zenodo_submission_status', 'string'),
-    Field('zenodo_response', 'json'), 
-    Field('zenodo_concept_record', 'string', requires=IS_EMPTY_OR(IS_URL())),
-    Field('zenodo_concept_doi', 'string', requires=IS_EMPTY_OR(IS_URL())),    
-    Field('zenodo_version_doi', 'string', requires=IS_EMPTY_OR(IS_URL())))
+    Field('zenodo_error', 'json'), 
+    Field('zenodo_metadata', 'json'),
+    Field('zenodo_record_id', 'integer'),
+    Field('zenodo_doi', 'string', requires=IS_EMPTY_OR(IS_URL())),
+    Field('zenodo_badge', 'string', requires=IS_EMPTY_OR(IS_URL())))
+
 
 ## -----------------------------------------------------------------------------
 ## GAZETTEER
