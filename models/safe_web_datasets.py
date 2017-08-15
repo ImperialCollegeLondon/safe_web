@@ -177,7 +177,7 @@ def submit_dataset_to_zenodo(recid):
         return 'Publishing dataset: unknown record ID {}'.format(id)
     elif record.dataset_check_outcome != 'PASS':
         return 'Publishing dataset: record ID {} has not passed format checking'.format(id)
-    elif record.zenodo_submission_status == 'Published':
+    elif record.zenodo_submission_status == 'ZEN_PASS':
         return 'Publishing dataset: record ID {} already published'.format(id)
     else:
         
@@ -296,7 +296,7 @@ def submit_dataset_to_zenodo(recid):
         
         # trap errors in publishing
         if pub.status_code != 202:
-            record.update_record(zenodo_submission_status = 'Failed to publish dataset',
+            record.update_record(zenodo_submission_status = 'ZEN_FAIL',
                                  zenodo_submission_date=datetime.datetime.now(),
                                  zenodo_error = pub.json())
             delete = requests.delete(links['self'], params=token)
@@ -308,7 +308,7 @@ def submit_dataset_to_zenodo(recid):
             pub_json = pub.json()
             del pub_json['metadata']
             
-            record.update_record(zenodo_submission_status = 'Published',
+            record.update_record(zenodo_submission_status = 'ZEN_PASS',
                                  zenodo_submission_date=datetime.datetime.now(),
                                  zenodo_metadata = pub_json,
                                  zenodo_record_id = pub_json['record_id'],
@@ -338,7 +338,7 @@ def _dataset_description(record):
     title = proj.first().project_details.title
     
     # dataset summart
-    desc = CAT(P(B('Description: ')), XML(metadata['description'].replace('\n', '<br>')), BR()*2,
+    desc = CAT(XML(metadata['description'].replace('\n', '<br>')), BR()*2,
                P(B('Date range: '), '{0[0]} - {0[1]}'.format([x[:10] for x in metadata['temporal_extent']])), 
                P(B('Latitudinal extent: '), '{0[0]:.4f} - {0[1]:.4f}'.format(metadata['latitudinal_extent'])), 
                P(B('Longitudinal extent: '), '{0[0]:.4f} - {0[1]:.4f}'.format(metadata['longitudinal_extent'])),
@@ -372,7 +372,7 @@ def _dataset_description(record):
     
     # Can't get the XML metadata link unless it is published, since that 
     # contains references to the zenodo record
-    if record.zenodo_submission_status == 'Published':
+    if record.zenodo_submission_status == 'ZEN_PASS':
         md_url = URL('datasets','xml_metadata', scheme=True, vars={'dataset_id': record.id})
         desc += CAT(P('GEMINI compliant XML metadata for this dataset is available here: ', A(md_url, _href=md_url)))
     

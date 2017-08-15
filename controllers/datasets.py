@@ -71,8 +71,8 @@ def administer_datasets():
     
     # format fields for the display, giving the check outcome and zenodo publishing status as icons.
     db.datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects','project_view', args=[value])) 
-    db.datasets.dataset_check_outcome.represent =  lambda value, row: _check_status(value, row)
-    db.datasets.zenodo_submission_status.represent =  lambda value, row: _zenodo_status(value, row)
+    db.datasets.dataset_check_outcome.represent =  lambda value, row: approval_icons[value]
+    db.datasets.zenodo_submission_status.represent =  lambda value, row: approval_icons[value]
     
     # add buttons to provide options
     # - run check (can only be run if file has not passed)
@@ -88,7 +88,7 @@ def administer_datasets():
     
     # - run publish (can only be run if file has passed and not yet been published)
     def _run_publish(row):
-        if row.dataset_check_outcome != 'PASS' or row.zenodo_submission_status == 'Published':
+        if row.dataset_check_outcome != 'PASS' or row.zenodo_submission_status == 'ZEN_PASS':
             btn =  A('Publish', _class='button btn btn-default disabled',
                      _style='padding: 3px 10px 3px 10px')
         else:
@@ -99,7 +99,7 @@ def administer_datasets():
     
     # - run publish (can only be run if file has passed and not yet been published)
     def _run_delete(row):
-        if row.zenodo_submission_status == 'Published':
+        if row.zenodo_submission_status == 'ZEN_PASS':
             btn =  A('Delete', _class='button btn btn-default disabled',
                      _style='padding: 3px 10px 3px 10px')
         else:
@@ -131,35 +131,6 @@ def administer_datasets():
                         csv=False)
     
     return dict(form=form)
-
-
-def _check_status(value, row):
-    
-    # check status icons
-    if value is None:
-        return SPAN('', _class="glyphicon glyphicon-question-sign", 
-                      _style="color:grey;font-size: 1.3em;", _title='Not checked')
-    elif value == 'FAIL':
-        return SPAN('', _class="glyphicon glyphicon-remove-sign", 
-                      _style="color:orange;font-size: 1.3em;", _title='Check failed')
-    elif value == 'ERROR':
-        return SPAN('', _class="glyphicon glyphicon-exclamation-sign", 
-                      _style="color:red;font-size: 1.3em;", _title='Error in check')
-    else:
-        return SPAN('', _class="glyphicon glyphicon-ok-sign", 
-                      _style="color:green;font-size: 1.3em;", _title='Check passed')
-
-
-def _zenodo_status(value, row):
-    if value is None:
-        return SPAN('', _class="glyphicon glyphicon-question-sign", 
-                      _style="color:grey;font-size: 1.3em;", _title='Not submitted')
-    elif value != 'Published':
-        return SPAN('', _class="glyphicon glyphicon-exclamation-sign", 
-                      _style="color:red;font-size: 1.3em;", _title='Publication failed')
-    else:
-        return SPAN('', _class="glyphicon glyphicon-ok-sign", 
-                      _style="color:green;font-size: 1.3em;", _title='Published')
 
 
 @auth.requires_login()
@@ -269,12 +240,16 @@ def submit_dataset():
     else:
         
         # basic check information for any upload
+        project = db((db.project_id.project_details_id == record.project_id) &
+                     (db.project_id.id == db.project_details.project_id)).select(db.project_details.title).first()
+        
         chk_info = [_row('File name', record.file_name),
                     _row('File size', '{:0.2f} MB'.format(record.file_size / 1024.0 ** 2)),
-                    _row('Uploaded', record.upload_datetime.strftime('%Y-%m-%d %H:%M'))]
+                    _row('Uploaded', record.upload_datetime.strftime('%Y-%m-%d %H:%M')),
+                    _row('Project', '(' + str(record.project_id) + ') ' + project.title)]
         
         # Status check
-        chk_stat = [_row('Check outcome', CAT(_check_status(record.dataset_check_outcome, record),
+        chk_stat = [_row('Check outcome', CAT(approval_icons[record.dataset_check_outcome],
                                               XML('&nbsp') * 3, record.dataset_check_outcome)),
                     _row('Check report', A('View details', _href='#show_check', **{'_data-toggle': 'collapse'}))]
         
@@ -285,7 +260,7 @@ def submit_dataset():
         # No description unless created further down
         dataset_desc = ""
         
-        if record.dataset_check_outcome is None:
+        if record.dataset_check_outcome == 'PENDING':
             # Set the heading for the form
             panel_head = DIV(DIV(H4('Dataset awaiting verification', _class="panel-title col-sm-8"),
                                  _class='row'),
@@ -306,7 +281,7 @@ def submit_dataset():
         elif record.dataset_check_outcome == 'PASS':
             
             # prepare the dataset description
-            metadata = simplejson.loads(record.dataset_metadata)
+            metadata = record.dataset_metadata
             desc_content = XML(_dataset_description(record))
             
             dataset_desc = CAT(_row('Dataset description', A('View details', _href='#show_desc', 
@@ -314,7 +289,7 @@ def submit_dataset():
                                 DIV(DIV(DIV(desc_content, _class="well"), _class='container'),
                                     _id="show_desc", _class="panel-collapse collapse"))
             
-            if record.zenodo_submission_status is None:
+            if record.zenodo_submission_status == 'ZEN_PEND':
                 # Set the heading for the form
                 panel_head = DIV(DIV(H4('Dataset awaiting publication', _class="panel-title col-sm-8"),
                                      _class='row'),
@@ -324,7 +299,7 @@ def submit_dataset():
                 # don't show the form
                 form = ''
             
-            elif record.zenodo_submission_status == 'Published':
+            elif record.zenodo_submission_status == 'ZEN_PASS':
                 # Set the heading for the form
                 panel_head = DIV(DIV(H4('Dataset published', _class="panel-title col-sm-8"),
                                      _class='row'),
@@ -333,8 +308,7 @@ def submit_dataset():
                 chk_info += chk_stat
                 # publication_status - put right at the top (partly so that it doesn't have to
                 # go below the outcome panel-collapse, and complicate the structure)
-                chk_info = [_row('Zenodo URL', A(record.zenodo_concept_record, 
-                                          _href=record.zenodo_concept_record))] + chk_info
+                chk_info = [_row('Zenodo URL', A(record.zenodo_doi, _href=record.zenodo_doi))] + chk_info
                 # don't show the form
                 form = ''
         
@@ -478,7 +452,7 @@ def run_delete_dataset():
         record = None
     
     # now double check we're not doing this to a published dataset
-    if record is not None and record.zenodo_submission_status == 'Published':
+    if record is not None and record.zenodo_submission_status == 'ZEN_PASS':
         err += ["Dataset published: not deletable"]
     
     if len(err) == 0:

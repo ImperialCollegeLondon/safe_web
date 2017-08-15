@@ -218,7 +218,7 @@ def project_view():
         # dataset links
         datasets = db((db.datasets.project_id == project_record.id) &
                       (db.datasets.dataset_check_outcome == 'PASS') &
-                      (db.datasets.zenodo_submission_status == 'Published')).select()
+                      (db.datasets.zenodo_submission_status == 'ZEN_PASS')).select()
         
         if len(datasets) > 0:
             datasets_table = TABLE(TR(TH('Dataset title')),

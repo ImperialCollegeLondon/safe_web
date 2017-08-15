@@ -123,7 +123,7 @@ for key, field in n_dict.iteritems():
 # not been submitted or where submit failed
 n['dat'] = db((db.datasets.dataset_check_outcome == 'PASS') &
               ((db.datasets.zenodo_submission_status == None) or 
-               (db.datasets.zenodo_submission_status != 'Published'))).count()
+               (db.datasets.zenodo_submission_status != 'ZEN_PASS'))).count()
 badge_class['dat'] = 'label badge-danger' if n['dat'] == 0 else 'label label-danger'
 
 if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
