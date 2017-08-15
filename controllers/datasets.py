@@ -57,7 +57,7 @@ def view_dataset():
         session.flash = "Database record id does not exist"
         redirect(URL('datasets','view_datasets'))
     
-    description = _dataset_description(record.dataset_metadata)
+    description = _dataset_description(record)
     return(dict(record=record, description=description))
 
 
@@ -307,7 +307,7 @@ def submit_dataset():
             
             # prepare the dataset description
             metadata = simplejson.loads(record.dataset_metadata)
-            desc_content = XML(_dataset_description(metadata))
+            desc_content = XML(_dataset_description(record))
             
             dataset_desc = CAT(_row('Dataset description', A('View details', _href='#show_desc', 
                                                              **{'_data-toggle': 'collapse'})),
