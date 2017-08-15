@@ -47,31 +47,44 @@ def projects():
     
     # hide thumbnail_figure link - we need it in the fields, to use it in the links
     # but we don't want to show the field itself
-    db.project_details.thumbnail_figure.readable = False
     
     # create a links list that:
     # 1) displays a thumbnail of the  project image
     # 2) creates a custom button to pass the row id to a custom view 
     
-    links = [dict(header = '', body = lambda row: IMG(_src = URL('static', 'images/default_thumbnails/missing_project.png') if row.project_details.thumbnail_figure in [None,''] else 
-                                                             URL('default', 'download', args = row.project_details.thumbnail_figure),
-                                                        _height = 100)),
-             dict(header = '', 
+    links = [dict(header = '', 
                   body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
                                        SPAN('View', _class="buttontext button"),
                                        _class="button btn btn-default", 
                                        _href=URL("projects","project_view", args=[row.project_id.id], user_signature=True),
                                        _style='padding: 3px 5px 3px 5px;'))]
     
+    # display representation
+    def _thumb(value, row):
+        if value is None or value == '':
+            url = URL('static', 'images/default_thumbnails/missing_project.png') 
+        else:
+            url = URL('default', 'download', args = row.project_details.thumbnail_figure)
+        
+        return IMG(_src=url, _height=100)
+    
+    db.project_details.thumbnail_figure.represent = lambda value, row: _thumb(value, row)
+    
+    
+    
     # create a grid view on the join between project_id and project_details
     query = ((db.project_id.project_details_id == db.project_details.id) &
              (db.project_details.admin_status == 'Approved'))
     
     form = SQLFORM.grid(query, csv=False, 
-                        fields=[db.project_details.title,
+                        fields=[db.project_details.thumbnail_figure,
+                                db.project_details.title,
+                                db.project_details.project_id,
                                 db.project_details.start_date, 
                                 # db.project_details.end_date, 
-                                db.project_details.thumbnail_figure],
+                                ],
+                        headers = {'project_details.thumbnail_figure':"",
+                                   'project_details.project_id': "Project number"},
                         orderby = ~ db.project_details.start_date, 
                         maxtextlength=250,
                         deletable=False,
@@ -79,7 +92,6 @@ def projects():
                         create=False, 
                         details=False,
                         links=links,
-                        links_placement='left',
                         formargs={'showid': False}
                         )
     
@@ -123,7 +135,7 @@ def project_view():
         project_details =   CAT(DIV(DIV(H4(project_details.title), _class='col-sm-10'),
                                     DIV(DIV(IMG(_src=pic, _width='100px'), _class= 'pull-right'), _class='col-sm-2'),
                                     _class='row', _style='margin:10px 10px;'), 
-                                DIV(DIV('Project details', 
+                                DIV(DIV('Project Number ' + str(project_details.project_id) , 
                                         A(SPAN('',_class="icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left"),
                                             SPAN(' Back to projects'),
                                             _href=URL("projects","projects", user_signature=True),
@@ -665,7 +677,10 @@ def project_details():
             form =  FORM(DIV(DIV(panel_header,
                                 _class="panel-heading"),
                             DIV(DIV(DIV(IMG(_src=pic, _height='100px'), _class='col-sm-2'),
-                                    DIV(DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
+                                    DIV(DIV(LABEL('Project number:', _class="control-label col-sm-2" ),
+                                            DIV(details.project_id,  _class="col-sm-10"),
+                                            _class='row'),
+                                        DIV(LABEL('Project title:', _class="control-label col-sm-2" ),
                                             DIV(details.title,  _class="col-sm-10"),
                                             _class='row'),
                                         DIV(LABEL('Start Date:', _class="control-label col-sm-2" ),
