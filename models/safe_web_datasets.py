@@ -220,7 +220,7 @@ def submit_dataset_to_zenodo(recid):
             
             zenodo_metadata['metadata']['creators'].append(creator)
         
-        zenodo_metadata['metadata']['description'] = str(_dataset_description(metadata))
+        zenodo_metadata['metadata']['description'] = str(_dataset_description(record))
         
         # B) NOW PUSH TO ZENODO
         # get the authentication token from the private folder
@@ -318,7 +318,7 @@ def submit_dataset_to_zenodo(recid):
             return "Published dataset to {}".format(pub_json['doi_url'])
 
 
-def _dataset_description(metadata):
+def _dataset_description(record):
     """
     Function to turn a dataset metadata record into html to send
     to Zenodo and to populate the dataset view. Zenodo has a limited
@@ -328,6 +328,9 @@ def _dataset_description(metadata):
     Available tags (but a at least doesn't work at present)
     a, p, br, blockquote, strong, b, u, i, em, ul, ol, li, sub, sup, div, strike.
     """
+    
+    # shortcut to metadata
+    metadata = record.dataset_metadata
     
     # - get a project link back to the safe website (although Zenodo doesn't support links)
     qry = db((db.project_id.id == metadata['project_id']))
@@ -356,8 +359,8 @@ def _dataset_description(metadata):
         flds = UL()
         for each_fld in ds['fields']:
             flds.append(LI(B(each_fld['field_name']), 
-                           ', Description: ', each_fld['description'],
-                           ', Field type: ', each_fld['field_type']))
+                           ': ', each_fld['description'],
+                           ' (Field type: ', each_fld['field_type'], ')'))
         
         dwshts.append(LI(CAT(dwsh, flds, BR())))
     
@@ -366,6 +369,12 @@ def _dataset_description(metadata):
     proj_url = URL('projects','project_view', scheme=True, args=[metadata['project_id']])
     desc += CAT(P('This dataset was collected as part of the following SAFE research project: ', B(title)),
                 P('For more information see: ', A(proj_url, _href=proj_url)))
+    
+    # Can't get the XML metadata link unless it is published, since that 
+    # contains references to the zenodo record
+    if record.zenodo_submission_status == 'Published':
+        md_url = URL('datasets','xml_metadata', scheme=True, vars={'dataset_id': record.id})
+        desc += CAT(P('GEMINI compliant XML metadata for this dataset is available here: ', A(md_url, _href=md_url)))
     
     return desc
 
@@ -477,8 +486,8 @@ def generate_inspire_xml(record):
     
     # EXTENTS
     temp_extent = root.find('.//gmd:EX_TemporalExtent', nsmap)
-    temp_extent.find('.//gml:beginPosition', nsmap).text = dataset_md['temporal_extent'][0]
-    temp_extent.find('.//gml:endPosition', nsmap).text = dataset_md['temporal_extent'][1]
+    temp_extent.find('.//gml:beginPosition', nsmap).text = dataset_md['temporal_extent'][0][:10]
+    temp_extent.find('.//gml:endPosition', nsmap).text = dataset_md['temporal_extent'][1][:10]
     
     geo_extent = root.find('.//gmd:EX_GeographicBoundingBox', nsmap)
     geo_extent.find('./gmd:westBoundLongitude/gco:Decimal', nsmap).text = str(dataset_md['longitudinal_extent'][0])
