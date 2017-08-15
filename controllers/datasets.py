@@ -16,27 +16,24 @@ def view_datasets():
     
     # format fields for the display
     db.datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects','project_view', args=[value])) 
-    db.datasets.zenodo_concept_record.represent = lambda value, row: A(value, _href=value) 
-    db.datasets.zenodo_concept_record.represent = lambda value, row:  A(IMG(_src=row.zenodo_response['links']['conceptbadge']), _href=value)
+    db.datasets.zenodo_badge.represent = lambda value, row:  A(IMG(_src=value), _href=row.zenodo_doi)
     
     # button to link to custom view
     links = [dict(header = '', body = lambda row: A('Details',_class='button btn btn-sm btn-default'
                   ,_href=URL("datasets","view_dataset", vars={'dataset_id': row.id})))]
     
-    db.datasets.zenodo_response.readable=False
-    
     # provide a grid display
-    form = SQLFORM.grid((db.datasets.check_outcome == 'PASS') &
+    form = SQLFORM.grid((db.datasets.dataset_check_outcome == 'PASS') &
                         (db.datasets.zenodo_submission_status == 'Published'),
                         fields = [db.datasets.project_id,
                                   # db.datasets.uploader_id,
-                                  db.datasets.title,
-                                  db.datasets.zenodo_concept_record,
-                                  db.datasets.zenodo_response
+                                  db.datasets.dataset_title,
+                                  db.datasets.zenodo_doi,
+                                  db.datasets.zenodo_badge
                                   ],
-                        headers = {'datasets.zenodo_concept_record': 'Zenodo',
-                                   'datasets.zenodo_concept_doi': 'DOI',
-                                   'datasets.project_id.doi': 'Project'},
+                        headers = {'datasets.zenodo_doi': 'Zenodo',
+                                   'datasets.zenodo_badge': 'Link',
+                                   'datasets.project_id': 'Project'},
                         maxtextlength = 100,
                         deletable=False,
                         editable=False,
@@ -60,7 +57,9 @@ def view_dataset():
         session.flash = "Database record id does not exist"
         redirect(URL('datasets','view_datasets'))
     
-    return(dict(record=record))
+    metadata = simplejson.loads(record.dataset_metadata)
+    description = _dataset_description(metadata)
+    return(dict(record=record, description=description))
 
 
 
@@ -73,13 +72,13 @@ def administer_datasets():
     
     # format fields for the display, giving the check outcome and zenodo publishing status as icons.
     db.datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects','project_view', args=[value])) 
-    db.datasets.check_outcome.represent =  lambda value, row: _check_status(value, row)
+    db.datasets.dataset_check_outcome.represent =  lambda value, row: _check_status(value, row)
     db.datasets.zenodo_submission_status.represent =  lambda value, row: _zenodo_status(value, row)
     
     # add buttons to provide options
     # - run check (can only be run if file has not passed)
     def _run_check(row):
-        if row.check_outcome == 'PASS':
+        if row.dataset_check_outcome == 'PASS':
             btn =  A('Check', _class='button btn btn-default disabled',
                      _style='padding: 3px 10px 3px 10px')
         else:
@@ -90,7 +89,7 @@ def administer_datasets():
     
     # - run publish (can only be run if file has passed and not yet been published)
     def _run_publish(row):
-        if row.check_outcome != 'PASS' or row.zenodo_submission_status == 'Published':
+        if row.dataset_check_outcome != 'PASS' or row.zenodo_submission_status == 'Published':
             btn =  A('Publish', _class='button btn btn-default disabled',
                      _style='padding: 3px 10px 3px 10px')
         else:
@@ -118,11 +117,11 @@ def administer_datasets():
     form = SQLFORM.grid(db.datasets,
                         fields = [db.datasets.project_id,
                                   db.datasets.uploader_id,
-                                  db.datasets.title,
-                                  db.datasets.check_outcome,
+                                  db.datasets.dataset_title,
+                                  db.datasets.dataset_check_outcome,
                                   db.datasets.zenodo_submission_status,
                                   ],
-                        headers = {'datasets.check_outcome': 'Format status',
+                        headers = {'datasets.dataset_check_outcome': 'Format status',
                                    'datasets.zenodo_submission_status': 'Published'},
                         links = links, 
                         maxtextlength = 100,
@@ -144,7 +143,7 @@ def _check_status(value, row):
     elif value == 'FAIL':
         return SPAN('', _class="glyphicon glyphicon-remove-sign", 
                       _style="color:orange;font-size: 1.3em;", _title='Check failed')
-    elif value[:5] == 'ERROR':
+    elif value == 'ERROR':
         return SPAN('', _class="glyphicon glyphicon-exclamation-sign", 
                       _style="color:red;font-size: 1.3em;", _title='Error in check')
     else:
@@ -224,9 +223,9 @@ def submit_dataset():
         session.flash = ('Upload successful. A validation check will be run and '
                           'you will get an email with the results when it finishes.')
         
-        # if this is an update, then flush the contents of record.check_outcome
+        # if this is an update, then flush the contents of record.dataset_check_outcome
         if record is not None:
-            record.update_record(check_outcome = None)
+            record.update_record(dataset_check_outcome = None)
         
         redirect(URL('datasets', 'submit_dataset', vars={'dataset_id':form.vars.id}))
     
@@ -267,6 +266,7 @@ def submit_dataset():
         # There is no file check information or report
         chk_panel = ""
         chk_rprt = ''
+        dataset_desc = ""
     else:
         
         # basic check information for any upload
@@ -275,15 +275,18 @@ def submit_dataset():
                     _row('Uploaded', record.upload_datetime.strftime('%Y-%m-%d %H:%M'))]
         
         # Status check
-        chk_stat = [_row('Check outcome', CAT(_check_status(record.check_outcome, record),
-                                              XML('&nbsp') * 3, record.check_outcome)),
+        chk_stat = [_row('Check outcome', CAT(_check_status(record.dataset_check_outcome, record),
+                                              XML('&nbsp') * 3, record.dataset_check_outcome)),
                     _row('Check report', A('View details', _href='#show_check', **{'_data-toggle': 'collapse'}))]
         
         # Check report
-        chk_rprt =  DIV(DIV(XML(record.check_report), _class="panel-body"),
+        chk_rprt =  DIV(DIV(XML(record.dataset_check_report), _class="panel-body"),
                         _id="show_check", _class="panel-collapse collapse")
         
-        if record.check_outcome is None:
+        # No description unless created further down
+        dataset_desc = ""
+        
+        if record.dataset_check_outcome is None:
             # Set the heading for the form
             panel_head = DIV(DIV(H4('Dataset awaiting verification', _class="panel-title col-sm-8"),
                                  _class='row'),
@@ -292,7 +295,7 @@ def submit_dataset():
             form = ""
             chk_rprt = ""
         
-        elif record.check_outcome == 'FAIL' or record.check_outcome[:5] == 'ERROR':
+        elif record.dataset_check_outcome == 'FAIL' or record.dataset_check_outcome == 'ERROR':
             # Set the heading for the form
             panel_head = DIV(DIV(H4('Dataset did not pass verification', _class="panel-title col-sm-8"),
                                  _class='row'),
@@ -301,34 +304,45 @@ def submit_dataset():
             # include the status outcome
             chk_info += chk_stat
         
-        elif record.check_outcome == 'PASS' and record.zenodo_submission_status is None:
-            # Set the heading for the form
-            panel_head = DIV(DIV(H4('Dataset awaiting publication', _class="panel-title col-sm-8"),
-                                 _class='row'),
-                             _class="panel-heading")
-            # include the status outcome
-            chk_info += chk_stat
-            # don't show the form
-            form = ''
-        
-        elif record.check_outcome == 'PASS' and record.zenodo_submission_status == 'Published':
-            # Set the heading for the form
-            panel_head = DIV(DIV(H4('Dataset published', _class="panel-title col-sm-8"),
-                                 _class='row'),
-                             _class="panel-heading")
-            # include the status outcome
-            chk_info += chk_stat
-            # publication_status - put right at the top (partly so that it doesn't have to
-            # go below the outcome panel-collapse, and complicate the structure)
-            chk_info = [_row('Zenodo URL', A(record.zenodo_concept_record, 
-                                      _href=record.zenodo_concept_record))] + chk_info
-            # don't show the form
-            form = ''
+        elif record.dataset_check_outcome == 'PASS':
+            
+            # prepare the dataset description
+            metadata = simplejson.loads(record.dataset_metadata)
+            desc_content = XML(_dataset_description(metadata))
+            
+            dataset_desc = CAT(_row('Dataset description', A('View details', _href='#show_desc', 
+                                                             **{'_data-toggle': 'collapse'})),
+                                DIV(DIV(DIV(desc_content, _class="well"), _class='container'),
+                                    _id="show_desc", _class="panel-collapse collapse"))
+            
+            if record.zenodo_submission_status is None:
+                # Set the heading for the form
+                panel_head = DIV(DIV(H4('Dataset awaiting publication', _class="panel-title col-sm-8"),
+                                     _class='row'),
+                                 _class="panel-heading")
+                # include the status outcome
+                chk_info += chk_stat
+                # don't show the form
+                form = ''
+            
+            elif record.zenodo_submission_status == 'Published':
+                # Set the heading for the form
+                panel_head = DIV(DIV(H4('Dataset published', _class="panel-title col-sm-8"),
+                                     _class='row'),
+                                 _class="panel-heading")
+                # include the status outcome
+                chk_info += chk_stat
+                # publication_status - put right at the top (partly so that it doesn't have to
+                # go below the outcome panel-collapse, and complicate the structure)
+                chk_info = [_row('Zenodo URL', A(record.zenodo_concept_record, 
+                                          _href=record.zenodo_concept_record))] + chk_info
+                # don't show the form
+                form = ''
         
         # unpack the rows into a panel
         chk_panel = DIV(*chk_info, _class='panel_body')
     
-    form = DIV(panel_head, chk_panel, chk_rprt, form, _class="panel panel-default")
+    form = DIV(panel_head, chk_panel, chk_rprt, dataset_desc, form, _class="panel panel-default")
     
     return dict(form=form)
 
@@ -480,3 +494,30 @@ def run_delete_dataset():
         return res
 
 
+def xml_metadata():
+    
+    """
+    A controller that just acts to spit out an GEMINI/INSPIRE XML 
+    metadata record for a dataset passed as an id
+    """
+    
+    dataset_id = request.vars['dataset_id']
+    
+    if dataset_id is None:
+        return XML("No dataset id provided")
+    
+    try:
+        dataset_id = int(dataset_id)
+    except ValueError:
+        return XML("Non-integer dataset id")
+    
+    record = db.datasets[dataset_id]
+    
+    if record is None:
+        return XML("Invalid dataset id")
+    else:
+        xml = generate_inspire_xml(record)
+        raise HTTP(200, xml,
+                   **{'Content-Type':'text/xml',
+                      'Content-Disposition': 'attachment;filename={}.xml;'.format(record.zenodo_metadata['doi'])})
+    

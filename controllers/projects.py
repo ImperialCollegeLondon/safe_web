@@ -89,7 +89,7 @@ def projects():
 def project_view():
     
     """
-    Custom public project view - displays the project and any members or outputs
+    Custom public project view - displays the project and members, outputs and datasets
     """
     
     # retrieve the user id from the page arguments passed by the button
@@ -205,12 +205,14 @@ def project_view():
         
         # dataset links
         datasets = db((db.datasets.project_id == project_record.id) &
-                      (db.datasets.check_outcome == 'PASS')).select()
+                      (db.datasets.dataset_check_outcome == 'PASS') &
+                      (db.datasets.zenodo_submission_status == 'Published')).select()
         
         if len(datasets) > 0:
             datasets_table = TABLE(TR(TH('Dataset title')),
-                                  *[TR(TD(A(r.title, 
-                                            _href=URL('datasets','view_dataset', vars={'dataset_id': r.id}))))
+                                  *[TR(TD(A(r.dataset_title, 
+                                            _href=URL('datasets','view_dataset', vars={'dataset_id': r.id}))),
+                                       TD(A(IMG(_src=r.zenodo_badge), _href=r.zenodo_doi)))
                                        for r in datasets],
                                   _class='table table-striped', _style='width:100%')
 

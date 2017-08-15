@@ -121,7 +121,7 @@ for key, field in n_dict.iteritems():
 
 # datasets don't quite work the same - need to tell admin about passed datasets that have
 # not been submitted or where submit failed
-n['dat'] = db((db.datasets.check_outcome == 'PASS') &
+n['dat'] = db((db.datasets.dataset_check_outcome == 'PASS') &
               ((db.datasets.zenodo_submission_status == None) or 
                (db.datasets.zenodo_submission_status != 'Published'))).count()
 badge_class['dat'] = 'label badge-danger' if n['dat'] == 0 else 'label label-danger'

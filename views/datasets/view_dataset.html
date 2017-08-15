@@ -5,13 +5,13 @@
 <DIV class='panel panel-default'>
 <DIV class='panel-heading'>
 	<DIV class='row'>
-		{{=H4(record.title)}}
+		{{=H4(record.dataset_title)}}
 	</DIV>
 </DIV>
 <DIV class='panel-body'>
 <DIV class='row'>
 	<DIV class='col-sm-2'> <strong>Zenodo record</strong> </DIV>
-	<DIV class='col-sm-10'> {{=A(IMG(_src=record.zenodo_response['links']['conceptbadge']), _href=record.zenodo_concept_record)}} </DIV>
+	<DIV class='col-sm-10'> {{=A(IMG(_src=record.zenodo_badge), _href=record.zenodo_doi)}} </DIV>
 </DIV>
 <DIV class='row'>
 	<DIV class='col-sm-2'> <strong>Uploaded</strong> </DIV>
@@ -29,7 +29,7 @@
 <DIV class='row'>
 	<DIV class='col-sm-2'> <strong>Description</strong> </DIV>
 	<DIV class='col-sm-10'> 
-		{{=XML(record.zenodo_response['metadata']['description'])}}
+		{{=description}}
 	</DIV>
 </DIV>
 </DIV>
