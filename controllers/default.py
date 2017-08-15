@@ -118,6 +118,14 @@ def my_safe():
     """
     This controller presents a simple set of grids showing projects, outputs
     visits, blogs, volunteer positions, work offers that a user is associated with.
+    
+    At the start of development, record specific URLs typically used URL args:
+        controller/function/arg
+    but later on variables get used:
+        controller/function?var=1
+    
+    Arguably, the codebase should be rewritten to use one or the other. I
+    think variables are clearer but that is a big job to rewrite.
     """
     
     # for most simple tables, provide a look up of which tables and columns to query
@@ -128,6 +136,8 @@ def my_safe():
     # - 'display' provides a field that is to be shown for each item
     # - 'cntr' and 'view' provide the controller and view for the linked URL
     # - 'url_args' provides a list of fields used to specify the URL
+    # - 'url_vars' provides a list of two-tuples (variable name, value field) 
+    #    to populate variables used to specify the URL
     # - 'status' provides a field to match into the status icons. 
     # There is currently no provision for a display grid without status icons.
     
@@ -139,6 +149,7 @@ def my_safe():
                                     'cntr': 'projects', 'view': 'project_details',
                                     'display': db.project_details.title,
                                     'url_args': [db.project_details.project_id, db.project_details.version],
+                                    'url_vars': [],
                                     'status': db.project_details.admin_status,
                                     'header': 'Projects'},
                        'outputs':  {'query': (db.outputs.user_id == auth.user.id),
@@ -147,6 +158,7 @@ def my_safe():
                                     'cntr': 'outputs', 'view': 'output_details',
                                     'display': db.outputs.title,
                                     'url_args': [db.outputs.id],
+                                    'url_vars': [],
                                     'status': db.outputs.admin_status,
                                     'header': 'Outputs'},
                        'blogs':    {'query': (db.blog_posts.user_id == auth.user.id),
@@ -155,6 +167,7 @@ def my_safe():
                                     'cntr': 'blogs', 'view': 'blog_details',
                                     'display': db.blog_posts.title,
                                     'url_args': [db.blog_posts.id],
+                                    'url_vars': [],
                                     'status': db.blog_posts.admin_status,
                                     'header': 'Blog posts'},
                        'visits'  : {'query': (db.research_visit_member.user_id == auth.user.id) &
@@ -164,6 +177,7 @@ def my_safe():
                                     'cntr': 'research_visits', 'view': 'research_visit_details',
                                     'display': db.research_visit.title,
                                     'url_args': [db.research_visit.id],
+                                    'url_vars': [],
                                     'status': db.research_visit.admin_status,
                                     'header': 'Research visits'},
                        'volunteer':{'query': (db.help_offered.user_id == auth.user.id),
@@ -172,14 +186,25 @@ def my_safe():
                                     'cntr': 'marketplace', 'view': 'volunteer_details',
                                     'display': db.help_offered.statement_of_interests,
                                     'url_args': [db.help_offered.id],
+                                    'url_vars': [],
                                     'status': db.help_offered.admin_status,
                                     'header': 'Volunteer offers'},
+                       'datasets' :{'query': (db.datasets.uploader_id == auth.user.id),
+                                    'select': [db.datasets.id, db.datasets.dataset_title, db.datasets.dataset_check_outcome],
+                                    'none': 'You have not uploaded any datasets',
+                                    'cntr': 'datasets', 'view': 'submit_dataset',
+                                    'display': db.datasets.dataset_title,
+                                    'url_args': [],
+                                    'url_vars': [('dataset_id', db.datasets.id)],
+                                    'status': db.datasets.dataset_check_outcome,
+                                    'header': 'Datasets'},
                        'request':  {'query': (db.help_request.user_id == auth.user.id),
                                     'select': [db.help_request.id, db.help_request.work_description, db.help_request.admin_status],
                                     'none': 'You have not created any requests for project help at SAFE',
                                     'cntr': 'marketplace', 'view': 'help_request_details',
                                     'display': db.help_request.work_description,
                                     'url_args': [db.help_request.id],
+                                    'url_vars': [],
                                     'status': db.help_request.admin_status,
                                     'header': 'Help requests'}
                       }
@@ -198,7 +223,11 @@ def my_safe():
             rows = db(query).select(*v['select'])
             
             # build a table row containing the display name with a URL link
-            rows = [TR(TD(A(r[v['display']], _href= URL(v['cntr'], v['view'], args=[r[x] for x in v['url_args']])),
+            rows = [TR(TD(A(r[v['display']], 
+                            _href= URL(v['cntr'], v['view'], 
+                                       args=[r[x] for x in v['url_args']],
+                                       vars={x[0]: r[x[1]] for x in v['url_vars']}
+                                      )),
                           _style='width:90%'),
                       TD(approval_icons[r[v['status']]]))
                    for r in rows]
@@ -223,9 +252,12 @@ def my_safe():
     content = DIV([DIV(grids[k], _class="tab-pane", _id=k) for k in keys], _class="tab-content")
     
     # amend the tabs and content to make one active on load
-    active = 'projects'
-    tabs.element('li[name=' + active + ']')['_class'] = 'active'
-    content.element('#' + active)['_class'] += ' active'
+    active_tab = request.vars['tab']
+    if active_tab is None or active_tab not in membership_dict:
+        active_tab = 'projects'
+    
+    tabs.element('li[name=' + active_tab + ']')['_class'] = 'active'
+    content.element('#' + active_tab)['_class'] += ' active'
     
     return dict(grids = CAT(tabs, content))
 
