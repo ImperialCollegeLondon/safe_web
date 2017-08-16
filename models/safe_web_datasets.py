@@ -65,13 +65,15 @@ def verify_dataset(dataset_id, email=False):
         error = True
     else:
         # otherwise, create a return dictionary for all remaining failure 
-        # modes (no report, but file, uploader and URL should fine)
+        # modes (no report, but file, uploader and URL should fine) and
+        # set the default outcome
         ret_dict = {'dataset_id': dataset_id, 
                     'report': '',
                     'filename': record.file_name,
                     'name': record.uploader_id.first_name,
                     'dataset_url': URL('datasets', 'submit_dataset', 
                                        vars={'dataset_id': dataset_id}, scheme=True)}
+        outcome = 'ERROR'
     
     # Initialise the dataset checker:
     if not error:
@@ -112,7 +114,6 @@ def verify_dataset(dataset_id, email=False):
                 dataset.warn('No data worksheets found')
         
         except Exception as e:
-            outcome = 'ERROR'
             ret_msg = 'Verifying dataset {}: error running dataset checking'.format(dataset_id)
             dataset_check_error = repr(e)
         else:
@@ -155,7 +156,7 @@ def verify_dataset(dataset_id, email=False):
                              dataset_metadata = dataset.export_metadata_dict(),
                              dataset_taxon_index = dataset.taxon_index,
                              dataset_locations = dataset.locations)
-        
+    
     # notify the user
     if email:
         opts = {'PASS': ['Dataset passed checks', 'dataset_check_pass.html'],
