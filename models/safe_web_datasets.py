@@ -72,7 +72,7 @@ def verify_dataset(dataset_id, email=False):
                     'filename': record.file_name,
                     'name': record.uploader_id.first_name,
                     'dataset_url': URL('datasets', 'submit_dataset', 
-                                       vars={'dataset_id': dataset_id}, scheme=True)}
+                                       vars={'dataset_id': dataset_id}, scheme=True, host=True)}
         outcome = 'ERROR'
     
     # Initialise the dataset checker:
@@ -390,14 +390,14 @@ def _dataset_description(record):
     
     desc += dwshts
     
-    proj_url = URL('projects','project_view', scheme=True, args=[metadata['project_id']])
+    proj_url = URL('projects','project_view', args=[metadata['project_id']], scheme=True, host=True)
     desc += CAT(P('This dataset was collected as part of the following SAFE research project: ', B(title)),
                 P('For more information see: ', A(proj_url, _href=proj_url)))
     
     # Can't get the XML metadata link unless it is published, since that 
     # contains references to the zenodo record
     if record.zenodo_submission_status == 'ZEN_PASS':
-        md_url = URL('datasets','xml_metadata', scheme=True, vars={'dataset_id': record.id})
+        md_url = URL('datasets','xml_metadata', vars={'dataset_id': record.id}, , scheme=True, host=True)
         desc += CAT(P('GEMINI compliant XML metadata for this dataset is available here: ', A(md_url, _href=md_url)))
     
     return desc
@@ -437,7 +437,7 @@ def generate_inspire_xml(record):
     citation.find('gmd:date/gmd:CI_Date/gmd:date/gco:Date', nsmap).text = record.zenodo_submission_date.date().isoformat()
 
     # two identifiers - the safe project website and the DOI.
-    safe_url = URL('datasets', 'view_dataset', vars={'dataset_id': record.id}, scheme=True)
+    safe_url = URL('datasets', 'view_dataset', vars={'dataset_id': record.id}, scheme=True, host=True)
     citation.find('gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString', nsmap).text = safe_url
     citation.find('gmd:identifier/gmd:RS_Identifier/gmd:code/gco:CharacterString', nsmap).text = record.zenodo_doi
     
@@ -529,7 +529,7 @@ def generate_inspire_xml(record):
     # LINEAGE STATEMENT
     lineage = ("This dataset was collected as part of a research project based at The SAFE Project. For details of " 
                "the project and data collection, see the methods information contained within the datafile and the "
-               "project website: ") + URL('projects', 'view_project', args=record.project_id, scheme=True)
+               "project website: ") + URL('projects', 'view_project', args=record.project_id, scheme=True, host=True)
     root.find(('gmd:dataQualityInfo/gmd:DQ_DataQuality/gmd:lineage/gmd:LI_Lineage/'
                'gmd:statement/gco:CharacterString'), nsmap).text = lineage
     
