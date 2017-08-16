@@ -193,10 +193,23 @@ def submit_dataset():
         session.flash = ('Upload successful. A validation check will be run and '
                           'you will get an email with the results when it finishes.')
         
-        # if this is an update, then flush the contents of record.dataset_check_outcome
+        # if this is an update, then reset dataset check fields 
         if record is not None:
-            record.update_record(dataset_check_outcome = None)
+            record.update_record(dataset_check_outcome = 'PENDING',
+                                 dataset_check_error = '',
+                                 dataset_check_report = '')
         
+        # schedule the dataset check
+        #  - set timeout to extend the default of 60 seconds. (If large files run
+        #    longer than this then the safe_dataset_checker code is going to need optimizing!)
+        #  - no start_time, so defaults to now.
+        task = scheduler.queue_task('verify_dataset', 
+                                    pvars = {'id': form.vars.id, 'email': True},
+                                    timeout = 5*60,
+                                    repeats=1,
+                                    immediate=True)
+        
+        # send to the updated page
         redirect(URL('datasets', 'submit_dataset', vars={'dataset_id':form.vars.id}))
     
     elif form.errors:

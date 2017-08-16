@@ -9,7 +9,7 @@ in their own model.
 """
 
 
-def verify_dataset(id, email=False):
+def verify_dataset(dataset_id, email=False):
     """
     Function to run the safe_dataset_checker on an uploaded file. There
     are three possible outcomes for a dataset: PASS; FAIL, if the check
@@ -22,7 +22,7 @@ def verify_dataset(id, email=False):
     Useful in error checking problem uploads.
     
     Args:
-        id: The id of the record from the dataset table that is to be checked.
+        dataset_id: The id of the record from the dataset table that is to be checked.
         email: Should the dataset uploader be emailed the outcome?
     
     Returns:
@@ -36,15 +36,25 @@ def verify_dataset(id, email=False):
         raise RuntimeError('Site not correctly configured to use ete3 for taxon checking')
     
     # get the record
-    record = db.datasets[id]
+    record = db.datasets[dataset_id]
     
     # track errors to avoid hideous nesting
     error = False
         
     if record is None:
-        ret_msg = 'Verifying dataset {}: unknown record ID'.format(id)
-        ret_dict = {'id': id, 'report': '', 'filename': '', 'name': record.uploader_id.first_name}
+        # not a valid record? Can't email anyone so turn that off
+        ret_msg = 'Verifying dataset {}: unknown record ID'.format(dataset_id)
+        email = False
         error = True
+    else:
+        # otherwise, create a return dictionary for all remaining failure 
+        # modes (no report, but file, uploader and URL should fine)
+        ret_dict = {'dataset_id': dataset_id, 
+                    'report': '',
+                    'filename': record.file_name,
+                    'name': record.uploader_id.first_name,
+                    'dataset_url': URL('datasets', 'submit_dataset', 
+                                       vars={'dataset_id': dataset_id}, scheme=True)}
     
     # Initialise the dataset checker:
     if not error:
@@ -58,18 +68,14 @@ def verify_dataset(id, email=False):
         except Exception as e:
             record.update_record(dataset_check_outcome='ERROR',
                                  dataset_check_error=repr(e))
-            ret_msg = 'Verifying dataset {}: error initialising dataset checker'.format(id)
-            ret_dict = {'id': id, 'report': '', 'filename': record.file_name,
-                        'name': record.uploader_id.first_name}
+            ret_msg = 'Verifying dataset {}: error initialising dataset checker'.format(dataset_id)
             error = True
     
     # make sure we are using ete3
     if not error and not dataset.use_ete:
         record.update_record(dataset_check_outcome='ERROR',
                              dataset_check_error=dataset.ete_failure)
-        ret_msg = 'Verifying dataset {}: error setting up ete3 taxonomy checking'.format(id)
-        ret_dict = {'id': id, 'report': '', 'filename': record.file_name,
-                    'name': record.uploader_id.first_name}
+        ret_msg = 'Verifying dataset {}: error setting up ete3 taxonomy checking'.format(dataset_id)
         error = True
     
     # main processing of the dataset
@@ -91,7 +97,7 @@ def verify_dataset(id, email=False):
         
         except Exception as e:
             outcome = 'ERROR'
-            ret_msg = 'Verifying dataset {}: error running dataset checking'.format(id)
+            ret_msg = 'Verifying dataset {}: error running dataset checking'.format(dataset_id)
             dataset_check_error = repr(e)
         else:
             # Catch the only bit of cross-validation: does the dataset project id match
@@ -101,10 +107,10 @@ def verify_dataset(id, email=False):
         
             if dataset.n_warnings:
                 outcome = 'FAIL'
-                ret_msg = 'Verifying dataset {}: dataset checking FAILED'.format(id)
+                ret_msg = 'Verifying dataset {}: dataset checking FAILED'.format(dataset_id)
             else:
                 outcome = 'PASS'
-                ret_msg = 'Verifying dataset {}: dataset checking PASSED'.format(id)
+                ret_msg = 'Verifying dataset {}: dataset checking PASSED'.format(dataset_id)
             
             dataset_check_error = ''
         
@@ -118,9 +124,14 @@ def verify_dataset(id, email=False):
         # First, need to extract the check report from the StringIO object and
         # substitute in the user filename for the local web2py filename. Also,
         # wrap it in <pre> for display purposes.
-        report_text = dataset.report().getvalue()
-        report_text = PRE(report_text.replace(fname, record.file_name))
-        
+        if outcome == 'ERROR':
+            report_text = ""
+        else:
+            report_text = dataset.report().getvalue()
+            report_text = PRE(report_text.replace(fname, record.file_name))
+            # Update the ret_dict to insert the report text
+            ret_dict['report'] = report_text
+            
         record.update_record(dataset_check_outcome=outcome,
                              dataset_check_report=report_text,
                              dataset_check_error=dataset_check_error,
@@ -128,10 +139,6 @@ def verify_dataset(id, email=False):
                              dataset_metadata = dataset.export_metadata_dict(),
                              dataset_taxon_index = dataset.taxon_index,
                              dataset_locations = dataset.locations)
-        
-        ret_dict = {'id': id, 'report': report_text, 
-                    'filename': record.file_name,
-                    'name': record.uploader_id.first_name}
         
     # notify the user
     if email:
