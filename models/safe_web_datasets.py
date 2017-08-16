@@ -397,7 +397,7 @@ def _dataset_description(record):
     # Can't get the XML metadata link unless it is published, since that 
     # contains references to the zenodo record
     if record.zenodo_submission_status == 'ZEN_PASS':
-        md_url = URL('datasets','xml_metadata', vars={'dataset_id': record.id}, , scheme=True, host=True)
+        md_url = URL('datasets','xml_metadata', vars={'dataset_id': record.id}, scheme=True, host=True)
         desc += CAT(P('GEMINI compliant XML metadata for this dataset is available here: ', A(md_url, _href=md_url)))
     
     return desc
