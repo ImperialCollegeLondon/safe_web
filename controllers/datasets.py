@@ -82,7 +82,7 @@ def administer_datasets():
                      _style='padding: 3px 10px 3px 10px')
         else:
             btn =  A('Check', _class='button btn btn-default',
-                     _href=URL("datasets","run_verify_dataset", vars={'id':row.id, 'email':0, 'manage':''}),
+                     _href=URL("datasets","run_verify_dataset", vars={'dataset_id':row.id, 'email':0, 'manage':''}),
                      _style='padding: 3px 10px 3px 10px;')
         return btn
     
@@ -204,7 +204,7 @@ def submit_dataset():
         #    longer than this then the safe_dataset_checker code is going to need optimizing!)
         #  - no start_time, so defaults to now.
         task = scheduler.queue_task('verify_dataset', 
-                                    pvars = {'id': form.vars.id, 'email': True},
+                                    pvars = {'dataset_id': form.vars.id, 'email': True},
                                     timeout = 5*60,
                                     repeats=1,
                                     immediate=True)
@@ -376,16 +376,16 @@ def run_verify_dataset():
     uploader gets emailed with the outcome.
     """
     
-    record_id = request.vars['id']
+    dataset_id = request.vars['dataset_id']
     email = request.vars['email']
     manage = 'manage' in request.vars
     err = []
     
-    if record_id is None:
+    if dataset_id is None:
         err += ["Record ID missing"]
     else:
         try:
-            record_id = int(record_id)
+            dataset_id = int(dataset_id)
         except ValueError:
             err += ["Record ID not an integer"]
     
@@ -397,7 +397,7 @@ def run_verify_dataset():
         email = True if email == '1' else False
     
     if len(err) == 0:
-        res = verify_dataset(record_id, email)
+        res = verify_dataset(dataset_id, email)
     else:
         res = ', '.join(err)
     
