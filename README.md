@@ -182,26 +182,34 @@ The dataset handling part of the website uses a python module that checks the me
     cd /home/www-data/web2py/applications/safe_web/modules/
     curl -O https://raw.githubusercontent.com/ImperialCollegeLondon/safe_dataset_checker/master/safe_dataset_checker.py
 
-That in turn uses the ete2 python package for checking taxon names against the NCBI Taxonomy database, which also requires a local build of the NCBI database. The DB download and build can take quite a long time - it is a 300 MB dataset to repackage into a SQLite DB.
+That in turn uses the `ete3` python package for checking taxon names against the NCBI Taxonomy database, which also requires a local build of the NCBI database. The DB download and build can take quite a long time - it is a 300 MB dataset to repackage into a SQLite DB.
 
-    sudo pip install ete2
-    nohup python -c "from ete2 import NCBITaxa; createDB = NCBITaxa()" > ete2_install.txt &
+    sudo pip install ete3
+    nohup python -c "from ete3 import NCBITaxa; createDB = NCBITaxa()" > ete2_install.txt &
 
- The other stupid thing about this package is that for a global install, it always looks for the database in the user account home, and automatically rebuilds it if it doesn't find it. So, unless you want to build it twice (and this hung the server once), then you need to copy it to the $HOME (`/var/www`) of the www-data user as well.
- 
-    sudo cp -r ~/.etetoolkit/ /var/www
-    sudo chown -R www-data:www-data /var/www/.etetoolkit/
+This isn't a trivial build task - it hung the server once - so it is probably wiser not to build the sqlite database on the web server: build it on another machine and `ftp` it in.
 
-Check this works by logging in as www-data (which doesn't normally have a login):
+Now... The `ete3` package needs to find this database. By default, creating an instance of `NCBITaxa()` looks for the database in the user account home directory. If it doesn't find it there it __automatically launches a complete download and rebuild__. This is not a good thing to happen. So the `safe_dataset_checker` module takes a very cautious approach: users have to provide a path  to a built sqlite database and that gets checked as valid before the program will try and use `ete3`. For individual users, `safe_dataset_checker` falls back to use the Entrez webservice, but this web app will only permit the local DB route, for speed. 
 
-    su -
-    su -s /bin/bash www-data
-    cd /home/www-data/
-    nohup python -c "from ete2 import NCBITaxa;ncbi=NCBITaxa();print ncbi.get_name_translator(['Aves'])" > nohup.log
+That means that you have to do two things:
 
-The nohup.log file should contain:
+  1. Make sure the .sqlite database globally readable. It is installed in the home directory of the installing user, and may or may not be readable, so check it! On the AWS Ubuntu machines, it will be here: `/home/ubuntu/.etetoolkit/taxa.sqlite`
 
-    {'Aves': [8782]}
+    Check the web application can access the file by logging in as www-data (which doesn't normally have a login):
+
+        su -
+        su -s /bin/bash www-data
+        cd /home/www-data/
+        nohup python -c "import ete3;print ete3.is_taxadb_up_to_date(dbfile='/home/ubuntu/.etetoolkit/taxa.sqlite')" > nohup.log
+
+    The nohup.log file should just contain `True`! Don't forget to `exit` twice to get back to `root` and then the `ubuntu` user shell.
+  
+  2. Configure the web app to know where to find it. You need to edit the path and add the lines below to `private/appconfig.ini`
+
+        ; path to ete3 taxon database, requirement for taxon checking
+        [ete3]
+        ete3_database = /home/ubuntu/.etetoolkit/taxa.sqlite
+
 
 ### Setting the default application 
 
