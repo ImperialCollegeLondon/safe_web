@@ -1,6 +1,8 @@
 import lxml
 import simplejson
 import copy
+import safe_dataset_checker
+from gluon.contrib.appconfig import AppConfig
 
 """
 Functions to handle datasets. These are called from the datasets controller but 
@@ -21,6 +23,11 @@ def verify_dataset(dataset_id, email=False):
     using the administer_datasets controller without spamming the uploader. 
     Useful in error checking problem uploads.
     
+    When this function is run by the administer_datasets controller, myconf
+    has been loaded, but it isn't loaded when the function is run by
+    a scheduler worker: no models are run except the one defined in the 
+    task. So the setup needs to check for it.
+    
     Args:
         dataset_id: The id of the record from the dataset table that is to be checked.
         email: Should the dataset uploader be emailed the outcome?
@@ -29,11 +36,21 @@ def verify_dataset(dataset_id, email=False):
         A string describing the outcome of the check that gets stored in the
         scheduler results or sent back to the administer_datasets controller.
     """
-
+    
+    # Is the config loaded? If not do so!
+    try:
+        myconf
+    except NameError:
+        try:
+            myconf = AppConfig()
+        except Exception:
+            raise RuntimeError('Scheduler could not load website config')
     
     # check the configuration includes a path to the ete3_database
-    if 'ete3' not in myconf or 'ete3_database' not in myconf['ete3']:
-        raise RuntimeError('Site not correctly configured to use ete3 for taxon checking')
+    try:
+        ete_db = myconf.take('ete3.ete3_database')
+    except BaseException:
+        raise RuntimeError('Site config does not provide a path for the ete3 database')
     
     # get the record
     record = db.datasets[dataset_id]
@@ -63,8 +80,7 @@ def verify_dataset(dataset_id, email=False):
         # get the Dataset object from the file checker - don't use the high level
         # check file function to separate ete3 config problems
         try:
-            dataset = safe_dataset_checker.Dataset(fname, verbose=False, 
-                                                   ete3_database=myconf['ete3']['ete3_database'])
+            dataset = safe_dataset_checker.Dataset(fname, verbose=False, ete3_database=ete_db)
         except Exception as e:
             record.update_record(dataset_check_outcome='ERROR',
                                  dataset_check_error=repr(e))
