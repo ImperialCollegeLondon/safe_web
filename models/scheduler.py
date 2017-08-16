@@ -111,7 +111,9 @@ def update_deputy_coordinator():
 
 # Load the scheduler and set the task names, setting a 5 minute heartbeat.
 # As the current tasks are daily activities at most, there is no need for
-# the scheduler to do frenetic checks every 3 seconds, which is the default
+# the scheduler to do frenetic checks every 3 seconds, which is the default.
+# This is especially true since individual queue tasks can set immediate=TRUE
+# to get prompt running of a task.
 
 from gluon.scheduler import Scheduler
 scheduler = Scheduler(db, 
