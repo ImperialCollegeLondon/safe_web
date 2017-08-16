@@ -39,7 +39,7 @@ def check_task_queue():
 									  db.scheduler_run.status])
 	
 	# make it into a pretty table
-	run_status = TABLE(TR(TH("Task name"), TH("Status"), TH('Most recent status occurence')),
+	run_status = TABLE(TR(TH("Task name"), TH("Status"), TH('Most recent status occurrence')),
 						 *[TR(r.scheduler_task.task_name, 
 							  r.scheduler_run.status, 
 							  r.most_recent) for r in run_status],
