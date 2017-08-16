@@ -24,7 +24,7 @@ def view_datasets():
     
     # provide a grid display
     form = SQLFORM.grid((db.datasets.dataset_check_outcome == 'PASS') &
-                        (db.datasets.zenodo_submission_status == 'Published'),
+                        (db.datasets.zenodo_submission_status == 'ZEN_PASS'),
                         fields = [db.datasets.project_id,
                                   # db.datasets.uploader_id,
                                   db.datasets.dataset_title,
