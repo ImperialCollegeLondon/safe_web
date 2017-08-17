@@ -140,8 +140,8 @@ The application needs a few extra python modules. I didn't muck around with virt
     sudo pip install gitpython 
     sudo pip install --upgrade google-api-python-client
     sudo pip install openpyxl
-    sudo pip install fs
     sudo pip install html2text
+    sudo pip install lxml
 
 ### Initial deployment 
 

@@ -109,18 +109,17 @@ def update_deputy_coordinator():
         raise RuntimeError('Failed to email weekly research visit summary')
 
 
-# Load the scheduler and set the task names, setting a 5 minute heartbeat.
-# As the current tasks are daily activities at most, there is no need for
-# the scheduler to do frenetic checks every 3 seconds, which is the default.
-# This is especially true since individual queue tasks can set immediate=TRUE
-# to get prompt running of a task.
+# Load the scheduler and set the task names. With only daily tasks, a slower
+# heartbeat is fine, but with dataset checking, a snappier response is needed, 
+# so the default 3 second heartbeat is used. Note that individual queue tasks 
+# can set immediate=TRUE to get prompter running of a task, but that still might
+# wait for one or two heartbeats to actually run.
 
 from gluon.scheduler import Scheduler
 scheduler = Scheduler(db, 
                       tasks=dict(remind_about_unknowns=remind_about_unknowns,
                                  update_deputy_coordinator=update_deputy_coordinator,
-                                 verify_dataset=verify_dataset),
-                      heartbeat=5*60)
+                                 verify_dataset=verify_dataset))
 
 # These tasks then need to be queued using scheduler.queue_task or manually via 
 # the appadmin interface. Don't do it here as they'll be queued every time the 

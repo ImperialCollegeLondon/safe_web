@@ -23,10 +23,9 @@ def verify_dataset(dataset_id, email=False):
     using the administer_datasets controller without spamming the uploader. 
     Useful in error checking problem uploads.
     
-    When this function is run by the administer_datasets controller, myconf
-    has been loaded, but it isn't loaded when the function is run by
-    a scheduler worker: no models are run except the one defined in the 
-    task. So the setup needs to check for it.
+    This function is also used as a scheduler task, so needs some extra
+    care to make sure it runs in the environment of a scheduler worker
+    as well as in the environment of the website.
     
     Args:
         dataset_id: The id of the record from the dataset table that is to be checked.
@@ -35,16 +34,10 @@ def verify_dataset(dataset_id, email=False):
     Returns:
         A string describing the outcome of the check that gets stored in the
         scheduler results or sent back to the administer_datasets controller.
+        This is primarily a user friendly bit of text for popping up in a 
+        website flash, not an Exception message, so those are stored elsewhere
+        for an admin to look at.
     """
-    
-    # Is the config loaded? If not do so!
-    try:
-        myconf
-    except NameError:
-        try:
-            myconf = AppConfig()
-        except Exception:
-            raise RuntimeError('Scheduler could not load website config')
     
     # check the configuration includes a path to the ete3_database
     try:
@@ -52,10 +45,19 @@ def verify_dataset(dataset_id, email=False):
     except BaseException:
         raise RuntimeError('Site config does not provide a path for the ete3 database')
     
+    # Load the host name from the configuration. When run from a controller,
+    # the URL(host=TRUE) has access to the host name from requests. This isn't
+    # true when it is run by a scheduler worker, which isn't operating as part
+    # of the website. So rather than hardcoding, store the host name in the config
+    try:
+        host = myconf.take('host.host_name')
+    except BaseException:
+        raise RuntimeError('Site config does not the host name')
+    
     # get the record
     record = db.datasets[dataset_id]
     
-    # track errors to avoid hideous nesting
+    # track errors to avoid hideous nested try statements
     error = False
         
     if record is None:
@@ -72,7 +74,7 @@ def verify_dataset(dataset_id, email=False):
                     'filename': record.file_name,
                     'name': record.uploader_id.first_name,
                     'dataset_url': URL('datasets', 'submit_dataset', 
-                                       vars={'dataset_id': dataset_id}, scheme=True, host=True)}
+                                       vars={'dataset_id': dataset_id}, scheme=True, host=host)}
         outcome = 'ERROR'
     
     # Initialise the dataset checker:
@@ -84,8 +86,13 @@ def verify_dataset(dataset_id, email=False):
         try:
             dataset = safe_dataset_checker.Dataset(fname, verbose=False, ete3_database=ete_db)
         except Exception as e:
+            # We don't want to bail here because we might want to email the uploader,
+            # but we do want to record what went wrong. We store it in the dataset record, which
+            # is the only venue when run from a controller, but also output it so it will be captured
+            # in scheduler_run.outputs when run as a scheduled task
             record.update_record(dataset_check_outcome='ERROR',
                                  dataset_check_error=repr(e))
+            sys.stderr.write(repr(e))
             ret_msg = 'Verifying dataset {}: error initialising dataset checker'.format(dataset_id)
             error = True
     
@@ -167,6 +174,10 @@ def verify_dataset(dataset_id, email=False):
                    subject=opts[outcome][0],
                    template=opts[outcome][1],
                    template_dict= ret_dict)
+    
+    # A task run by a worker does not automatically commit changes, so
+    # save any by changes before ending
+    db.commit()
     
     return ret_msg
 
