@@ -204,11 +204,7 @@ That means that you have to do two things:
 
     The nohup.log file should just contain `True`! Don't forget to `exit` twice to get back to `root` and then the `ubuntu` user shell.
   
-  2. Configure the web app to know where to find it. You need to edit the path and add the lines below to `private/appconfig.ini`
-
-        ; path to ete3 taxon database, requirement for taxon checking
-        [ete3]
-        ete3_database = /home/ubuntu/.etetoolkit/taxa.sqlite
+  2. Configure the web app to know where to find it. See the section below on the config for the web application
 
 
 ### Setting the default application 
@@ -224,6 +220,40 @@ Rather than including `safe\_web` in every URL, we can set a default application
 Then restart apache:
 
     sudo service apache2 restart
+
+### Web application config
+
+The web application needs a config file, saved as  `private.appconfig.ini`, which provides some basic information for running the site. This isn't in the repository because it contains passwords, etc.
+
+There are some standard bits of information for email and the db connection, but the SAFE web application adds two more: the path to the SQLite database for checking taxonomy and the host name. This last one is needed for scheduled tasks: the daemon running these has no idea that it is doing anything to do with a website, so if a scheduled task needs to build a URL, it has to be able to look up the host name. The file should look like this:
+
+	; App configuration
+
+	; db configuration
+	[db]
+	uri       = db_uri
+	migrate   = 1
+	pool_size = 5
+
+	; smtp address and credentials
+	[smtp]
+	server = mail_server_uri:port
+	sender = from_email_account
+	login  = login_id:password
+
+	; form styling
+	[forms]
+	formstyle = bootstrap3_inline
+	separator = 
+
+	; path to ete3 taxon database, requirement for taxon checking
+	[ete3]
+	ete3_database = /path/to/.etetoolkit/taxa.sqlite
+
+	; host name. Used to provide the host URL for scheduler workers
+	[host]
+	host_name = www.safeproject.net
+
 
 ### Section progress report #2
 
