@@ -1,3 +1,4 @@
+import sys
 import lxml
 import simplejson
 import copy
@@ -52,7 +53,7 @@ def verify_dataset(dataset_id, email=False):
     try:
         host = myconf.take('host.host_name')
     except BaseException:
-        raise RuntimeError('Site config does not the host name')
+        raise RuntimeError('Site config does provide not the host name')
     
     # get the record
     record = db.datasets[dataset_id]
