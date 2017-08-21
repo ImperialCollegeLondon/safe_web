@@ -314,7 +314,8 @@ db.define_table('datasets',
 
 ## -----------------------------------------------------------------------------
 ## GAZETTEER
-## - holds the set of recognized locations
+## - Two tables: one holds the set of recognized locations and the other holds
+##   aliases for each location.
 ## -----------------------------------------------------------------------------
 
 """
@@ -352,6 +353,11 @@ db.define_table('gazetteer',
     Field('geom_type', 'string', requires=IS_IN_SET(geom_types)),
     Field('geom_coords', 'json'),
     Field('source', 'text'))
+
+# Aliases location names - cannot use a value already in the gazeetteer locations
+db.define_table('gazetteer_alias',
+    Field('location', 'string', requires=IS_IN_DB(db, 'gazetteer.locations')),
+    Field('location_alias', 'string', requires=IS_NOT_IN_DB(db, 'gazetteer.locations'), unique=True))
 
 ## -----------------------------------------------------------------------------
 ## MARKET PLACE

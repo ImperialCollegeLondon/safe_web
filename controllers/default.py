@@ -396,8 +396,10 @@ def get_locations():
 
 @service.json
 def get_locations_bbox():
+    
     """
-    Service to return a JSON array of valid locations and their bounding boxes
+    Service to return a JSON array of valid locations, their bounding boxes and a 
+    list of valid aliases
     """
     
     locations = db().select(db.gazetteer.location, 
@@ -405,10 +407,18 @@ def get_locations_bbox():
                             db.gazetteer.bbox_xmax,
                             db.gazetteer.bbox_ymin,
                             db.gazetteer.bbox_ymax)
-    # reformat
-    locations = [(r.location, (r.bbox_xmin, r.bbox_xmax, r.bbox_ymin, r.bbox_ymax)) for r in locations]
     
-    return locations
+    # reformat to a dictionary of bbox tuples
+    locations = {r.location: (r.bbox_xmin, r.bbox_xmax, r.bbox_ymin, r.bbox_ymax) for r in locations}
+    
+    # add aliases dictionary - aliases are unique so use them as key to locations, which
+    # might have more than one alias
+    aliases = db().select(db.gazetteer_alias.location, 
+                          db.gazetteer_alias.location_alias)
+    
+    aliases = {r.location_alias: r.location for r in aliases}
+    
+    return {'locations': locations, 'aliases': aliases}
 
 
 

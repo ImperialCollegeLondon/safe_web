@@ -89,11 +89,10 @@ def verify_dataset(dataset_id, email=False):
         except Exception as e:
             # We don't want to bail here because we might want to email the uploader,
             # but we do want to record what went wrong. We store it in the dataset record, which
-            # is the only venue when run from a controller, but also output it so it will be captured
-            # in scheduler_run.outputs when run as a scheduled task
+            # is the only venue when run from a controller. If I could work out where the scheduler 
+            # run output comes from, I'd do that too.
             record.update_record(dataset_check_outcome='ERROR',
                                  dataset_check_error=repr(e))
-            sys.stderr.write(repr(e))
             ret_msg = 'Verifying dataset {}: error initialising dataset checker'.format(dataset_id)
             error = True
     
