@@ -14,13 +14,7 @@ def users():
     """
     
     # links to custom view page
-    links = [dict(header = '', 
-                 body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
-                                      SPAN('View', _class="buttontext button"),
-                                      _class="button btn btn-default", 
-                                      _href=URL("people","user_details", 
-                                      args=[row.id], user_signature=True),
-                                      _style='padding: 3px 5px 3px 5px;'))]
+    links = [link_button("people","user_details", 'id')]
     
     form = SQLFORM.grid(query = db.auth_user, csv=False,
                         fields=[db.auth_user.last_name,

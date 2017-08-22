@@ -10,26 +10,20 @@ from fs.osfs import OSFS
 
 def news():
     
-    links = [dict(header = '', body = lambda row: IMG(_src = URL('default', 'download', args = row.thumbnail_figure) if row.thumbnail_figure is not None else 
-                                                             URL('static', 'images/default_thumbnails/missing_news.png'),
-                                                        _height = 100)),
-             dict(header = '', 
-                  body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
-                                       SPAN('View', _class="buttontext button"),
-                                       _class="button btn btn-default", 
-                                       _href=URL("news","news_post", args=[row.id], user_signature=True),
-                                       _style='padding: 3px 5px 3px 5px;'))]
+    # create a link to take the user to the custom view
+    links = [link_button("news","news_post", 'id')]
     
-    db.news_posts.thumbnail_figure.readable=False
+    # thumbnail representation
+    db.news_posts.thumbnail_figure.represent = lambda value, row: thumbnail(value, 'missing_news.png')
     
     form = SQLFORM.grid(query=db.news_posts.hidden == False, 
                         fields=[db.news_posts.thumbnail_figure,
                                 db.news_posts.title,
                                 db.news_posts.date_posted],
                         orderby= ~ db.news_posts.date_posted,
+                        headers={'news_posts.thumbnail_figure': ''},
                         maxtextlength=150,
                         links=links,
-                        links_placement='left',
                         editable=False,
                         create=False,
                         deletable=False,
@@ -66,33 +60,21 @@ def manage_news():
     Controller to allow admin to create, edit and delete news posts
     """
     
-    missing_img = URL('static', 'images/default_thumbnails/missing_news.png')
+    links = [link_button("news","news_post", 'id')]
     
-    links = [dict(header = '', 
-                  body = lambda row: IMG(_src = URL('default', 'download', 
-                                          args = row.thumbnail_figure) if row.thumbnail_figure is not None else missing_img,
-                                         _height = 100)),
-            dict(header = '', 
-                 body = lambda row: A(SPAN('',_class="glyphicon glyphicon-zoom-in"),
-                                      SPAN('Edit'), _class="button btn btn-default", 
-                                      _href=URL("news","news_details", args=[row.id], user_signature=True),
-                                      _style='padding: 3px 5px 3px 5px;')),
-            dict(header = '', 
-                 body = lambda row: A(hide_glyph if row.hidden else visib_glyph,
-                                      _class="button btn btn-default", 
-                                      _href=URL("news","news_hide", args=[row.id], user_signature=True),
-                                      _style=hide_style if row.hidden else visib_style))] 
-    
-    # need these three fields in the fields list to allow the links
-    # to be created but don't want to actually show them in the grid
-    db.news_posts.thumbnail_figure.readable=False
-    db.news_posts.hidden.readable=False
+    # field representation
+    db.news_posts.thumbnail_figure.represent = lambda value, row: thumbnail(value, 'missing_news.png')
+    db.news_posts.hidden.represent = lambda value, row: A(hide_glyph if row.hidden else visib_glyph,
+                                                          _class="button btn btn-default",
+                                                          _href=URL("news","news_hide", args=[row.id]),
+                                                          _style=hide_style if row.hidden else visib_style)
     
     form = SQLFORM.grid(db.news_posts, csv=False, 
                         fields=[db.news_posts.thumbnail_figure,
                                 db.news_posts.title,
                                 db.news_posts.date_posted,
                                 db.news_posts.hidden],
+                        headers={'news_posts.thumbnail_figure': ''},
                         orderby=~db.news_posts.date_posted,
                         maxtextlength=100,
                         create=False,
@@ -104,8 +86,7 @@ def manage_news():
                                   'fields': ['thumbnail_figure', 'title','content'],
                                   'links': None},
                         editargs={'deletable':False},
-                        links=links,
-                        links_placement='left')
+                        links=links)
     
     # insert a new button into the form, where the create new record button would be
     # that redirects to a create new topic form (which populates topic and first post in the topic)

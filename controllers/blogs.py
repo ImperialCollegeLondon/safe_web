@@ -8,16 +8,11 @@ import datetime
 
 def blogs():
     
-    links = [dict(header = '', body = lambda row: A(IMG(_src = URL('default', 
-                  'download', args = row.thumbnail_figure), _height = 100))),
-             dict(header = '', 
-                  body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
-                                       SPAN('View', _class="buttontext button"),
-                                       _class="button btn btn-default", 
-                                       _href=URL("blogs","blog_post", args=[row.id], user_signature=True),
-                                       _style='padding: 3px 5px 3px 5px;'))] 
+    # create a link to take the user to the custom view
+    links = [link_button("blogs","blog_post", 'id')]
     
-    db.blog_posts.thumbnail_figure.readable=False
+    # thumbnail representation
+    db.blog_posts.thumbnail_figure.represent = lambda value, row: thumbnail(value, 'missing_blog.png')
     
     form = SQLFORM.grid((db.blog_posts.hidden == False) &
                         (db.blog_posts.admin_status == 'Approved'), 
@@ -25,9 +20,9 @@ def blogs():
                                 db.blog_posts.title,
                                 db.blog_posts.date_posted],
                         orderby= ~ db.blog_posts.date_posted,
+                        headers={'blog_posts.thumbnail_figure': ''},
                         maxtextlength=150,
                         links=links,
-                        links_placement='left',
                         editable=False,
                         create=False,
                         deletable=False,
@@ -313,31 +308,24 @@ def administer_blogs():
 @auth.requires_membership('admin')
 def manage_blogs():
     
-    links = [dict(header = '', body = lambda row: A(IMG(_src = URL('default', 
-                  'download', args = row.thumbnail_figure), _height = 100))),
-             dict(header = '', 
-                  body = lambda row: A(SPAN('',_class="glyphicon glyphicon-zoom-in"),
-                                       SPAN('View'), _class="button btn btn-default", 
-                                       _href=URL("blogs","blog_details", args=[row.id], user_signature=True),
-                                       _style='padding: 3px 5px 3px 5px;')),
-             dict(header = '', 
-                  body = lambda row: A(hide_glyph if row.hidden else visib_glyph,
-                                       _class="button btn btn-default", 
-                                       _href=URL("blogs","blog_hide", args=[row.id], user_signature=True),
-                                       _style=hide_style if row.hidden else visib_style))] 
+    links = [link_button("blogs","blog_post", 'id')]
     
-    db.blog_posts.thumbnail_figure.readable=False
-    db.blog_posts.hidden.readable=False
+    # field representation
+    db.blog_posts.thumbnail_figure.represent = lambda value, row: thumbnail(value, 'missing_blog.png')
+    db.blog_posts.hidden.represent = lambda value, row: A(hide_glyph if row.hidden else visib_glyph,
+                                                          _class="button btn btn-default",
+                                                          _href=URL("blogs","blog_hide", args=[row.id]),
+                                                          _style=hide_style if row.hidden else visib_style)
     
     form = SQLFORM.grid(db.blog_posts, 
                         fields=[db.blog_posts.thumbnail_figure,
-                                db.blog_posts.hidden,
                                 db.blog_posts.title,
-                                db.blog_posts.date_posted],
+                                db.blog_posts.date_posted,
+                                db.blog_posts.hidden],
+                        headers={'blog_posts.thumbnail_figure': ''},
                         orderby= ~ db.blog_posts.date_posted,
                         maxtextlength=150,
                         links=links,
-                        links_placement='left',
                         editable=False,
                         create=False,
                         deletable=False,

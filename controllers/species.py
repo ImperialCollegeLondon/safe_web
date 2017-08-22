@@ -13,36 +13,31 @@ def species():
     Controller to show a SQLFORM.grid view of species profiles and
     expose links to a standalone species profile controller
     """
-        
-    links = [dict(header = '', body = lambda row: A(IMG(_src = row.image_link, 
-             _height = 100, _width=120), 
-             _href=row.image_href, _title=row.image_title)),
-             dict(header = '', 
-                  body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
-                                       SPAN('View', _class="buttontext button"),
-                                       _class="button btn btn-default", 
-                                       _href=URL("species","species_profile", args=[row.id], user_signature=True),
-                                       _style='padding: 3px 5px 3px 5px;'))] 
     
-    # need these three fields in the fields list to allow the links
-    # to be created but don't want to actually show them in the grid
-    db.species_profile.image_link.readable=False
-    db.species_profile.image_href.readable=False
-    db.species_profile.image_title.readable=False
+    
+    # create a link to take the user to the custom view
+    links = [link_button("species", "species_profile", 'id')]
     
     # change the representation of the binomial field to use italics
-    # - creates a mini function (lambda) that acts on a row object to
-    #   alter the value passed to the grid
     db.species_profile.binomial.represent = lambda binomial, row: I(binomial)
     
+    # and the representation of the image link (can't use the global thumbnail function here 
+    # as these are external images
+    def _sp_img(row):
+        return A(DIV(_style=('background: url(' + row.image_link + ') 50% 50% no-repeat; '
+                             'background-size: cover; width: 120px; height: 100px;')),
+                 _href=row.image_href)
+    
+    db.species_profile.image_link.represent = lambda value, row : _sp_img(row)
+    db.species_profile.image_href.readable = False
+    
     form = SQLFORM.grid(db.species_profile, csv=False, 
-                        fields=[db.species_profile.common_name, 
+                        fields=[db.species_profile.image_link,
+                                db.species_profile.common_name, 
                                 db.species_profile.binomial, 
                                 db.species_profile.iucn_status, 
-                                db.species_profile.image_link,
-                                db.species_profile.image_href,
-                                db.species_profile.image_title
-                                ],
+                                db.species_profile.image_href],
+                        headers={'species_profile.image_link': ''},
                         maxtextlength=250,
                         orderby='<random>',
                         create=False,
@@ -50,8 +45,7 @@ def species():
                         editable=False,
                         details=False,
                         formargs={'showid':False},
-                        links=links,
-                        links_placement='left')
+                        links=links)
     
     return dict(form=form)
 

@@ -64,7 +64,7 @@ def index():
     
     link_url = [URL(c,r, args=i) for c,r,i in zip(cont, func, ids)]
     
-    thumb_url = [URL('default', 'download', args = r.thumbnail_figure) for sublist in to_show for r in sublist]
+    thumb_file = [r.thumbnail_figure for sublist in to_show for r in sublist]
     
     # ind = range(4 * n_items)
     #
@@ -75,10 +75,10 @@ def index():
     slides_args = [{'_class':'item'}] * 4 * n_items
     slides_args[0] = {'_class':'item active'}
     
-    items = [DIV(DIV(IMG(_src=th, _height='100px'), _class='col-sm-3'),
+    items = [DIV(DIV(thumbnail(th), _class='col-sm-3'),
                  DIV(A(H4(kn,ti), _href=ln), _class='col-sm-9'),
                  _style='margin: auto;width:85%;overflow:hidden', **args)
-             for th, kn, ti, ln, args in zip(thumb_url, kind, titles, link_url, slides_args)]
+             for th, kn, ti, ln, args in zip(thumbfile, kind, titles, link_url, slides_args)]
     
     random.shuffle(items)
     

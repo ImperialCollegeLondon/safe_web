@@ -45,32 +45,11 @@ def projects():
     db.project_details.data_sharing.readable = False 
     db.project_details.legacy_project_id.readable = False 
     
-    # hide thumbnail_figure link - we need it in the fields, to use it in the links
-    # but we don't want to show the field itself
+    # create a link to take the user to the custom view
+    links = [link_button("projects","project_view", 'project_id.id')]
     
-    # create a links list that:
-    # 1) displays a thumbnail of the  project image
-    # 2) creates a custom button to pass the row id to a custom view 
-    
-    links = [dict(header = '', 
-                  body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
-                                       SPAN('View', _class="buttontext button"),
-                                       _class="button btn btn-default", 
-                                       _href=URL("projects","project_view", args=[row.project_id.id], user_signature=True),
-                                       _style='padding: 3px 5px 3px 5px;'))]
-    
-    # display representation
-    def _thumb(value, row):
-        if value is None or value == '':
-            url = URL('static', 'images/default_thumbnails/missing_project.png') 
-        else:
-            url = URL('default', 'download', args = row.project_details.thumbnail_figure)
-        
-        return IMG(_src=url, _height=100)
-    
-    db.project_details.thumbnail_figure.represent = lambda value, row: _thumb(value, row)
-    
-    
+    # thumbnail representation
+    db.project_details.thumbnail_figure.represent = lambda value, row: thumbnail(value, 'missing_project.png')
     
     # create a grid view on the join between project_id and project_details
     query = ((db.project_id.project_details_id == db.project_details.id) &

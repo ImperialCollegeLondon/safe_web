@@ -24,12 +24,7 @@ def volunteers():
                      (db.help_offered.available_to > datetime.date.today())
     
     # links to custom view page
-    links = [dict(header = '', 
-                 body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
-                                      SPAN('View', _class="buttontext button"),
-                                      _class="button btn btn-default", 
-                                      _href=URL("marketplace","view_volunteer", args=[row.id]),
-                                      _style='padding: 3px 5px 3px 5px;'))]
+    links = [link_button("marketplace","view_volunteer", 'id')]
     
     # hide admin fields in the grid
     db.help_offered.admin_status.readable = False
@@ -363,13 +358,8 @@ def administer_volunteers():
      - forwarding to volunteer details page, which provides admin interface
     """
     
-    links = [dict(header = '', 
-                  body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
-                                      SPAN('View', _class="buttontext button"),
-                                      _class="button btn btn-default", 
-                                      _href=URL("marketplace","volunteer_details", 
-                                      args=[row.id], user_signature=True),
-                                      _style='padding: 3px 5px 3px 5px;'))]
+    
+    links = [link_button("marketplace","view_volunteer", 'id')]
     
     # get a query of pending requests with user_id
     form = SQLFORM.grid(query=(db.help_offered.admin_status == 'Submitted'), csv=False,
@@ -413,13 +403,7 @@ def help_requests():
                      (db.project_id.project_details_id == db.project_details.id)
     
     # links to custom view page
-    links = [dict(header = '', 
-                 body = lambda row: A(SPAN('',_class="glyphicon glyphicon-zoom-in"),
-                                      SPAN('View', _class="buttontext button"),
-                                      _class="button btn btn-default", 
-                                      _href=URL("marketplace","view_help_request", 
-                                                args=[row.help_request.id], user_signature=True),
-                                      _style='padding: 3px 5px 3px 5px;'))]
+    links = [link_button("marketplace","view_help_request", 'help_request.id')]
     
     # create a link using the project name
     def link_formatter(value, row):
@@ -854,13 +838,7 @@ def administer_help_requests():
      - forwarding to help request details page, which provides admin interface
     """
     
-    links = [dict(header = '', 
-                  body = lambda row: A(SPAN('',_class="icon magnifier icon-zoom-in glyphicon glyphicon-zoom-in"),
-                                      SPAN('View', _class="buttontext button"),
-                                      _class="button btn btn-default", 
-                                      _href=URL("marketplace","help_request_details", 
-                                      args=[row.id], user_signature=True),
-                                      _style='padding: 3px 5px 3px 5px;'))]
+    links = [link_button("marketplace","view_help_request", 'id')]
     
     # get a query of pending requests 
     form = SQLFORM.grid(query=(db.help_request.admin_status == 'Submitted'), csv=False,

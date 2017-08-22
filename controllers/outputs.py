@@ -11,14 +11,11 @@ def outputs():
     This controller shows the grid view for outputs
     """
     
-    # create a link object that associates a row with the image uploaded for it
-    links = [dict(header = '', body = lambda row: IMG(_src = URL('default', 
-                  'download', args = row.thumbnail_figure), _width = 100, _height = 100))]
+    # create a link to take the user to the custom view
+    links = [link_button("outputs","view_output", 'id')]
     
-    # we need the thumbnail_figure field in the fields fetched, in order to look up
-    # the thumbnail_figure to display as a row using links, but we don't want to actually 
-    # show the field itself, so:
-    db.outputs.thumbnail_figure.readable = False
+    # thumbnail representation
+    db.outputs.thumbnail_figure.represent = lambda value, row: thumbnail(value, 'missing_output.png')
     
     # subset down to approved projects
     query = (db.outputs.admin_status == 'Approved')
@@ -32,9 +29,9 @@ def outputs():
                         deletable=False,
                         editable=False,
                         create=False,
+                        headers={'outputs.thumbnail_figure': ''},
                         details=False,
                         links=links,
-                        links_placement='left',
                         formargs= {'fields': ['title', 'citation','format', 'file',
                                               'abstract', 'lay_summary','doi', 'url'],
                                    'showid': False})

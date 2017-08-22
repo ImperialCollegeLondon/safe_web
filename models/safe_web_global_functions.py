@@ -6,6 +6,48 @@ from collections import OrderedDict
 This model holds a set of functions that are shared between controllers
 """
 
+"""
+Formatting functions for SQLFORM grids, taking values from 
+form rows and wrapping them, either using their represent value
+or by creating a dictionary for a links object
+"""
+
+def thumbnail(value, default, size=100):
+    """
+    A function to to crop an image within a DIV to make a fixed size
+    for a stack of images. It is expecting to be called from a lambda
+    expression for the represent of an image field:
+    
+    db.project_details.thumbnail_figure.represent = lambda value, row: _thumb(value)
+    
+    """
+    if value is None or value == '':
+        url = URL('static', 'images/default_thumbnails/' + default) 
+    else:
+        url = URL('default', 'download', args = value)
+    
+    return DIV(_style=('background: url(' + url + ') 50% 50% no-repeat; '
+                       'background-size: cover;'
+                       'width: ' + str(size) + 'px; '
+                       'height: ' + str(size) + 'px;'))
+
+def link_button(c, f, arg, text="View", icon="glyphicon glyphicon-zoom-in"):
+
+    """
+    A function to provide a dictionary for use in the links argument of
+    a SQLFORM.grid. The dictionary creates a button styled link to a specified
+    controller (c), function (f) and row property as a link argument.
+    """
+    
+    
+    return dict(header = '', 
+                body = lambda row: A(SPAN('',_class=icon), XML('&nbsp'),
+                                     SPAN(text, _class="buttontext button"),
+                                     _class="button btn btn-default", 
+                                     _href=URL(c, f, args=[row[arg]]),
+                                     _style='padding: 3px 5px 3px 5px;'))
+
+
 def datepicker_script(id, **settings):
 	
 	"""

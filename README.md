@@ -484,7 +484,29 @@ You can just set some worker processes (two in this case) going on the server us
 
     python web2py.py -K safe_web,safe_web &
 
-More elegantly, you can create a web2py worker service that will allow you to stop, restart and start on server startup. The example provided by web2py uses `upstart`, which handily is installed and running on the AWS Ubuntu. I haven't done this yet.
+More elegantly, you can create a web2py worker service that will allow you to stop, restart and start on server startup. The example provided by web2py uses `upstart` but `systemd` is used by more recent Ubuntu:
+
+Create the file `/etc/systemd/system/web2py-scheduler.service` with the contents
+
+    [Unit]
+    Description=Web2Py scheduler service
+    
+    [Service]
+    ExecStart=/usr/bin/python /home/www-data/web2py/web2py.py -K <yourapp>
+    Type=simple
+    
+    [Install]
+    WantedBy=multi-user.target
+
+Then install the service calling:
+
+    sudo systemctl enable /etc/systemd/system/web2py-scheduler.service 
+
+Taken from  https://stackoverflow.com/questions/28898736/running-web2py-scheduler-in-production
+
+You can then use:
+
+    sudo systemctl restart web2py-scheduler.service 
 
 ## Backup in production
 
