@@ -790,12 +790,18 @@ def research_visit_details():
             safe_cost_breakdown = [safe_cost_alt[ky].format(int(days[ky]), daily_costs[ky]) for ky in days]
             
             # build the full cost message
+            total_cost = sum([daily_costs[ky] * days[ky] for ky in days])
             safe_cost_msg = P("With effect from 1st August 2017, accomodation costs for ",
                               "the SAFE camp ", TAG.u(B("must be paid in cash on arrival")),
                               ". The SAFE accomodation costs for this proposal are ",
-                              TAG.u(B("RM " + str(sum([daily_costs[ky] * days[ky] for ky in days])))),
-                              " (", ", ".join(safe_cost_breakdown), ")",
-                              ". Please ensure you bring this amount with you to camp.")
+                              TAG.u(B("RM " + str(total_cost))),
+                              " (", ", ".join(safe_cost_breakdown), "). ")
+            if total_cost <= 1500:
+                safe_cost_msg.append("Please ensure you bring this amount with you to camp.")
+            else:
+                safe_cost_msg.append(("You will need to pay RM1500 of this as a deposit on arrival, "
+                                      "so please ensure you bring this amount with you to camp. "
+                                      "The balance must be paid off over the course of your visit."))
             
             safe_table = DIV(DIV(H5('Requested accomodation at SAFE'),_class="panel-heading"),
                              TABLE(TR(TH('Visitor'), TH('Arrival date'), TH('Departure date'), delete_column_head),
@@ -833,7 +839,7 @@ def research_visit_details():
                                   TH('Type'), TH('Food'), delete_column_head),
                               *[pack_maliau(r, readonly) for r in maliau_select],
                               _class='table table-striped')
-            maliau_div = DIV(DIV(H5('Requested accomodation at Maliau'),_class="panel-heading"),
+            maliau_div = DIV(DIV(H5('Requested accommodation at Maliau'),_class="panel-heading"),
                                  maliau_table,
                                _class="panel panel-primary")
         else:
@@ -1241,7 +1247,8 @@ def research_visit_details():
             # Email decision
             proposer = record.proposer_id
             template_dict = {'name': proposer.first_name, 
-                             'url': URL('research_visits', 'research_visit_details', args=[rv_id], scheme=True, host=True),
+                             'url': URL('research_visits', 'research_visit_details',
+                                        args=[rv_id], scheme=True, host=True),
                              'admin': auth.user.first_name + ' ' + auth.user.last_name,
                              'safe_cost_msg': safe_cost_msg}
             
@@ -1250,7 +1257,7 @@ def research_visit_details():
                 
                 # send email message to the proposer and CC Ryan.
                 SAFEmailer(to=proposer.email,
-                           cc=['deputy.coord@safeproject.net'],
+                           cc=['deputy.coord@safeproject.net', 'account@searrp.org'],
                            subject='SAFE: research visit proposal approved',
                            template =  'research_visit_approved.html',
                            template_dict = template_dict)
@@ -1270,7 +1277,7 @@ def research_visit_details():
                     
                     SAFEmailer(to='roserlie5@gmail.com',
                                cc=[proposer.email, 'inid69@yahoo.com',
-				   'jarizul.gjule@gmail.com', 'deputy.coord@safeproject.net'],
+                                   'jarizul.gjule@gmail.com', 'deputy.coord@safeproject.net'],
                                reply_to=proposer.email,
                                subject='Request for accommodation from the SAFE Project',
                                template='maliau_beds_email.html',
