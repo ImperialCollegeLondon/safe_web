@@ -8,7 +8,7 @@ This is the bitbucket repository for the code underlying the SAFE website. The w
 The overview is:
 
   1. Create and Amazon EC2 instance - the free tier options provide a reasonable processing and disk space
-  2. In order to enable SSH, we're using the LetsEncrypt software and certification authority.
+  2. In order to enable HTTPS, we're using the LetsEncrypt software and certification authority.
   3. The DB backend for the website is running in PostgreSQL on an Amazon RDS instance. This is so that the DB
      can be accessed by Earthcape as well as by the website, otherwise we could just run it from a local sqlite database.
   4. Backup. Amazon has some neat tools for automating backups (Cloudwatch, Lambda) and the snapshot mechanism is
