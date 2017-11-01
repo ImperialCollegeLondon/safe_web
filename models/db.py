@@ -6,11 +6,12 @@
 
 ## if SSL/HTTPS is properly configured and you want all HTTP requests to
 ## be redirected to HTTPS, uncomment the line below:
-request.requires_https()
+#request.requires_https()
 
 ## app configuration made easy. Look inside private/appconfig.ini
 from gluon.contrib.appconfig import AppConfig
-# from gluon.tools import Recaptcha
+from gluon.tools import Auth, Service #, PluginManager
+from gluon.tools import Recaptcha2
 
 import base64
 import os
@@ -50,8 +51,6 @@ response.form_label_separator = myconf.take('forms.separator')
 ## - authentication (registration, login, logout, ... )
 ## - authorization (role based authorization)
 ## ----------------------------------------------------------------------------
-
-from gluon.tools import Auth, Service #, PluginManager
 
 auth = Auth(db)
 service = Service()
@@ -149,8 +148,10 @@ auth.settings.create_user_groups = False
 
 #auth.settings.on_failed_authentication = lambda url: redirect(url)
 
-# TODO - turn on captcha for regiastration
-# auth.settings.register_captcha = Recaptcha()
+# Turn on captcha for registration
+auth.settings.captcha = Recaptcha2(request, 
+                                   myconf.take('recaptcha.site_key'), 
+                                   myconf.take('recaptcha.secret_key'))
 
 
 ## -----------------------------------------------------------------------------
