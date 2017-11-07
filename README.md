@@ -225,7 +225,7 @@ Then restart apache:
 
 The web application needs a config file, saved as  `private.appconfig.ini`, which provides some basic information for running the site. This isn't in the repository because it contains passwords, etc.
 
-There are some standard bits of information for email and the db connection, but the SAFE web application adds two more: the path to the SQLite database for checking taxonomy and the host name. This last one is needed for scheduled tasks: the daemon running these has no idea that it is doing anything to do with a website, so if a scheduled task needs to build a URL, it has to be able to look up the host name. The file should look like this:
+There are some standard bits of information for email and the db connection, but the SAFE web application adds three more: the path to the SQLite database for checking taxonomy, recaptcha site and secret keys for protecting user registration from bots, and the host name . This last one is needed for scheduled tasks: the daemon running these has no idea that it is doing anything to do with a website, so if a scheduled task needs to build a URL, it has to be able to look up the host name. The file should look like this:
 
 	; App configuration
 
@@ -241,6 +241,11 @@ There are some standard bits of information for email and the db connection, but
 	sender = from_email_account
 	login  = login_id:password
 
+	; recaptcha keys
+	[recaptcha]
+	site_key = insert site_key here
+	secret_key = insert secret_key here
+	
 	; form styling
 	[forms]
 	formstyle = bootstrap3_inline
