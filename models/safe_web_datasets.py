@@ -276,7 +276,8 @@ def submit_dataset_to_zenodo(recid):
         
         # trap errors in creating the resource
         if dep.status_code != 201:
-            record.update_record(zenodo_submission_status = 'Failed to obtain deposit',
+            record.update_record(zenodo_submission_status = 'ZEN_FAIL',
+                                 zenodo_submission_date=datetime.datetime.now(),
                                  zenodo_error = dep.json())
             return "Failed to obtain deposit"
         
@@ -288,7 +289,7 @@ def submit_dataset_to_zenodo(recid):
         
         # trap errors in uploading metadata and tidy up
         if mtd.status_code != 200:
-            record.update_record(zenodo_submission_status = 'Failed to upload metadata',
+            record.update_record(zenodo_submission_status = 'ZEN_FAIL',
                                  zenodo_submission_date=datetime.datetime.now(),
                                  zenodo_error = mtd.json())
             delete = requests.delete(links['self'], params=token)
@@ -302,17 +303,17 @@ def submit_dataset_to_zenodo(recid):
         # trap errors in uploading file
         # - no success or mismatch in md5 checksums
         if fls.status_code != 201:
-            record.update_record(zenodo_submission_status = 'Failed to upload dataset',
+            record.update_record(zenodo_submission_status = 'ZEN_FAIL',
                                  zenodo_submission_date=datetime.datetime.now(),
                                  zenodo_error = fls.json())
             delete = requests.delete(links['self'], params=token)
             return "Failed to upload dataset"
         elif fls.json()['checksum'] != record.file_hash:
-            record.update_record(zenodo_submission_status = 'Mismatch in local and uploaded MD5 hashes',
+            record.update_record(zenodo_submission_status = 'ZEN_FAIL',
                                  zenodo_submission_date=datetime.datetime.now(),
                                  zenodo_error = fls.json())
             delete = requests.delete(links['self'], params=token)
-            return "Failed to upload dataset"
+            return "Mismatch in local and uploaded MD5 hashes"
         
         # update the name to the one originally provided by the user
         data = simplejson.dumps({'filename': record.file_name})
@@ -320,7 +321,7 @@ def submit_dataset_to_zenodo(recid):
         
         # trap errors in updating name
         if upd.status_code != 200:
-            record.update_record(zenodo_submission_status = 'Failed to update filename',
+            record.update_record(zenodo_submission_status = 'ZEN_FAIL',
                                  zenodo_submission_date=datetime.datetime.now(),
                                  zenodo_error = upd.json())
             delete = requests.delete(links['self'], params=token)

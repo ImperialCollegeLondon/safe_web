@@ -347,6 +347,9 @@ def validate_dataset_upload(form):
     elif request.vars.file.filename[-5:] != '.xlsx':
         # Is the file at least nominally an Excel file?
         form.errors.file = "File is not in XLSX format"
+    elif ' ' in request.vars.file.filename:
+        # Do not use spaces in filenames
+        form.errors.file = "Please do not use spaces in filenames"
     else:
         # Process the file to check it before uploading it
         # - populate dataset info fields
