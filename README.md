@@ -462,6 +462,16 @@ Next, install extensions that will be used from the admin extension manager:
     move (restrict to @admin in config),
     etc
 
+### Dokuwiki Mailer
+
+If you want dokuwiki to be able to send mail, then you need to install and configure postfix. Ubuntu will usually have postfix installed and the configuration  command is: 
+
+    sudo dpkg-reconfigure postfix
+
+This will run through a set of option screens. For an explanation of the options, see here:
+
+[https://help.ubuntu.com/community/Postfix](https://help.ubuntu.com/community/Postfix)
+
 
 ## Web2py Scheduler
 
@@ -499,6 +509,8 @@ Create the file `/etc/systemd/system/web2py-scheduler.service` with the contents
     [Service]
     ExecStart=/usr/bin/python /home/www-data/web2py/web2py.py -K <yourapp>
     Type=simple
+    Restart=always
+    RestartSec=3
     
     [Install]
     WantedBy=multi-user.target
@@ -512,6 +524,8 @@ Taken from  https://stackoverflow.com/questions/28898736/running-web2py-schedule
 You can then use:
 
     sudo systemctl restart web2py-scheduler.service 
+
+The two lines about restarting in the service file are there to ensure that the worker processes get recreated if a background job hangs or crashes one of the workers. Ultimately, you'd want to find out what caused the death and you could definitely get a cycle of crashing and rescheduling if a job is toxic and it is set to retry on failure.
 
 ## Backup in production
 
@@ -741,10 +755,13 @@ automated email on project expiry to check it is closed and email members about 
 
 #### Making Dokuwiki work with the Web2Py DB auth tables ####
 
+CURRENTLY BROKEN - haven't got the authentication against web2py DB working.
+
 This is a bit awkward as we need:
 
 1. To get the two systems to agree on a password hashing format so that both can use the same table of hashed passwords.
 2. To then set Dokuwiki up to read the remote PostgreSQL tables for users and to access hashed passwords.
+
 
 #### Password hashing ####
 

@@ -84,7 +84,9 @@ def research_visit_details():
     # Three possible entry points, for a three step process to allow project date look ups
     # - Completely new RV request(bare URL)
     # - Project specified for new RV request (project_id as a variable, but no record)
-    # - Existing record passed as an argument to the URL.
+    #    research_visits/research_visit_details?new=152
+    # - Existing record passed as an argument to the URL
+    #    research_visits/research_visit_details/12
     
     # 1a) SANITISE THE INPUTS
     rv_id = request.args(0)
@@ -99,20 +101,25 @@ def research_visit_details():
     else:
         record = None
         new_rv_project_requested = request.vars['new']
-        # if a project has been requested (and it isn't a 
-        # look see project) then check it exists
+        # if a project has been requested (and it isn't a look see project) 
+        # then check it exists and is approved
         if new_rv_project_requested is not None and new_rv_project_requested != '0':
-            new_project_record = db.project_id(new_rv_project_requested)
+            new_project_record = db((db.project_id.id == new_rv_project_requested) &
+                                    (db.project_details.id == db.project_id.project_details_id)).select().first()
             if new_project_record is None:
                 session.flash = B(CENTER('Invalid new visit project reference'), _style='color:red;')
                 redirect(URL('research_visits','research_visit_details'))
+            elif new_project_record.project_details.admin_status != 'Approved':
+                session.flash = B(CENTER('A research project must be approved before booking research visits'), _style='color:red;')
+                redirect(URL('research_visits','research_visit_details'))
     
-    # 1b) get a list of projects that the user is a coordinator of, to check for both project
+    # 1b) get a list of approved projects that the user is a coordinator of, to check for both project
     #     selection and subsequent project detail editing and booking.
     coord_query = db((db.project_members.user_id == auth.user_id) &
                      (db.project_members.is_coordinator == 'True') &
                      (db.project_members.project_id == db.project_id.id) &
-                     (db.project_id.project_details_id == db.project_details.id))
+                     (db.project_id.project_details_id == db.project_details.id) &
+                     (db.project_details.admin_status == 'Approved'))
     
     rows = coord_query.select(db.project_details.project_id, db.project_details.title)
     available_project_ids = [r.project_id for r in rows]
