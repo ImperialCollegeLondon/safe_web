@@ -182,6 +182,11 @@ The dataset handling part of the website uses a python module that checks the me
     cd /home/www-data/web2py/applications/safe_web/modules/
     curl -O https://raw.githubusercontent.com/ImperialCollegeLondon/safe_dataset_checker/master/safe_dataset_checker.py
 
+Note that if you update this module you'll need to restart workers and the website to reload the new code. The code for this is (see Scheduler notes below for an explanation):
+
+    sudo service apache2 reload
+    sudo systemctl restart web2py-scheduler.service 
+
 That in turn uses the `ete3` python package for checking taxon names against the NCBI Taxonomy database, which also requires a local build of the NCBI database. The DB download and build can take quite a long time - it is a 300 MB dataset to repackage into a SQLite DB.
 
     sudo pip install ete3

@@ -253,8 +253,8 @@ def submit_dataset():
     else:
         
         # basic check information for any upload
-        project = db((db.project_id.project_details_id == record.project_id) &
-                     (db.project_id.id == db.project_details.project_id)).select(db.project_details.title).first()
+        project = db((db.project_id.id == record.project_id) &
+                     (db.project_id.project_details_id == db.project_details.id)).select(db.project_details.title).first()
         
         chk_info = [_row('File name', record.file_name),
                     _row('File size', '{:0.2f} MB'.format(record.file_size / 1024.0 ** 2)),
