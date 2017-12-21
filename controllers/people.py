@@ -149,11 +149,11 @@ def user_details():
                                                  (db.project_members.project_id == db.project_id.id) &
                                                  (db.project_details.id == db.project_id.project_details_id) &
                                                  (db.project_details.admin_status == "Approved"),
-                                        'select': [db.project_details.project_id, db.project_details.version, db.project_details.title],
+                                        'select': [db.project_details.project_id, db.project_details.title],
                                         'none': '{} is not a member of any projects'.format(record.first_name),
-                                        'cntr': 'projects', 'view': 'project_details',
+                                        'cntr': 'projects', 'view': 'project_view',
                                         'display': db.project_details.title,
-                                        'url_args': [db.project_details.project_id, db.project_details.version],
+                                        'url_args': [db.project_details.project_id],
                                         'header': 'Projects'},
                            'outputs':  {'query': (db.outputs.user_id == record.id) &
                                                  (db.outputs.admin_status == "Approved"),
