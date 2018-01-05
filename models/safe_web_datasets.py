@@ -40,11 +40,11 @@ def verify_dataset(dataset_id, email=False):
         for an admin to look at.
     """
     
-    # check the configuration includes a path to the ete3_database
+    # check the configuration includes a path to the gbif_database
     try:
-        ete_db = myconf.take('ete3.ete3_database')
+        gbif_db = myconf.take('gbif.gbif_database')
     except BaseException:
-        raise RuntimeError('Site config does not provide a path for the ete3 database')
+        raise RuntimeError('Site config does not provide a path for the gbif database')
     
     # Load the host name from the configuration. When run from a controller,
     # the URL(host=TRUE) has access to the host name from requests. This isn't
@@ -82,10 +82,9 @@ def verify_dataset(dataset_id, email=False):
     if not error:
         # - get paths to dataset file. Failure to find is handled by safe_dataset_checker methods.
         fname = os.path.join(request.folder,'uploads','datasets', record.file)
-        # get the Dataset object from the file checker - don't use the high level
-        # check file function to separate ete3 config problems
+        # get the Dataset object from the file checker
         try:
-            dataset = safe_dataset_checker.Dataset(fname, verbose=False, ete3_database=ete_db)
+            dataset = safe_dataset_checker.Dataset(fname, verbose=False, gbif_database=gbif_db)
         except Exception as e:
             # We don't want to bail here because we might want to email the uploader,
             # but we do want to record what went wrong. We store it in the dataset record, which
@@ -96,19 +95,12 @@ def verify_dataset(dataset_id, email=False):
             ret_msg = 'Verifying dataset {}: error initialising dataset checker'.format(dataset_id)
             error = True
     
-    # make sure we are using ete3
-    if not error and not dataset.use_ete:
-        record.update_record(dataset_check_outcome='ERROR',
-                             dataset_check_error=dataset.ete_failure)
-        ret_msg = 'Verifying dataset {}: error setting up ete3 taxonomy checking'.format(dataset_id)
-        error = True
-    
     # main processing of the dataset
     if not error:
         try:
             # load the metadata sheets
             dataset.load_summary()
-            dataset.load_taxa(check_all_ranks=False)
+            dataset.load_taxa()
             # use a local locations file - there is some issue with using the service from within the code
             locations_json = os.path.join(request.folder,'static','files','locations.json')
             dataset.load_locations(locations_json=locations_json)
@@ -119,7 +111,10 @@ def verify_dataset(dataset_id, email=False):
                     dataset.load_data_worksheet(ws)
             else:
                 dataset.warn('No data worksheets found')
-        
+            
+            # cross check the taxa and locations
+            dataset.check_locations_and_taxa_used()
+            
         except Exception as e:
             ret_msg = 'Verifying dataset {}: error running dataset checking'.format(dataset_id)
             dataset_check_error = repr(e)
