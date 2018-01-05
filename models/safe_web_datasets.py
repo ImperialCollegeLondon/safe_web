@@ -250,7 +250,7 @@ def submit_dataset_to_zenodo(recid):
             
             zenodo_metadata['metadata']['creators'].append(creator)
         
-        zenodo_metadata['metadata']['description'] = str(_dataset_description(record))
+        zenodo_metadata['metadata']['description'] = str(_dataset_description(record, include_gemini=True))
         
         # B) NOW PUSH TO ZENODO
         # get the authentication token from the private folder
@@ -349,7 +349,7 @@ def submit_dataset_to_zenodo(recid):
             return "Published dataset to {}".format(pub_json['doi_url'])
 
 
-def _dataset_description(record):
+def _dataset_description(record, include_gemini=False):
     """
     Function to turn a dataset metadata record into html to send
     to Zenodo and to populate the dataset view. Zenodo has a limited
@@ -358,6 +358,13 @@ def _dataset_description(record):
     
     Available tags (but a at least doesn't work at present)
     a, p, br, blockquote, strong, b, u, i, em, ul, ol, li, sub, sup, div, strike.
+    
+    Args:
+        record: The db record for the dataset (a row from db.datasets)
+        include_gemini: Should the description include a link to the GEMINI XML 
+            service? This isn't available on the site datasets page until a dataset
+            is published as it contains links to Zenodo, but should also be included 
+            in the description uploaded to Zenodo.
     """
     
     # shortcut to metadata
@@ -403,7 +410,7 @@ def _dataset_description(record):
     
     # Can't get the XML metadata link unless it is published, since that 
     # contains references to the zenodo record
-    if record.zenodo_submission_status == 'ZEN_PASS':
+    if include_gemini:
         md_url = URL('datasets','xml_metadata', vars={'dataset_id': record.id}, scheme=True, host=True)
         desc += CAT(P('GEMINI compliant XML metadata for this dataset is available here: ', A(md_url, _href=md_url)))
     

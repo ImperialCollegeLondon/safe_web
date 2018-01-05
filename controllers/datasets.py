@@ -295,7 +295,10 @@ def submit_dataset():
             
             # prepare the dataset description
             metadata = record.dataset_metadata
-            desc_content = XML(_dataset_description(record))
+            if record.zenodo_submission_status == 'ZEN_PASS':
+                desc_content = XML(_dataset_description(record, include_gemini=True))
+            else:
+                desc_content = XML(_dataset_description(record))
             
             dataset_desc = CAT(_row('Dataset description', A('View details', _href='#show_desc', 
                                                              **{'_data-toggle': 'collapse'})),
