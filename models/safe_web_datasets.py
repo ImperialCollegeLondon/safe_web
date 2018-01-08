@@ -510,15 +510,22 @@ def _dataset_description(record, include_gemini=False):
     proj = qry.select(left=db.project_id.on(db.project_id.project_details_id == db.project_details.id))
     title = proj.first().project_details.title
     
-    # dataset summart
-    desc = CAT(XML(metadata['description'].replace('\n', '<br>')), BR()*2,
-               P(B('Date range: '), '{0[0]} to {0[1]}'.format([x[:10] for x in metadata['temporal_extent']])), 
-               P(B('Latitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['latitudinal_extent'])), 
-               P(B('Longitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['longitudinal_extent'])),
-               P(B('Taxonomic coverage: '), BR(), ' All taxon names validated against GBIF unless in parentheses',
-                 DIV(_taxon_index_to_emsp(record.dataset_taxon_index))),
-               P(B('Data worksheets: '), 'There are {} data worksheets in this '
-                 'dataset:'.format(len(metadata['dataworksheets']))))
+    # dataset summary
+    
+    desc = CAT(XML(metadata['description'].replace('\n', '<br>')), BR()*2)
+    
+    proj_url = URL('projects','project_view', args=[metadata['project_id']], scheme=True, host=True)
+    desc += CAT(B('Links'), BR(), XML('&nbsp;') * 4, 'This dataset was collected as part of the following '
+                'SAFE research project: ', A(B(title), _href=proj_url))
+    
+    # Can't get the XML metadata link unless it is published, since that 
+    # contains references to the zenodo record
+    if include_gemini:
+        md_url = URL('datasets','xml_metadata', vars={'dataset_id': record.id}, scheme=True, host=True)
+        desc += CAT(BR(), XML('&nbsp;') * 4, 'GEMINI compliant XML metadata for this dataset is available ', A('here', _href=md_url))
+
+    desc += P(BR(), B('Data worksheets: '), 'There are {} data worksheets in this '
+              'dataset:'.format(len(metadata['dataworksheets'])))
     
     dwshts = OL()
     
@@ -541,14 +548,12 @@ def _dataset_description(record, include_gemini=False):
     
     desc += dwshts
     
-    proj_url = URL('projects','project_view', args=[metadata['project_id']], scheme=True, host=True)
-    desc += CAT(P('This dataset was collected as part of the following SAFE research project: ', A(B(title), _href=proj_url)))
+    desc += CAT(P(B('Date range: '), '{0[0]} to {0[1]}'.format([x[:10] for x in metadata['temporal_extent']])), 
+                P(B('Latitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['latitudinal_extent'])), 
+                P(B('Longitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['longitudinal_extent'])),
+                P(B('Taxonomic coverage: '), BR(), ' All taxon names validated against GBIF unless in parentheses',
+                 DIV(_taxon_index_to_emsp(record.dataset_taxon_index))))
     
-    # Can't get the XML metadata link unless it is published, since that 
-    # contains references to the zenodo record
-    if include_gemini:
-        md_url = URL('datasets','xml_metadata', vars={'dataset_id': record.id}, scheme=True, host=True)
-        desc += CAT(P('GEMINI compliant XML metadata for this dataset is available ', A('here', _href=md_url)))
     
     return desc
 
