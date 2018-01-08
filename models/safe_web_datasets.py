@@ -387,7 +387,7 @@ def _taxon_index_to_emsp(taxon_index):
     edges and depth first search is annoying.
     """
     
-    indent_str = '. . ' #'&emsp;-&emsp;'
+    indent_str = '&emsp;-&emsp;'
     
     # the taxon index uses -1 for all unvalidated names, since it isn't
     # possible to assign sensible null values inside safe_dataset_checker
@@ -512,19 +512,20 @@ def _dataset_description(record, include_gemini=False):
     
     # dataset summary
     
-    desc = CAT(XML(metadata['description'].replace('\n', '<br>')), BR()*2)
+    desc = CAT(B('Description: '), P(XML(metadata['description'].replace('\n', '<br>'))))
     
     proj_url = URL('projects','project_view', args=[metadata['project_id']], scheme=True, host=True)
-    desc += CAT(B('Links'), BR(), XML('&nbsp;') * 4, 'This dataset was collected as part of the following '
+    desc += P(B('Project: '),  'This dataset was collected as part of the following '
                 'SAFE research project: ', A(B(title), _href=proj_url))
     
     # Can't get the XML metadata link unless it is published, since that 
     # contains references to the zenodo record
     if include_gemini:
         md_url = URL('datasets','xml_metadata', vars={'dataset_id': record.id}, scheme=True, host=True)
-        desc += CAT(BR(), XML('&nbsp;') * 4, 'GEMINI compliant XML metadata for this dataset is available ', A('here', _href=md_url))
+        desc += P(B('XML metadata: '), 'GEMINI compliant metadata for this dataset '
+                  'is available ', A('here', _href=md_url))
 
-    desc += P(BR(), B('Data worksheets: '), 'There are {} data worksheets in this '
+    desc += P(B('Data worksheets: '), 'There are {} data worksheets in this '
               'dataset:'.format(len(metadata['dataworksheets'])))
     
     dwshts = OL()
@@ -551,8 +552,9 @@ def _dataset_description(record, include_gemini=False):
     desc += CAT(P(B('Date range: '), '{0[0]} to {0[1]}'.format([x[:10] for x in metadata['temporal_extent']])), 
                 P(B('Latitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['latitudinal_extent'])), 
                 P(B('Longitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['longitudinal_extent'])),
-                P(B('Taxonomic coverage: '), BR(), ' All taxon names validated against GBIF unless in parentheses',
-                 DIV(_taxon_index_to_emsp(record.dataset_taxon_index))))
+                P(B('Taxonomic coverage: '), BR(), ' All taxon names are validated against the GBIF backbone '
+                  'taxonomy unless in parentheses',
+                DIV(_taxon_index_to_emsp(record.dataset_taxon_index))))
     
     
     return desc
