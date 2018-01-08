@@ -4,6 +4,7 @@ import simplejson
 import copy
 import safe_dataset_checker
 from gluon.contrib.appconfig import AppConfig
+from networkx import Graph, dfs_preorder_nodes, dfs_labeled_edges, dfs_edges
 
 """
 Functions to handle datasets. These are called from the datasets controller but 
@@ -349,6 +350,137 @@ def submit_dataset_to_zenodo(recid):
             return "Published dataset to {}".format(pub_json['doi_url'])
 
 
+def _taxon_index_to_pre(taxon_index):
+    """
+    Turns the taxon index for a record into a text representation
+    of the taxonomic hierarchy used in the dataset. Loading networkx
+    to do this is a bit of a sledgehammer, but reinventing graph from
+    edges and depth first search is annoying.
+    """
+
+    # - turn the taxon index into indented text lines, keyed by taxon_id,
+    #   dropping all but accepted usages
+    indent = {'kingdom': 0, 'phylum': 2, 'class':4, 'order': 6,
+              'family': 8, 'genus': 10, 'species': 12, 'subspecies':14}
+    indent = {k: ' ' * v for k, v in indent.iteritems()}
+    text_lines = {tx[0]: indent[tx[3]] + tx[2] + '\n' 
+                  for tx in taxon_index if tx[4] == 'accepted'}
+    
+    # get a graph representation of the taxon index
+    edges = [[tx[1], tx[0]] for tx in taxon_index]
+    g = Graph(edges)
+    
+    # use a depth first search to order the text lines
+    order = dfs_preorder_nodes(g)
+    txt = ''
+    for nd in order:
+        if nd in text_lines:
+            txt += text_lines[nd]
+    
+    return PRE(txt)
+
+def _taxon_index_to_emsp(taxon_index):
+    """
+    Turns the taxon index for a record into a text representation
+    of the taxonomic hierarchy used in the dataset. Loading networkx
+    to do this is a bit of a sledgehammer, but reinventing graph from
+    edges and depth first search is annoying.
+    """
+    
+    indent_str = '. . ' #'&emsp;-&emsp;'
+    
+    # the taxon index uses -1 for all unvalidated names, since it isn't
+    # possible to assign sensible null values inside safe_dataset_checker
+    # These need to be made unique and format the names to make it clear
+    # they are unvalidated
+    tmp_num = -1
+    for tx in taxon_index:
+        if tx[4] != 'accepted':
+            tx[2] = '(' + tx[2] + ')'
+        if tx[0] == -1:
+            tx[0] = tmp_num
+            tmp_num -= 1
+    
+    # - turn the taxon index into indented text lines, keyed by taxon_id,
+    #   defaulting to 6 for non-accepted usages
+    indent = {'kingdom': 0, 'phylum': 1, 'class': 2, 'order': 3,
+              'family': 4, 'genus': 5, 'species': 6, 'subspecies': 6}
+    indent = {k: indent_str * v for k, v in indent.iteritems()}
+    
+    text_lines = {tx[0]: indent[tx[3]] + tx[2] + '</br>' 
+                  if tx[3] in indent else indent_str * 6 + tx[2] + '</br>' 
+                  for tx in taxon_index}
+    
+    # get a graph representation of the taxon index
+    edges = [[tx[1], tx[0]] for tx in taxon_index]
+    g = Graph(edges)
+    
+    # Use a depth first search on edges to order the text lines. 
+    # Need to pull unvalidated entries (negative indices) up to
+    # immediately under their parent, as otherwise they can appear
+    # nested within later taxa
+    order = list(dfs_edges(g))
+    sorted_order = []
+    ind = []
+    while order:
+        tx = order.pop(0)
+        if tx[1] < 0:
+            loc = ind.index(tx[0]) + 1
+            sorted_order.insert(loc, tx)
+            ind.insert(loc, tx[1])
+        else:
+            sorted_order.append(tx)
+            ind.append(tx[1])
+    
+    txt = ''
+    for nd in sorted_order:
+        txt += text_lines[nd[1]]
+    
+    return XML(txt)
+
+def _taxon_index_to_ul(taxon_index):
+    """
+    Turns the taxon index for a record into a nested unordered list
+    of the taxonomic hierarchy used in the dataset. This is largely
+    because Zenodo don't support anything like PRE that might allow
+    simple indented text
+    
+    Loading networkx to do this is a bit of a sledgehammer, but reinventing 
+    graph from edges and depth first search is annoying.
+    """
+
+    # - turn the taxon index into indented text lines, keyed by taxon_id,
+    #   dropping all but accepted usages
+    
+    # get a graph representation of the taxon index and a lookup for
+    # taxon_id to name
+    edges = [[tx[1], tx[0]] for tx in taxon_index]
+    g = Graph(edges)
+    id_to_name = {tx[0]: tx[2] for tx in taxon_index}
+    
+    # use a graph traversal to create the nested list
+    el = list(dfs_labeled_edges(g, source=0))
+    el = [e for e in el if e[2]['dir'] != 'nontree']
+    
+    txt = ''
+    previous_move = 'forward'
+    for e in el:
+        new_move = e[2]['dir']
+        
+        if e[1] != 0:
+            if previous_move == 'forward' and new_move == 'forward':
+                txt += '<ul><li>{}</li>'.format(id_to_name[e[1]])
+            elif previous_move == 'forward' and new_move == 'forward':
+                pass
+            elif previous_move == 'reverse' and new_move == 'forward':
+                txt += '<li>{}</li>'.format(id_to_name[e[1]])
+            elif previous_move == 'reverse' and new_move == 'reverse':
+                txt += '</ul>'
+        
+        previous_move = new_move
+    
+    return XML(txt + '</ul>')
+
 def _dataset_description(record, include_gemini=False):
     """
     Function to turn a dataset metadata record into html to send
@@ -356,8 +488,11 @@ def _dataset_description(record, include_gemini=False):
     set of permitted HTML tags, so this is quite simple HTML, but having
     the exact same information and layout makes sense.
     
-    Available tags (but a at least doesn't work at present)
+    Available tags:
     a, p, br, blockquote, strong, b, u, i, em, ul, ol, li, sub, sup, div, strike.
+    
+    Note that <a> is currently only available on Zenodo when descriptions are 
+    uploaded programatically. A bug in their web interface strips links.
     
     Args:
         record: The db record for the dataset (a row from db.datasets)
@@ -377,9 +512,11 @@ def _dataset_description(record, include_gemini=False):
     
     # dataset summart
     desc = CAT(XML(metadata['description'].replace('\n', '<br>')), BR()*2,
-               P(B('Date range: '), '{0[0]} - {0[1]}'.format([x[:10] for x in metadata['temporal_extent']])), 
-               P(B('Latitudinal extent: '), '{0[0]:.4f} - {0[1]:.4f}'.format(metadata['latitudinal_extent'])), 
-               P(B('Longitudinal extent: '), '{0[0]:.4f} - {0[1]:.4f}'.format(metadata['longitudinal_extent'])),
+               P(B('Date range: '), '{0[0]} to {0[1]}'.format([x[:10] for x in metadata['temporal_extent']])), 
+               P(B('Latitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['latitudinal_extent'])), 
+               P(B('Longitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['longitudinal_extent'])),
+               P(B('Taxonomic coverage: '), BR(), ' All taxon names validated against GBIF unless in parentheses',
+                 DIV(_taxon_index_to_emsp(record.dataset_taxon_index))),
                P(B('Data worksheets: '), 'There are {} data worksheets in this '
                  'dataset:'.format(len(metadata['dataworksheets']))))
     
@@ -405,14 +542,13 @@ def _dataset_description(record, include_gemini=False):
     desc += dwshts
     
     proj_url = URL('projects','project_view', args=[metadata['project_id']], scheme=True, host=True)
-    desc += CAT(P('This dataset was collected as part of the following SAFE research project: ', B(title)),
-                P('For more information see: ', A(proj_url, _href=proj_url)))
+    desc += CAT(P('This dataset was collected as part of the following SAFE research project: ', A(B(title), _href=proj_url)))
     
     # Can't get the XML metadata link unless it is published, since that 
     # contains references to the zenodo record
     if include_gemini:
         md_url = URL('datasets','xml_metadata', vars={'dataset_id': record.id}, scheme=True, host=True)
-        desc += CAT(P('GEMINI compliant XML metadata for this dataset is available here: ', A(md_url, _href=md_url)))
+        desc += CAT(P('GEMINI compliant XML metadata for this dataset is available ', A('here', _href=md_url)))
     
     return desc
 

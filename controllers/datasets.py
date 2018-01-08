@@ -57,7 +57,11 @@ def view_dataset():
         session.flash = "Database record id does not exist"
         redirect(URL('datasets','view_datasets'))
     
-    description = _dataset_description(record)
+    if record.zenodo_submission_status == 'ZEN_PASS':
+        description = XML(_dataset_description(record, include_gemini=True))
+    else:
+        description = XML(_dataset_description(record))
+
     return(dict(record=record, description=description))
 
 
