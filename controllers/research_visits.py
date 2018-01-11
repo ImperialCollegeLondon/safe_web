@@ -132,6 +132,9 @@ def research_visit_details():
     elif record.admin_status == 'Submitted':
         # this proposal is under consideration, regardless of user
         readonly = True
+    elif record.departure_date < datetime.datetime.today():
+        # this proposal happened in the past
+        readonly = True
     elif (record.project_id in available_project_ids):
         # this proposal is in the set that the user is a coordinator for
         readonly = False

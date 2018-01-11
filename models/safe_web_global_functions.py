@@ -498,21 +498,27 @@ class summary_tracker():
 	def __init__(self, start, end):
 		
 		# Initialise ordered dictionary to set the output order
-		dates = date_range(start, end)
-		counts = [("Beds requested at SAFE", {d: 0 for d in dates}),
-				  ("Beds requested at Maliau", {d: 0 for d in dates}),
-				  ("RAs requested at SAFE", {d: 0 for d in dates}),
-				  ("RAs requested at Maliau", {d: 0 for d in dates})]
+		self.dates = date_range(start, end)
+		counts = [("Beds requested at SAFE", {d: 0 for d in self.dates}),
+				  ("Beds requested at Maliau", {d: 0 for d in self.dates}),
+				  ("RAs requested at SAFE", {d: 0 for d in self.dates}),
+				  ("RAs requested at Maliau", {d: 0 for d in self.dates})]
 		self.summary = OrderedDict(counts)
 		
 		# add all the transfer types
 		for t in transfer_set:
-			self.summary[t] = {d: 0 for d in dates}
+			self.summary[t] = {d: 0 for d in self.dates}
 	
 	def update(self, k, start, end):
 		
-		dates = date_range(start, end)
-		for d in dates:
+        """
+        Increment the counter for a given key, checking that the
+        date provided is included in the tracker date span. This
+        can happen when research visits are updated to use new 
+        arrival and departure dates, leaving old bookings.
+        """
+		new_dates = date_range(start, end)
+		for d in new_dates if d in self.dates:
 			self.summary[k][d] += 1
 
 def all_rv_summary_excel():
@@ -545,7 +551,7 @@ def all_rv_summary_excel():
 	
 	# GET A COMMON TIME SCALE FROM THE RVs (which _should_ encompass all RV activities)
 	start_all = min([r.arrival_date for r in rv_data])
-	end_all	  = max([r.departure_date for r in rv_data])
+	end_all   = max([r.departure_date for r in rv_data])
 	
 	# use start as an epoch to give column numbers
 	dates  = date_range(start_all, end_all)
