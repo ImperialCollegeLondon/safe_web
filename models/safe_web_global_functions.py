@@ -518,8 +518,9 @@ class summary_tracker():
 		arrival and departure dates, leaving old bookings.
 		"""
 		new_dates = date_range(start, end)
-		for d in new_dates if d in self.dates:
-			self.summary[k][d] += 1
+		for d in new_dates:
+			if d in self.dates:
+				self.summary[k][d] += 1
 
 def all_rv_summary_excel():
 	
