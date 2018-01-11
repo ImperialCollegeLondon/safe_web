@@ -37,7 +37,8 @@ def check_task_queue():
 							 db.scheduler_run.stop_time.max().with_alias('most_recent'),
 							 left=[db.scheduler_run.on(db.scheduler_run.task_id == db.scheduler_task.id)], 
 							 groupby=[db.scheduler_task.task_name,
-									  db.scheduler_run.status])
+									  db.scheduler_run.status],
+							 orderby=db.scheduler_task.task_name)
 	
 	# make it into a pretty table
 	run_status = TABLE(TR(TH("Task name"), TH("Status"), TH('Most recent status occurrence')),
