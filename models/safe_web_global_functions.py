@@ -511,12 +511,12 @@ class summary_tracker():
 	
 	def update(self, k, start, end):
 		
-        """
-        Increment the counter for a given key, checking that the
-        date provided is included in the tracker date span. This
-        can happen when research visits are updated to use new 
-        arrival and departure dates, leaving old bookings.
-        """
+		"""
+		Increment the counter for a given key, checking that the
+		date provided is included in the tracker date span. This
+		can happen when research visits are updated to use new 
+		arrival and departure dates, leaving old bookings.
+		"""
 		new_dates = date_range(start, end)
 		for d in new_dates if d in self.dates:
 			self.summary[k][d] += 1
