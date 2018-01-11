@@ -13,16 +13,17 @@ def check_task_queue():
 	# get some summary queries
 	# - select t.task_name, t.times_run, t.times_failed, t.next_run_time from scheduler_task t;
 	active_tasks = db().select(db.scheduler_task.task_name,
-							   db.scheduler_task.start_time,
-							   db.scheduler_task.times_run,
-							   db.scheduler_task.times_failed,
-							   db.scheduler_task.next_run_time)
+							   db.scheduler_task.start_time.max().with_alias('last_start'),
+							   db.scheduler_task.times_run.sum().with_alias('times_run'),
+							   db.scheduler_task.times_failed.sum().with_alias('times_failed'),
+							   db.scheduler_task.next_run_time.max().with_alias('next_start'),
+							   groupby=db.scheduler_task.task_name)
 	
 	# make it into a pretty table
 	active_tasks = TABLE(TR(TH("Task name"), TH("Started"), TH('Times run'), 
 							TH("Times failed"), TH('Next run')),
-						 *[TR(r.task_name, r.start_time, r.times_run,
-							  r.times_failed, r.next_run_time) for r in active_tasks],
+						 *[TR(r.scheduler_task.task_name, r.last_start, r.times_run,
+							  r.times_failed, r.next_start) for r in active_tasks],
 						 _class='table table-striped')
 	
 	# - select t.task_name, r.status, max(r.stop_time) as most_recent 
