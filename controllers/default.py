@@ -6,6 +6,7 @@ import dateutil.parser
 import requests
 from collections import Counter
 import random
+from gluon.serializers import json
 
 ## -----------------------------------------------------------------------------
 ## Used to access the Google Calendar API
@@ -392,6 +393,31 @@ def get_locations():
     locs = [rw.location for rw in locations]
     
     return dict(locations=locs)
+
+@service.json
+def check_safe_bed_availability():
+    
+    # get the variables from the call
+    from_date = request.vars['from']
+    to_date = request.vars['to']
+    
+    existing_res = db((db.bed_reservations_safe.departure_date > from_date) &
+                      (db.bed_reservations_safe.arrival_date < to_date))
+    
+    # return the availability
+    return json(dict(n_avail= n_beds_available - existing_res.count()))
+
+
+@service.json
+def check_transfer_availability():
+    
+    # get the variables from the call
+    date = request.vars['date']
+    
+    existing_res =  db(db.transfers.transfer_date == date).count()
+    
+    # return the availability
+    return json(dict(n_avail= n_transfers_available - existing_res))
 
 
 @service.json

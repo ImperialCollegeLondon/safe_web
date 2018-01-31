@@ -12,6 +12,7 @@ from gluon.contrib import simplejson
 local_hr = HR(_style='margin-top: 10px; margin-bottom: 0px; border: 0; border-top: 1px solid #325d88;')
 
 n_beds_available = 25
+n_transfers_available = 4
 
 project_roles = ['Lead Researcher', 'Supervisor', 'Co-supervisor', 'PhD Student',
                  'MSc Student', 'Undergraduate', 'PI', 'Co-I', 'Post Doc',
