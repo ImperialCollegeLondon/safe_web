@@ -3,6 +3,7 @@ from gluon.storage import Storage
 import openpyxl
 import itertools
 from collections import Counter
+from gluon.serializers import json
 
 ## -----------------------------------------------------------------------------
 ## RESEARCH VISITS
@@ -2058,3 +2059,54 @@ def administer_research_visits():
                          )
     
     return dict(form=form)
+
+## -----------------------------------------------------------------------------
+## SERVICES
+## -----------------------------------------------------------------------------
+
+def call():
+    session.forget()
+    return service()
+
+
+@service.json
+def check_safe_bed_availability():
+    """
+    JSON service to get the maximum number of available beds 
+    between two dates
+    """
+    
+    try:
+        # get the from and to dates from the call
+        from_date = datetime.datetime.strptime(request.vars['from'], '%Y-%m-%d').date()
+        to_date = datetime.datetime.strptime(request.vars['to'], '%Y-%m-%d').date()
+    
+        # find overlapping bookings - each row is a person for a time range
+        rows = db(~(db.bed_reservations_safe.departure_date <= from_date) &
+                  ~(db.bed_reservations_safe.arrival_date >= to_date)).select()
+    
+        # find the maximum number of beds booked:
+        # i) range of dates for each overlapping booking within
+        #    the query window
+        dates = [date_range(max(from_date, r.arrival_date), 
+                            min(to_date, r.departure_date))
+                 for r in rows]
+        # ii) unpack and get availability, truncating at zero.
+        dates = Counter([dt for bk in dates for dt in bk])
+        n_avail = max(0, n_beds_available -  max(dates.values()))
+    
+        # return the availability
+        return json(dict(n_avail=n_avail))
+    except Exception:
+        return json(dict(n_avail='Unavailable'))
+
+@service.json
+def check_transfer_availability():
+    
+    # get the variables from the call
+    date = request.vars['date']
+    
+    existing_res =  db(db.transfers.transfer_date == date).count()
+    
+    # return the availability
+    return json(dict(n_avail= n_transfers_available - existing_res))
