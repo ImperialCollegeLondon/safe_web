@@ -325,17 +325,12 @@ fractal_order	only for SAFE Points
 transect_order	only_for SAFE Points
 """
 
-gaz_types = ["SAFE basecamp", "Flux tower", "SAFE Sampling point", "SAFE forest fragment", 
-             "SAFE riparian strip", "Flight intercept traps", "Ant and dungbeetle transects", 
-             "Dungbeetle pitfall stations", "Palm herbivory stations", "Ant bait stations", 
-             "Carbon plot", "Carbon subplot", "Virgin Jungle Reserve", "Ant and termite corner post", 
-             "Ant and termite plot", "Riparian transect station", "Riparian transect"]
 gaz_regions = ['SAFE', 'Maliau', 'Danum']
 geom_types = ["MultiPolygon", "Point", "Polygon", "LineString"]
 
 db.define_table('gazetteer',
     Field('location', 'string', unique=True),
-    Field('type', 'string', requires=IS_IN_SET(gaz_types)),
+    Field('type', 'string'),
     Field('parent', 'string'),
     Field('display_order', 'integer'),
     Field('region','string', requires=IS_IN_SET(gaz_regions)),
@@ -351,6 +346,12 @@ db.define_table('gazetteer',
     Field('geom_type', 'string', requires=IS_IN_SET(geom_types)),
     Field('geom_coords', 'json'),
     Field('source', 'text'))
+
+# Load the gazetteer types directly from the database. Typically this is bulk updated
+# as sites are added, so synchronizing the list of types here is fragile. Instead, 
+# set the requirement using the available data once the table has been declared.
+gaz_types = [r.type for r in db().select(db.gazetteer.type, distinct=True)]
+db.gazetteer.type.requires = IS_IN_SET(gaz_types)
 
 # Aliases location names - cannot use a value already in the gazeetteer locations
 db.define_table('gazetteer_alias',
