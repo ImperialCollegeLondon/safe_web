@@ -5,8 +5,6 @@
 
 {{extend 'layout.html'}}
 
-<div class="flash">{{=response.flash or ' '}}</div>
-
 {{=H3('Bed availability')}}
 
 The calender below shows the current availability of beds at the SAFE project. There are {{=B(n_beds_available, ' beds available')}} in total and the calendar indicates how many are currently confirmed booked or in pending bookings for each day. Empty dates have no current pending or confirmed bed reservations!
