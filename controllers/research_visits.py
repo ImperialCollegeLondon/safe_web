@@ -237,6 +237,13 @@ def research_visit_details():
             visit.custom.widget.purpose['_rows'] = 4
             visit.custom.widget.arrival_date['_class'] = "form-control input-sm"
             visit.custom.widget.departure_date['_class'] = "form-control input-sm"
+            purpose_message = P('''Please provide a detailed description here and then request
+                                 all the resources you will need. If your research visit 
+                                 will not need to use our RAs or transfers, please mention
+                                 what alternatives you will be using so that we know you have
+                                 a complete fieldwork plan.''')
+        else:
+            purpose_message = ''
         
         # get the project details
         if (record is not None and record.project_id is not None) or (new_rv_project_requested != '0'):
@@ -321,7 +328,7 @@ def research_visit_details():
                                     _class='col-sm-10'),
                                 _class='row', _style='margin:10px 10px'),
                             DIV(LABEL('Purpose:', _class="control-label col-sm-2" ),
-                                DIV(visit.custom.widget.purpose,  _class="col-sm-10"),
+                                DIV(purpose_message, visit.custom.widget.purpose,  _class="col-sm-10"),
                                 _class='row', _style='margin:10px 10px'),
                             DIV(DIV(visit.custom.submit,  _class="col-sm-10 col-sm-offset-2"),
                                 _class='row', _style='margin:10px 10px'),
