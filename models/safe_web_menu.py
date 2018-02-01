@@ -56,6 +56,7 @@ response.menu = [
         # (T('SAFE Calendars'), True, URL('info', 'calendars'), []),
         (A('FAQs and SAFE wiki', _href='https://www.safeproject.net/dokuwiki/start', _target='_blank'), False, None, []),
         (T('Bed availability at SAFE'), True, URL('research_visits', 'safe_bed_availability'), []),
+        (T('SAFE transfers schedule'), True, URL('research_visits', 'safe_transfers_schedule'), []),
         (T('SAFE Mailing list'), True, URL('info', 'mailing_list'), []),
         LI(_class="divider"),
         (T('Volunteers available'), True, URL('marketplace', 'volunteers'), []),
