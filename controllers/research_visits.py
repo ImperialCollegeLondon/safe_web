@@ -1969,7 +1969,7 @@ def safe_bed_availability():
     approved  = [{'type': 'confirmed', 'date': k, 'n': v} for k, v in approved.iteritems()]
     
     # now create a list of events to pass to the view as a JS array
-    colors = {'confirmed': '#CC9900', 'pending': '#CC0000', 'available': '#228B22'}
+    colors = {'pending': '#CC9900', 'confirmed': '#CC0000', 'available': '#228B22'}
     event_order = {'confirmed': 3, 'pending': 2, 'available': 1}
     events = []
     for event in avail + pending + approved:
@@ -2001,10 +2001,11 @@ def safe_transfers_schedule():
     # get counts of people on each transfer route by RV status
     qry = ((db.transfers.research_visit_id == db.research_visit.id) &
            (db.research_visit.admin_status != 'Draft'))
-    
+    # set up a condition test 
+    is_approved = (db.research_visit.admin_status == 'Approved').case('Yes','No')
     transfer_data = db(qry).select(db.transfers.transfer_date.with_alias('date'),
                                    db.transfers.transfer.with_alias('transfer'),
-                                   db.research_visit.admin_status.with_alias('status'),
+                                   is_approved.with_alias('Approved'),
                                    db.transfers.research_visit_member_id.count().with_alias('count'),
                                    groupby=[db.transfers.transfer_date,
                                             db.transfers.transfer,
@@ -2012,7 +2013,7 @@ def safe_transfers_schedule():
     
     # now package up that data as event data for calendar.js, and 
     # poke it back to the view, where it will populate the calendar
-    colors = {'Approved': '#CC9900', 'Submitted': '#CC0000', 'Resubmit': '#228B22'}
+    colors = {'No': '#CC9900', 'Yes': '#228B22'}
   
     events = []
     for row in transfer_data:
