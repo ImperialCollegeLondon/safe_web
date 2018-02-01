@@ -1,22 +1,18 @@
 {{extend 'layout.html'}}
 
+
 {{=H2('Research visit proposals')}}
 
-
-<p>We have a new system for researchers who want to come to work in the field at the SAFE Project. This is to help us better organise the resources available and to encourage researchers to align field work to make it more efficient and collaborative.</p>
-
-<p>You will have to use this system to provide a detailed plan of your field visit. We will need to know:</p>
+<p>To work in the field at SAFE you must provide a detailed plan of your field visit. We will need to know:</p>
 
 <ul>
 <li><strong>when</strong> the team will be in the field and what research will be done,</li>
 <li><strong>which researchers</strong> will be coming to the field,</li>
-<li>what <strong>accomodation</strong> you will need,</li>
+<li>what <strong>accommodation</strong> you will need,</li>
 <li>what <strong>transfers</strong> you will need and</li>
 <li>if you will need <strong>RA support</strong>.</li>
 </ul>
 
-
-<H3>Approval process</H3>
 
 <p>You will need to get approval for your research visit before you come to the field. In order to get approval you will need to provide:</p>
 
@@ -27,35 +23,206 @@
 
 <p>If your proposal does not provide this information, <strong>we will not approve the research visit</strong>. If your visit proposal has not been approved, no preparations will have been made for you and <strong>you must not come to the field</strong>.</p>
 
-<h4>Proposals not using SAFE RAs and transfers</h4>
-
-<p>We will generally send back proposals that do not contain any requests for transfers or research assistant time. This is because we want to make sure that we understand exactly what support you need and that you have a complete plan.</p>
-
-<p>However not all visits need RA support and some groups (such as the BALI and Lombok consortia) have access to their own RAs or transport. If this is the case, then request your accommodation here and add a brief note to your visit description explaining that you'll be using your own transport or RAs. If you're on a BALI/LOMBOK project, do make sure to contact Unding to request that support!</p>
-
-<h4>Visiting at short notice</h4>
-
-<p>If you urgently need to come to the field within the next two weeks, then you will not be able to use the system below. You must directly email the Science Director (<a href="mailto:r.ewers@imperial.ac.uk">Dr. Rob Ewers</a>), providing all the details above, who will make a decision about whether to allow your visit. This can only be approved by the Science Director, so <strong>do not</strong> contact the Deputy Coordinator or other staff to request visits at short notice.</p>
-
-<p>If you do request a visit at short notice, we are likely to charge <strong>a late booking fee</strong>, unless the circumstances were clearly unavoidable.</p>
-
-
 <h3>How to use the system</h3>
 
 <p>First, you will need to give a quick summary of the visit dates and purpose. Once you have done that, a set of forms will appear that allow you to provide the rest of your visit details, along with an explanation of how to use the system. </p>
 
-<p>An example of using the system can be found on the SAFE wiki along with further information:
-<a href='https://www.safeproject.net/dokuwiki/working_at_safe/research_visit_proposals'>https://www.safeproject.net/dokuwiki/working_at_safe/research_visit_proposals</a></p>
+<p>Click on the help icons (<span class="glyphicon glyphicon-question-sign"></span>) for more information. An example of using the system can be found on <a href='https://www.safeproject.net/dokuwiki/working_at_safe/research_visit_proposals'>the SAFE wiki</a> along with further information.</p>
 
-<h4>Sabah Public Holidays</h4>
+<!-- Frequently asked questions pop up modals - could also use collapse accordions but for consistency with panel help -->
+<h4>Frequently asked questions</h4>
+<ul>
+	<li>
+		But I don't need SAFE transfers or RAs!&nbsp;&nbsp;
+		<span data-toggle="modal", data-target="#faq1_modal" class="glyphicon glyphicon-question-sign"></span>
+	</li>
+	<li>
+		But I need to be in the field within the next 14 days!&nbsp;&nbsp;
+		<span data-toggle="modal", data-target="#faq2_modal" class="glyphicon glyphicon-question-sign"></span>
+	</li>
+	<li>
+		I want to do something on one of the highlighted public holidays!&nbsp;&nbsp;
+		<span data-toggle="modal", data-target="#faq3_modal" class="glyphicon glyphicon-question-sign"></span>
+	</li>
+</ul>
 
-<p>Note that we have have highlighted the main Sabah public holidays in all the date selection calendars. Please try and avoid requesting transfers and RA support around these dates - SAFE will still be running but we may be short of staff!</p>
+	
+<!-- <ul>
+	<li>
+		I want to do something on one of the highlighted public holidays!&nbsp;&nbsp;
+		<span data-toggle="collapse" href="#holidays_collapse" class="glyphicon glyphicon-question-sign"></span>
+		<div id="holidays_collapse" class="collapse">
+			<p>We have have highlighted the main Sabah public holidays in all the date selection calendars. Please try and avoid requesting transfers and RA support around these dates - SAFE will still be running but we may be short of staff!</p>
+		</div>
+	</li>
+</ul> -->
 
-{{=admin_warning}}
+<!-- Help modals -->
+
+<div class="modal fade" id="faq1_modal" role="dialog">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<div class='row'>
+					<h4 class="modal-title">
+					<div class='col-sm-10'>
+						But I don't need SAFE transfers or RAs!
+					</div>
+					<div class='col-sm-2'>
+						<span data-dismiss="modal" class="close glyphicon glyphicon-remove-circle"></span>
+					</div>
+				</div>
+			</div>
+			<div class="modal-body">
+				<p>We will generally send back proposals that do not contain any requests for transfers or research assistant time. This is because we want to make sure that we understand exactly what support you need and that you have a complete plan.</p>
+				<p>However not all visits need RA support and some groups (such as the BALI and Lombok consortia) have access to their own RAs or transport. If this is the case, then request your accommodation here and add a brief note to your visit description explaining that you'll be using your own transport or RAs. If you're on a BALI/LOMBOK project, do make sure to contact Unding to request that support!</p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="faq2_modal" role="dialog">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<div class='row'>
+					<h4 class="modal-title">
+					<div class='col-sm-10'>
+						But I need to be in the field within the next 14 days!
+					</div>
+					<div class='col-sm-2'>
+						<span data-dismiss="modal" class="close glyphicon glyphicon-remove-circle"></span>
+					</div>
+				</div>
+			</div>
+			<div class="modal-body">
+				<p> If you urgently need to come to the field within the next two weeks, then you will not be able to use the system below. You must directly email the Science Director (<a href="mailto:r.ewers@imperial.ac.uk">Dr. Rob Ewers</a>), providing all the details above, who will make a decision about whether to allow your visit. This can only be approved by the Science Director, so <strong>do not</strong> contact the Deputy Coordinator or other staff to request visits at short notice.</p>
+				<p>If you do request a visit at short notice, we are likely to charge <strong>a late booking fee</strong>, unless the circumstances were clearly unavoidable.</p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="faq3_modal" role="dialog">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<div class='row'>
+					<h4 class="modal-title">
+					<div class='col-sm-10'>
+						I want to do something on one of the highlighted public holidays!
+					</div>
+					<div class='col-sm-2'>
+						<span data-dismiss="modal" class="close glyphicon glyphicon-remove-circle"></span>
+					</div>
+				</div>
+			</div>
+			<div class="modal-body">
+				<p>We have have highlighted the main Sabah public holidays in all the date selection calendars. Please try and avoid requesting transfers and RA support around these dates - SAFE will still be running but we may be short of staff!</p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="rv_members_modal" role="dialog">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<div class='row'>
+					<h4 class="modal-title">
+					<div class='col-sm-10'>
+						Research visit members
+					</div>
+					<div class='col-sm-2'>
+						<span data-dismiss="modal" class="close glyphicon glyphicon-remove-circle"></span>
+					</div>
+				</div>
+			</div>
+			<div class="modal-body">
+				<p>You can update the list to include all the members of a project at once ({{=icons['add_project_icon']}}) or select and add a single user at a time ({{=icons['add_visitor_icon']}}). You can add an unknown visitor as a placeholder for a member to be added later.</p>
+				<p>When you are ready to update an unknown visitor (or you want to switch the bookings for a named visitor to someone else), then select the new visitor from the dropdown and press the replace button ({{=icons['replace_icon']}}) next to the visitor to be replaced. You can also delete a visitor ({{=icons['delete_icon']}}) but note that this will <b>automatically cancel all of their accommodation and transfer bookings</b>.</p>
+				<p>You will also be able to see which visitors have a health and safety record and view that record. These records must be complete and sufficiently detailed for a research visit to be approved.</p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="accom_modal" role="dialog">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<div class='row'>
+					<h4 class="modal-title">
+					<div class='col-sm-10'>
+						Request accommodation
+					</div>
+					<div class='col-sm-2'>
+						<span data-dismiss="modal" class="close glyphicon glyphicon-remove-circle"></span>
+					</div>
+				</div>
+			</div>
+			<div class="modal-body">
+				<p>Check the boxes next to the research visitors that you want to book accommodation for and select your booking dates. We can help book beds at Maliau: you will need to tell us which accommodation you want and if you want any meals provided. Press the reserve beds button ({{=icons['reserve_bed_icon']}}) to submit the reservation. The web application will automatically detect overlapping bookings for a visitor and merge them.</p>
+				<p>You can delete an individual booking using the booked accommodation table below. To remove some nights from a booking, you can also select visitors and a date range and  click the release beds button ({{=icons['release_bed_icon']}}). The web application will automatically truncate or split existing reservations to remove bookings for these dates</p>
+				<p>The final date in your booking is the <b>departure date</b> so you will not have a bed reserved in the evening of the final date.</p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="transfer_modal" role="dialog">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<div class='row'>
+					<h4 class="modal-title">
+					<div class='col-sm-10'>
+						Request site transfers
+					</div>
+					<div class='col-sm-2'>
+						<span data-dismiss="modal" class="close glyphicon glyphicon-remove-circle"></span>
+					</div>
+				</div>
+			</div>
+			<div class="modal-body">
+				<p>Use the checkboxes to select the visitors who need to travel, and then select a transfer option and the date you want to travel. Click the transfer request button ({{=icons['reserve_transfer_icon']}}) to place the request.</p>
+				<p>Long distance transfers with SAFE vehicles are only available on <b>Wednesdays</b> and <b>Sundays</b>. You are strongly encouraged to liaise with other researchers visiting the site by examining research visit plans and to coordinate long distance transfers with each other to reduce demand on vehicles.</p>
+				<p>If you unavoidably need transfers on another day, you will need to email <a href="mailto:info@safeproject.net">info@safeproject.net</a> to request that these are added to your research visit. Note that transfers on other days of the week are difficult to organize and subject to availability of vehicles, so you may have to be flexible.</p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="ra_modal" role="dialog">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<div class='row'>
+					<h4 class="modal-title">
+					<div class='col-sm-10'>
+						Request research assistant support
+					</div>
+					<div class='col-sm-2'>
+						<span data-dismiss="modal" class="close glyphicon glyphicon-remove-circle"></span>
+					</div>
+				</div>
+			</div>
+			<div class="modal-body">
+				<p>Select a date range, the site and time of the day for which you want support and the type of support needed. Your booking will include work on the finish date so, for a single day booking, set the finish date to be the same as the start date. Click the research assistant support request button ({{=icons['reserve_ra_icon']}}) to place the request.</p>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+{{if auth.has_membership('admin'):}}
+{{=DIV(B('Warning!'), ' You are an administrator for the SAFE website. This allows you to',
+					  ' edit all research visit proposals and to ignore the usual 14 days notice',
+					  ' and SAFE bed limits. Be careful not to accidentally abuse this privilege when booking '
+					  ' your own research visits!', _class="alert alert-info", _style='background:darkred', _role="alert")}}
+{{pass}}
 
 {{=visit}}
-
-{{=instructions}}
 
 {{=console}}
 
@@ -66,40 +233,75 @@
 
 {{=BR()}}
 
-<!-- Script to select all user records -->
+{{block page_js}}
 <script>
+// Script to select all user records
 $("#checkAll").change(function () {
-    $("[name='records']").prop('checked', $(this).prop("checked"));
+	$("[name='records']").prop('checked', $(this).prop("checked"));
 });
-</script>
 
-<!-- Script to act as a safety catch on removing visitors, and pass
-     through the id of the clicked button, which passes the row id 
-     to delete to the backend -->
+// Script to act as a safety catch on removing visitors, and pass
+// through the id of the clicked button, which passes the row id 
+// to delete to the backend
 
-<script>
 function show_alert(this_id) {
-  if(confirm("Removing users from a research visit will remove all their accomodation and transfer bookings. Are you sure?")){
-       $("#console").append('<input type="hidden" name="' + this_id +'" value="True" />');
-       $("#console").submit();
+  if(confirm("Removing users from a research visit will remove all their accommodation and transfer bookings. Are you sure?")){
+	   $("#console").append('<input type="hidden" name="' + this_id +'" value="True" />');
+	   $("#console").submit();
   } else {
-    return false;
+	return false;
   }
 }
-</script>
+
+// Scripts to control accomodation option visibility
+function locSAFE() {
+	document.getElementById("maliau_options").style.display = "none";
+	document.getElementById("safe_options").style.display = "block";
+}
+
+function locMaliau() {
+	document.getElementById("maliau_options").style.display = "block";
+	document.getElementById("safe_options").style.display = "none";
+}
 
 
-<!-- Script to trigger availability check when both dates are set.
-     This allows the scripting to always check what is being booked
-     and ensure that date restrictions are met -->
+// Script to trigger availability check when both dates are set.
 
-<script>
 function date_change() {
-//     var a = $("#arr_date").val();
-//     var d = $("#dep_date").val();
-//     if (a != '' && d != '' ) {
-//        $("#console").append('<input type="hidden" name="datechange" value="True" />');
-//        $("#console").submit();
-//     }
- }
+
+	var a = $("#accom_arrive").val();
+	var d = $("#accom_depart").val();
+	if (a != '' && d != '' ) {
+		accom_avail(a, d);
+	}
+}
+
+// A function to do ajax update of availability
+function accom_avail(from, to){
+	
+	// open an async request to the check_safe_bed_availability service
+	const xhr = new XMLHttpRequest();
+	var url = '{{=URL('research_visits', 'check_safe_bed_availability', scheme=True, host=True)}}'
+	url = url + '?from=' + from + '&to=' + to
+	console.log(url)
+	xhr.open('GET', url); // by default async 
+	xhr.responseType = 'json'; 
+	
+	xhr.onload = function() {
+		if(this.status == 200) {// onload called even on 404 etc so check the status
+			// receive back object parsed from the JSON,
+			$('#safe_avail')[0].innerText = this.response.avail_msg;
+		}
+	};
+	
+	xhr.onerror = function() {
+	  console.log('error')
+	};
+	
+	xhr.send();
+}
+
+
 </script>
+ 
+{{end page_js}}

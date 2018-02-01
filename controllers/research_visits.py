@@ -377,64 +377,15 @@ def research_visit_details():
     reserve_ra_icon  = CAT(SPAN(_class="glyphicon glyphicon-leaf"), XML('&nbsp;'), 
                            SPAN(_class="glyphicon glyphicon-plus-sign"))
     
-    if readonly or rv_id is None:
-        instructions = DIV()
-    else:
-        instructions = CAT(H3('Research visit console'),
-                            P('The panels below allow you to add members of your research visit and to book '
-                              'accomodation, site transfers and research assistant support.'),
-                            TAG.DL(TAG.DT('Research visit members'),
-                                   TAG.DD(P('You can update the list to include all the members of a project at once (',
-                                            add_project_icon, ') or select and add a single user at a time (',
-                                            add_visitor_icon, '). You can add an unknown visitor as a placeholder ',
-                                           'for a member to be added later.'),
-                                          P('When you are ready to update an unknown visitor (or you want to switch ',
-                                            'the bookings for a named visitor to someone else), then select the new  ',
-                                            'visitor from the dropdown and press the replace button (', replace_icon, 
-                                            ') next to the visitor to be replaced. You can also delete a visitor (',
-                                             delete_icon, ') but note that this will ', B('automatically cancel all'), 
-                                             ' of their accomodation and transfer bookings.'),
-                                          P('You will also be able to see which visitors have a health and safety record ',
-                                            'and view that record. These records must be complete and sufficiently detailed '
-                                            'for a research visit to be approved.'),
-                                            _style='padding:0 0 0 20px'),
-                                   TAG.DT('Book accomodation'),
-                                   TAG.DD(P('Check the boxes next to the research visitors that you want to book ',
-                                            'accomodation for and select your booking dates. We can help book ',
-                                            'beds at Maliau and you will need to tell us which accomodation you want '
-                                            'and if you want any meals provided. Press the reserve beds button (',
-                                            reserve_bed_icon, ') to submit the reservation. The web application will ',
-                                            'automatically detect overlapping bookings for a visitor and merge them.'),
-                                          P('You can delete an individual booking using the booked accomodation table ',
-                                            'below. To remove some nights from a booking, you can also select visitors ',
-                                            'and a date range and  click the release beds button (', release_bed_icon ,
-                                            '). The web application will automatically truncate or split existing reservations',
-                                            'to remove bookings for these dates'),
-                                          P('The final date in your booking is the ',B('departure date'), ', so you will not '
-                                            'have a bed reserved in the evening of the final date.'),
-                                            _style='padding:0 0 0 20px'),
-                                   TAG.DT('Book site transfers'),
-                                   TAG.DD(P('Use the checkboxes to select the visitors who need to travel, and then select ',
-                                            'a transfer option and the date you want to travel. Click the transfer ',
-                                            'booking button (', reserve_transfer_icon, ') to make the booking.'),
-                                            P('Long distance transfers with SAFE vehicles are only available on ', 
-                                              B('Wednesdays'), ' and ', B('Sundays'),
-                                              '. You are strongly encouraged to liaise with other '
-                                              'researchers visiting the site by examining research visit plans and to coordinate '
-                                              'long distance transfers with each other to reduce demand on vehicles.'),
-                                            P('If you unavoidably need transfers on another day, you will need to email '
-                                              'info@safeproject.net to request that these are added to your research visit. '
-                                              'Note that transfers on other days of the week are difficult to organize and '
-                                              'subject to availability of vehicles, so you may have to be flexible.'),
-                                            _style='padding:0 0 0 20px'),
-                                   TAG.DT('Book research assistant support'),
-                                   TAG.DD(P('Select a date range, the site and time of the day for which you want support ',
-                                            'and the type of support needed. Your booking will include work on the finish ',
-                                            'date so, for a single day booking, set the finish date to be the same ',
-                                            'as the start date. Click the research assistant support ',
-                                            'booking button (', reserve_ra_icon, ') to make the booking.'),
-                                            _style='padding:0 0 0 20px')))
-   
+    icons = {'delete_icon': delete_icon,
+             'replace_icon': replace_icon,
+             'add_visitor_icon': add_visitor_icon,
+             'add_project_icon': add_project_icon,
+             'reserve_bed_icon': reserve_bed_icon,
+             'release_bed_icon': release_bed_icon,
+             'reserve_transfer_icon': reserve_transfer_icon,
+             'reserve_ra_icon': reserve_ra_icon}
+    
     if rv_id is None:
         console = DIV()
     else:
@@ -547,7 +498,9 @@ def research_visit_details():
                             visitor_table, # vague TODO - make this table handle squashing better (enable .table-responsive?)
                             _class="panel panel-primary", _name='visitors')
         else:
-            visitors =  DIV(DIV(DIV(H5('Research Visit Members', _class='col-sm-8'),
+            visitors =  DIV(DIV(DIV(H5(SPAN(_class="glyphicon glyphicon-question-sign",
+                                            **{'_data-toggle':"modal", '_data-target':"#rv_members_modal"}),
+                                        XML('&nbsp;')*2, 'Research Visit Members', _class='col-sm-8'),
                                     DIV(DIV(add_project, _class=' pull-right'), _class='col-sm-4'),
                                     _class='row'),
                                 _class="panel-heading"),
@@ -557,7 +510,9 @@ def research_visit_details():
         # B) Accomodation booking form
         
         # create the panel
-        accm_pane = DIV(DIV(DIV(H5('Accomodation requests', _class='col-sm-8'),
+        accm_pane = DIV(DIV(DIV(H5(SPAN(_class="glyphicon glyphicon-question-sign",
+                                            **{'_data-toggle':"modal", '_data-target':"#accom_modal"}),
+                                        XML('&nbsp;')*2,'Accommodation requests', _class='col-sm-8'),
                                 DIV(DIV(TAG.BUTTON(reserve_bed_icon, _type='submit', _name='reserve_beds',
                                                    _style='padding: 5px 15px;background:lightgrey;color:black;'),
                                         XML('&nbsp;')*5,
@@ -608,6 +563,9 @@ def research_visit_details():
                                          _class='form_control'),
                                     _class=' col-sm-5'),
                                 _class='row', _id='maliau_options', _style='display:none;'),
+                            DIV(LABEL('Availability:', _class='col-sm-2'),
+                                DIV('Select dates to show SAFE availability', _id='safe_avail', _class=' col-sm-10'),
+                                _class='row', _id='safe_options', _style='display:block;'),
                             _class='panel-body'),
                         # DIV(_class='panel-footer'),
                         _class='panel panel-primary')
@@ -618,14 +576,12 @@ def research_visit_details():
                                      startDate ='"' + record.arrival_date.isoformat() + '"',
                                      endDate ='"' + record.departure_date.isoformat() + '"')
         
-        maliau_js = SCRIPT('function locSAFE() {document.getElementById("maliau_options").style.display = "none";}',
-                           'function locMaliau() {document.getElementById("maliau_options").style.display = "block";}',
-                            _type='text/javascript')
-        
-        accom_test = CAT(accm_pane, accom_js, maliau_js)
+        accom_test = CAT(accm_pane, accom_js)
         
         ## C) Site transfer bookings panel
-        transfers_panel =   DIV(DIV(DIV(H5('Site transfer requests (Wed/Sun only)', _class='col-sm-8'),
+        transfers_panel =   DIV(DIV(DIV(H5(SPAN(_class="glyphicon glyphicon-question-sign",
+                                            **{'_data-toggle':"modal", '_data-target':"#transfer_modal"}),
+                                        XML('&nbsp;')*2, 'Site transfer requests (Wed/Sun only)', _class='col-sm-8'),
                                     DIV(DIV(TAG.BUTTON(reserve_transfer_icon, _type='submit', _name='book_transfer',
                                                        _style='padding: 5px 15px;background:lightgrey;color:black;'),
                                             _class='pull-right'),
@@ -642,6 +598,9 @@ def research_visit_details():
                                                    _class="form-control input-sm"),
                                             _class = "col-sm-4"),
                                         _class='row'),
+                                    # DIV(LABEL('Availability:', _class='col-sm-2'),
+                                    #     DIV('Select date to show availability', _id='transfer_avail', _class=' col-sm-10'),
+                                    #     _class='row'),
                                     _class='panel-body'),
                                 _class='panel panel-primary')
         
@@ -660,7 +619,9 @@ def research_visit_details():
         transfers_panel = CAT(transfers_panel, transfers_js)
         
         ## D) RA booking panel
-        ra_panel  = DIV(DIV(DIV(H5('Research Assistant support requests', _class='col-sm-8'),
+        ra_panel  = DIV(DIV(DIV(H5(SPAN(_class="glyphicon glyphicon-question-sign",
+                                            **{'_data-toggle':"modal", '_data-target':"#ra_modal"}),
+                                        XML('&nbsp;')*2,'Research Assistant support requests', _class='col-sm-8'),
                                 DIV(DIV(TAG.BUTTON(reserve_ra_icon, _type='submit', _name='book_res_assist',
                                                    _style='padding: 5px 15px;background:lightgrey;color:black;'),
                                         _class='pull-right'),
@@ -1648,7 +1609,7 @@ def validate_research_visit_details_console(form):
                 form.errors.user = 'You must select visitors to book for.'
             
             if (form.vars.accom_arrive == '') or (form.vars.accom_depart == ''):
-                form.errors.accom_arrive = 'You must set dates to book accomodation.'
+                form.errors.accom_arrive = 'You must set dates to book accommodation.'
         
         elif action == 'release_beds':
             
@@ -1656,7 +1617,7 @@ def validate_research_visit_details_console(form):
                 form.errors.user = 'You must select which visitors to release beds for.'
             
             if (form.vars.accom_arrive == '') or (form.vars.accom_depart == ''):
-                form.errors.accom_arrive = 'You must set dates to release accomodation.'
+                form.errors.accom_arrive = 'You must set dates to release accommodation.'
         
         elif action == 'book_transfer':
             
@@ -1673,7 +1634,7 @@ def validate_research_visit_details_console(form):
 
 
 ## -----------------------------------------------------------------------------
-## HELPER FUNCTIONS - prtotected from being called as a webpage using __name()
+## HELPER FUNCTIONS - protected from being called as a webpage using __name()
 ## -----------------------------------------------------------------------------
 
 def __check_availability():
@@ -2093,12 +2054,38 @@ def check_safe_bed_availability():
                  for r in rows]
         # ii) unpack and get availability, truncating at zero.
         dates = Counter([dt for bk in dates for dt in bk])
-        n_avail = max(0, n_beds_available -  max(dates.values()))
+        if dates.values():
+            n_taken = max(dates.values())
+        else:
+            n_taken = 0
+            
+        
+        n_avail = max(0, n_beds_available - n_taken)
     
         # return the availability
-        return json(dict(n_avail=n_avail))
+        return json(dict(avail_msg='{} beds available at SAFE'.format(n_avail)))
     except Exception:
-        return json(dict(n_avail='Unavailable'))
+        return json(dict(avail_msg='Bed availability could not be verified'.format(n_avail)))
+
+@service.json
+def get_project_dates():
+    
+    try:
+        # get the variables from the call
+        project_id = request.vars['project_id']
+        rec =  db(db.project_details.project_id == project_id).select().first()
+        
+        # return the availability
+        return json(dict(found=True, 
+                         start=rec.start_date.isoformat(),
+                         end=rec.end_date.isoformat()))
+    except Exception:
+        start_date = (datetime.date.today() + datetime.timedelta(days=14))
+        end_date = (datetime.date.today() + datetime.timedelta(days=365))
+        return json(dict(found=False,
+                         start=start_date.isoformat(),
+                         end=end_date.isoformat()))
+        
 
 @service.json
 def check_transfer_availability():
