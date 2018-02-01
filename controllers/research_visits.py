@@ -2005,7 +2005,7 @@ def safe_transfers_schedule():
     is_approved = (db.research_visit.admin_status == 'Approved').case('Yes','No')
     transfer_data = db(qry).select(db.transfers.transfer_date.with_alias('date'),
                                    db.transfers.transfer.with_alias('transfer'),
-                                   is_approved.with_alias('Approved'),
+                                   is_approved.with_alias('approved'),
                                    db.transfers.research_visit_member_id.count().with_alias('count'),
                                    groupby=[db.transfers.transfer_date,
                                             db.transfers.transfer,
@@ -2020,8 +2020,8 @@ def safe_transfers_schedule():
         events.append({'title': '{transfer}: {count}'.format(**row),
                        'start': row.date.isoformat(),
                        'orderField': 1,
-                       'backgroundColor': colors[row.status],
-                       'borderColor': colors[row.status]})
+                       'backgroundColor': colors[row.approved],
+                       'borderColor': colors[row.approved]})
     
     # helpfully the JSON serialiser makes JS compatible inputs, which
     # just needs to be protected from HTML mangling
