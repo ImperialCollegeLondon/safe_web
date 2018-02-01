@@ -1268,21 +1268,8 @@ def research_visit_details():
     else:
         admin = DIV()
     
-    # Stick up a warning for when admins book stuff!
-    if auth.has_membership('admin'):
-        admin_warning = DIV(B('Warning!'), ' You are an administrator for the SAFE website. This allows you to',
-                            ' edit all research visit proposals and to ignore the usual 14 days notice',
-                            ' and SAFE bed limits. Be careful not to accidentally abuse this privilege when booking '
-                            ' your own research visits!', _class="alert alert-info", _style='background:darkred', _role="alert")
-    else:
-        admin_warning = DIV()
-        
-    
-    return dict(visit_record = record, visit=visit, instructions = instructions, 
-                console=console, history=history,
-                admin=admin, admin_warning=admin_warning)
-
-
+    return dict(visit_record = record, visit=visit, console=console, 
+                history=history, admin=admin, icons=icons)
 
 @auth.requires_membership('admin')
 def create_late_research_visit():
