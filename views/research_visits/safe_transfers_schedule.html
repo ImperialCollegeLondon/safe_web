@@ -1,0 +1,62 @@
+
+{{response.files.append('https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.js')}}
+{{response.files.append('https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.8.2/fullcalendar.min.js')}}
+{{response.files.append('https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.8.2/fullcalendar.min.css')}}
+
+{{extend 'layout.html'}}
+
+{{=H3('SAFE transfers schedule')}}
+
+<p>The calendar below shows the current schedule for approved and pending requests for vehicle transfers at the SAFE project. When planning a research visit:
+</p>
+<ul>
+	<li>Remember that we restrict transfers to Wednesday and Sunday as much as possible.</li>
+	<li>Try to avoid dates where the transfer vehicle is already being used.</li>
+	<li>Look to see if there is a similar transfer with spare seats (fewer than 4 people) already going at a convenient time.</li>
+</ul>
+
+If you do have a large party to transfer or the calendar is particularly full then email <a href='mailto:deputy.coord@safeproject.net'>deputy.coord@safeproject.net</a> to ask about arranging your transfers.
+
+<br/><br/>
+
+<div id='calendar'></div>
+
+<br/>
+
+{{block page_js}}
+<script type='text/javascript'>
+jQuery(document).ready(function() {
+	// events passed as a JS array by the controller
+	var events = {{=events}}
+	// avoid booking these
+	var bad_days = [1,2,4,5,6]
+
+	$('#calendar').fullCalendar({
+		header: {
+			left: 'prev,next today',
+			center: 'title',
+			right: 'listMonth,month'
+		},
+		// customize the button names,
+		// otherwise they'd all just say "list"
+		views: {
+			month: { buttonText: 'Calendar' },
+			listMonth: { buttonText: 'List' }
+		},
+		// Shade bad days to focus on Wed/Sun
+		dayRender: function(date, cell){
+			if (bad_days.indexOf(date.weekday()) != -1){
+				cell.css("background-color","#E1E1E1");
+			}
+		},
+		defaultView: 'listMonth',
+		displayEventTime: false,
+		editable: false,
+		eventOrder: "orderField",
+		height: 600,
+		events: events
+	 });
+});
+
+</script>
+{{end}}

@@ -605,6 +605,10 @@ def research_visit_details():
                                                    _class="form-control input-sm"),
                                             _class = "col-sm-4"),
                                         _class='row'),
+                                    DIV(DIV('Please look ', A('here', _href=URL('research_visits',
+                                                              'safe_transfers_schedule'), _target="_blank"),
+                                            ' and try to work with existing scheduled transfers.', _class=' col-sm-12'),
+                                        _class='row'),
                                     # DIV(LABEL('Availability:', _class='col-sm-2'),
                                     #     DIV('Select date to show availability', _id='transfer_avail', _class=' col-sm-10'),
                                     #     _class='row'),
@@ -1918,7 +1922,6 @@ def export_ongoing_research_visits_text():
                   'Content-Disposition':attachment + ';'})
 
 
-
 def safe_bed_availability():
 
     """
@@ -1933,7 +1936,8 @@ def safe_bed_availability():
     bed_data = db(db.bed_reservations_safe.research_visit_id == db.research_visit.id)
     rows = bed_data.select()
     
-    # calculate the beds available by date
+    # Need to expand the date range of a visit to calculate the
+    # beds available by day
     approved = []
     pending = []
     
@@ -1951,29 +1955,76 @@ def safe_bed_availability():
     pending =  Counter(pending)
     approved =  Counter(approved)
     
-    # get unique days across pending and approved
+    # Calculate availability across dates with pending or approved bookings:
+    # - handling admin approved overbooking by truncating to zero
+    # - package into a list of dictionaries {'type', 'date', 'n'}
     dates = set(pending.keys() + approved.keys())
     pend  = [0 if pending[d] is None else pending[d] for d in dates]
     conf  = [0 if approved[d] is None else approved[d] for d in dates]
-    avail = [n_beds_available - (x+y) for x, y in zip(pend, conf)]
+    avail = [{'type': 'available', 'date': d, 'n': max(0, n_beds_available - (x+y))}
+             for x, y, d in zip(pend, conf, dates)]
     
-    # handle admin approved overbooking by truncating
-    avail = [0 if x < 0 else x for x in avail]
-    date = [d.isoformat() for d in dates]
+    # get pending and approved in the same format
+    pending  = [{'type': 'pending', 'date': k, 'n': v} for k, v in pending.iteritems()]
+    approved  = [{'type': 'confirmed', 'date': k, 'n': v} for k, v in approved.iteritems()]
     
-    # now zip into sets of events, with three per day
-    # one for each of pending confirmed and available
-    n_events = len(dates)
-    event_n_beds = pend + conf + avail
-    event_class  = ['pending'] * n_events + ['confirmed'] * n_events + ['available'] * n_events
-    event_title  = [ str(x) + ' ' + y for x,y in zip(event_n_beds, event_class)]
-    event_order  = [2] * n_events + [3] * n_events + [1] * n_events
-    # pass colour information
-    event_backgrounds = ['#CC9900'] * n_events + ['#CC0000'] * n_events + ['#228B22'] * n_events
+    # now create a list of events to pass to the view as a JS array
+    colors = {'confirmed': '#CC9900', 'pending': '#CC0000', 'available': '#228B22'}
+    event_order = {'confirmed': 3, 'pending': 2, 'available': 1}
+    events = []
+    for event in avail + pending + approved:
+        events.append({'title': '{n} {type}'.format(**event),
+                       'start': event['date'].isoformat(),
+                       'orderField': event_order[event['type']],
+                       'backgroundColor': colors[event['type']],
+                       'borderColor': colors[event['type']]})
     
-    events = zip(event_title, date * 3, event_class, event_order, event_backgrounds)
+    return dict(events=XML(json(events)))
+
+
+def safe_transfers_schedule():
+
+    """
+    This controller:
+        - creates data for a free beds view using fullcalendar javascript
+        - combining this and the booking on a single page causes issues
+        - serves up the data from this query:
+            select t.transfer_date, t.transfer, r.admin_status, count(t.research_visit_member_id) 
+                from transfers t 
+                    join research_visit r
+                    on (t.research_visit_id = r.id)
+                where r.admin_status <> 'Draft'
+                group by t.transfer_date, t.transfer, r.admin_status
+                order by t.transfer_date;
+    """
+
+    # get counts of people on each transfer route by RV status
+    qry = ((db.transfers.research_visit_id == db.research_visit.id) &
+           (db.research_visit.admin_status != 'Draft'))
     
-    return dict(events=events)
+    transfer_data = db(qry).select(db.transfers.transfer_date.with_alias('date'),
+                                   db.transfers.transfer.with_alias('transfer'),
+                                   db.research_visit.admin_status.with_alias('status'),
+                                   db.transfers.research_visit_member_id.count().with_alias('count'),
+                                   groupby=[db.transfers.transfer_date,
+                                            db.transfers.transfer,
+                                            db.research_visit.admin_status])
+    
+    # now package up that data as event data for calendar.js, and 
+    # poke it back to the view, where it will populate the calendar
+    colors = {'Approved': '#CC9900', 'Submitted': '#CC0000', 'Resubmit': '#228B22'}
+  
+    events = []
+    for row in transfer_data:
+        events.append({'title': '{transfer}: {count}'.format(**row),
+                       'start': row.date.isoformat(),
+                       'orderField': 1,
+                       'backgroundColor': colors[row.status],
+                       'borderColor': colors[row.status]})
+    
+    # helpfully the JSON serialiser makes JS compatible inputs, which
+    # just needs to be protected from HTML mangling
+    return dict(events=XML(json(events)))
 
 ## -----------------------------------------------------------------------------
 ## ADMINISTER NEW VISITS

@@ -1,37 +1,31 @@
 
-{{response.files.append(URL(r=request,c='static',f='js/moment.min.js'))}}
-{{response.files.append(URL(r=request,c='static',f='js/fullcalendar.min.js'))}}
-{{response.files.append(URL(r=request,c='static',f='css/fullcalendar.min.css'))}}
+{{response.files.append('https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.js')}}
+{{response.files.append('https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.8.2/fullcalendar.min.js')}}
+{{response.files.append('https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.8.2/fullcalendar.min.css')}}
 
 {{extend 'layout.html'}}
 
 {{=H3('Bed availability')}}
 
-The calender below shows the current availability of beds at the SAFE project. There are {{=B(n_beds_available, ' beds available')}} in total and the calendar indicates how many are currently confirmed booked or in pending bookings for each day. Empty dates have no current pending or confirmed bed reservations!
+The calendar below shows the current availability of beds at the SAFE project. There are {{=B(n_beds_available, ' beds available')}} in total and the calendar indicates how many are currently confirmed booked or in pending bookings for each day. Empty dates have no current pending or confirmed bed reservations!
 <br/><br/>
-
-<script type='text/javascript'>
-jQuery(document).ready(function() {
- $('#calendar').fullCalendar({
-     editable: false,
-     eventOrder: "orderField",
-     height: 600,
-     events: [
-     {{for e in events:}}
-         {
-             title: "{{=e[0]}}",
-             allDay: true,
-             start: "{{=e[1]}}",
-             orderField: "{{=e[3]}}",
-             backgroundColor: "{{=e[4]}}",
-             borderColor: "{{=e[4]}}"
-         },
-     {{pass}}
-   ]
- });
-});
-</script>
 
 <div id='calendar'></div>
 
 <br/>
+
+{{block page_js}}
+<script type='text/javascript'>
+jQuery(document).ready(function() {
+	// events passed as a JS array by the controller
+	var events = {{=events}}
+	
+	$('#calendar').fullCalendar({
+		editable: false,
+		eventOrder: "orderField",
+		height: 600,
+		events: events
+	 });
+});
+</script>
+{{end}}
