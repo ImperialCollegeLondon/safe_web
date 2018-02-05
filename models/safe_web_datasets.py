@@ -82,7 +82,7 @@ def verify_dataset(dataset_id, email=False):
     # Initialise the dataset checker:
     if not error:
         # - get paths to dataset file. Failure to find is handled by safe_dataset_checker methods.
-        fname = os.path.join(request.folder,'uploads','datasets', record.file)
+        fname = os.path.join(request.folder,'uploads','datasets', str(record.dataset_id), record.file)
         # get the Dataset object from the file checker
         try:
             dataset = safe_dataset_checker.Dataset(fname, verbose=False, gbif_database=gbif_db)
@@ -178,16 +178,6 @@ def verify_dataset(dataset_id, email=False):
     return ret_msg
 
 
-# def json_datetime(obj):
-#     """JSON serializer for objects not serializable by default json code"""
-#
-#     if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
-#         serial = obj.isoformat()
-#         return serial
-#
-#     raise TypeError("Type %s not serializable" % type(obj))
-
-
 def submit_dataset_to_zenodo(recid):
     
     """
@@ -261,17 +251,33 @@ def submit_dataset_to_zenodo(recid):
         # headers description
         hdr = {"Content-Type": "application/json"}
         
-        # get a new deposit resource
-        dep = requests.post('https://sandbox.zenodo.org/api/deposit/depositions', 
-                             params=token, json={}, headers= hdr)
+        # Are we publishing a new version of a file that has already been published?
+        # The record will have a populated zenodo_parent_id field, either None or 
+        # inherited from the last published predecessor .
         
-        # NOTES - for new versions of files, need to request a newversion from the original record (not concept)
-        # and then edit the latest draft deposit
-        # new_draft = requests.post('https://sandbox.zenodo.org/api/deposit/depositions/{}/actions/newversion'.format('77504'), params=token)
-        # dep = new_draft.json()['links']['latest_draft']
+        if record.zenodo_parent_id is None:
+            # get a new deposit resource
+            dep = requests.post('https://sandbox.zenodo.org/api/deposit/depositions', 
+                                 params=token, json={}, headers= hdr)
+        else:
+            # get a new draft by passing in a reference to the previous version.
+            api = 'https://sandbox.zenodo.org/api/deposit/depositions/{}/actions/newversion'.format(record.zenodo_parent_id)
+            new_draft = requests.post(api, params=token, json={}, headers= hdr)
+            
+            # trap errors in creating the new version
+            if new_draft.status_code != 201:
+                record.update_record(zenodo_submission_status = 'ZEN_FAIL',
+                                     zenodo_submission_date=datetime.datetime.now(),
+                                     zenodo_error = new_draft.json())
+                return "Failed to obtain new version of deposit"
+            
+            # now get the newly created version
+            dep = requests.get(new_draft.json()['links']['latest_draft'],
+                               params=token, json={}, headers= hdr)
         
-        # trap errors in creating the resource
-        if dep.status_code != 201:
+        # trap errors in creating the resource - successful creation of new
+        # deposits returns 201 and of new version drafts returns 200
+        if dep.status_code not in [200, 201]:
             record.update_record(zenodo_submission_status = 'ZEN_FAIL',
                                  zenodo_submission_date=datetime.datetime.now(),
                                  zenodo_error = dep.json())
@@ -279,7 +285,7 @@ def submit_dataset_to_zenodo(recid):
         
         # get the links dictionary out of the deposit resource
         links = dep.json()['links']
-                
+        
         # attach the metadata to the deposit resource
         mtd = requests.put(links['self'], params=token, data=simplejson.dumps(zenodo_metadata), headers=hdr)
         
@@ -291,10 +297,36 @@ def submit_dataset_to_zenodo(recid):
             delete = requests.delete(links['self'], params=token)
             return "Failed to upload metadata"
         
-        # upload the file
-        fname = os.path.join(request.folder, 'uploads', 'datasets', record.file)
-        fls = requests.post(links['files'], params=token, 
-                            files={'file': open(fname, 'rb')})
+        # for new versions of existing datasets delete earlier versions of file
+        if record.zenodo_parent_id is not None:
+            # get the existing files
+            files = requests.get(links['files'], params=token)
+            
+            if files.status_code != 200:
+                record.update_record(zenodo_submission_status = 'ZEN_FAIL',
+                                     zenodo_submission_date=datetime.datetime.now(),
+                                     zenodo_error = files.json())
+                delete = requests.delete(links['self'], params=token)
+                return "Failed to access existing files"
+            elif len(files.json()) != 1:
+                record.update_record(zenodo_submission_status = 'ZEN_FAIL',
+                                     zenodo_submission_date=datetime.datetime.now(),
+                                     zenodo_error = files.json())
+                delete = requests.delete(links['self'], params=token)
+                return "More than one file exists in the deposition"
+            
+            file_del = requests.delete(files.json()[0]['links']['self'],  params=token)
+            
+            if file_del.status_code != 204:
+                record.update_record(zenodo_submission_status = 'ZEN_FAIL',
+                                     zenodo_submission_date=datetime.datetime.now(),
+                                     zenodo_error = files.json())
+                delete = requests.delete(links['self'], params=token)
+                return "Failed to delete existing file"
+            
+        # upload the new file
+        fname = os.path.join(request.folder, 'uploads', 'datasets', str(record.dataset_id), record.file)
+        fls = requests.post(links['files'], params=token, files={'file': open(fname, 'rb')})
         
         # trap errors in uploading file
         # - no success or mismatch in md5 checksums
@@ -344,8 +376,10 @@ def submit_dataset_to_zenodo(recid):
                                  zenodo_submission_date=datetime.datetime.now(),
                                  zenodo_metadata = pub_json,
                                  zenodo_record_id = pub_json['record_id'],
-                                 zenodo_doi = pub_json['doi_url'],
-                                 zenodo_badge = pub_json['links']['badge'])
+                                 zenodo_version_doi = pub_json['doi_url'],
+                                 zenodo_version_badge = pub_json['links']['badge'],
+                                 zenodo_concept_doi = pub_json['links']['conceptdoi'],
+                                 zenodo_concept_badge = pub_json['links']['conceptbadge'])
             
             return "Published dataset to {}".format(pub_json['doi_url'])
 
@@ -379,6 +413,7 @@ def _taxon_index_to_pre(taxon_index):
     
     return PRE(txt)
 
+
 def _taxon_index_to_emsp(taxon_index):
     """
     Turns the taxon index for a record into a text representation
@@ -389,10 +424,15 @@ def _taxon_index_to_emsp(taxon_index):
     
     indent_str = '&emsp;-&emsp;'
     
+    # italicise the names correctly
+    need_itals = (tx for tx in taxon_index if tx[3] in ['genus','species','subspecies'])
+    for tx in need_itals:
+        tx[2] = '<i>' + tx[2] + '</i>'
+    
     # the taxon index uses -1 for all unvalidated names, since it isn't
     # possible to assign sensible null values inside safe_dataset_checker
-    # These need to be made unique and format the names to make it clear
-    # they are unvalidated
+    # These need to be made unique within this tree and the names are 
+    # formatted to make it clear they are unvalidated
     tmp_num = -1
     for tx in taxon_index:
         if tx[4] != 'accepted':
@@ -415,11 +455,12 @@ def _taxon_index_to_emsp(taxon_index):
     edges = [[tx[1], tx[0]] for tx in taxon_index]
     g = Graph(edges)
     
-    # Use a depth first search on edges to order the text lines. 
+    # Use a depth first search on edges to order the text lines,
+    # starting with the root node at zero
     # Need to pull unvalidated entries (negative indices) up to
     # immediately under their parent, as otherwise they can appear
     # nested within later taxa
-    order = list(dfs_edges(g))
+    order = list(dfs_edges(g, source=0))
     sorted_order = []
     ind = []
     while order:
@@ -434,9 +475,11 @@ def _taxon_index_to_emsp(taxon_index):
     
     txt = ''
     for nd in sorted_order:
-        txt += text_lines[nd[1]]
+        if nd[1] != 0:
+            txt += text_lines[nd[1]]
     
     return XML(txt)
+
 
 def _taxon_index_to_ul(taxon_index):
     """
@@ -481,6 +524,7 @@ def _taxon_index_to_ul(taxon_index):
     
     return XML(txt + '</ul>')
 
+
 def _dataset_description(record, include_gemini=False):
     """
     Function to turn a dataset metadata record into html to send
@@ -521,7 +565,7 @@ def _dataset_description(record, include_gemini=False):
     # Can't get the XML metadata link unless it is published, since that 
     # contains references to the zenodo record
     if include_gemini:
-        md_url = URL('datasets','xml_metadata', vars={'dataset_id': record.id}, scheme=True, host=True)
+        md_url = URL('datasets','xml_metadata', vars={'id': record.id}, scheme=True, host=True)
         desc += P(B('XML metadata: '), 'GEMINI compliant metadata for this dataset '
                   'is available ', A('here', _href=md_url))
 
@@ -596,7 +640,7 @@ def generate_inspire_xml(record):
     # two identifiers - the safe project website and the DOI.
     safe_url = URL('datasets', 'view_dataset', vars={'dataset_id': record.id}, scheme=True, host=True)
     citation.find('gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString', nsmap).text = safe_url
-    citation.find('gmd:identifier/gmd:RS_Identifier/gmd:code/gco:CharacterString', nsmap).text = record.zenodo_doi
+    citation.find('gmd:identifier/gmd:RS_Identifier/gmd:code/gco:CharacterString', nsmap).text = record.zenodo_version_doi
     
     # The citation string
     authors = [au['name'] for au in dataset_md['authors']]
@@ -605,7 +649,7 @@ def generate_inspire_xml(record):
         author_string = author_string.replace(', ' + authors[-1], ' & ' + authors[-1])
     
     cite_string = '{} ({}) {} [Dataset] {}'.format(author_string, record.zenodo_submission_date.year, 
-                                                   record.dataset_title, record.zenodo_doi)
+                                                   record.dataset_title, record.zenodo_version_doi)
     
     citation.find('gmd:otherCitationDetails/gco:CharacterString', nsmap).text = cite_string
     

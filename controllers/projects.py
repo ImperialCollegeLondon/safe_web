@@ -197,13 +197,14 @@ def project_view():
         # dataset links
         datasets = db((db.datasets.project_id == project_record.id) &
                       (db.datasets.dataset_check_outcome == 'PASS') &
-                      (db.datasets.zenodo_submission_status == 'ZEN_PASS')).select()
+                      (db.datasets.zenodo_submission_status == 'ZEN_PASS')).select(orderby=[db.datasets.dataset_id, ~ db.datasets.version])
         
         if len(datasets) > 0:
-            datasets_table = TABLE(TR(TH('Dataset title')),
-                                  *[TR(TD(A(r.dataset_title, 
+            datasets_table = TABLE(TR(TH('Dataset ID'), TH('Version'), TH('Dataset title'), TH()),
+                                  *[TR(TD(r.dataset_id), TD(r.version),
+                                       TD(A(r.dataset_title, 
                                             _href=URL('datasets','view_dataset', vars={'dataset_id': r.id}))),
-                                       TD(A(IMG(_src=r.zenodo_badge), _href=r.zenodo_doi)))
+                                       TD(A(IMG(_src=r.zenodo_version_badge), _href=r.zenodo_version_doi)))
                                        for r in datasets],
                                   _class='table table-striped', _style='width:100%')
 

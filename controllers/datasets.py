@@ -1,7 +1,7 @@
 import hashlib
 import datetime
 import safe_dataset_checker
-
+from gluon.contenttype import contenttype
 
 def view_datasets():
     """
@@ -16,23 +16,23 @@ def view_datasets():
     
     # format fields for the display
     db.datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects','project_view', args=[value])) 
-    db.datasets.zenodo_badge.represent = lambda value, row:  A(IMG(_src=value), _href=row.zenodo_doi)
+    db.datasets.zenodo_version_badge.represent = lambda value, row:  A(IMG(_src=value), _href=row.zenodo_version_doi)
+    db.datasets.zenodo_version_doi.readable = False
     
     # button to link to custom view
     links = [dict(header = '', body = lambda row: A('Details',_class='button btn btn-sm btn-default'
-                  ,_href=URL("datasets","view_dataset", vars={'dataset_id': row.id})))]
+                  ,_href=URL("datasets","view_dataset", vars={'id': row.id})))]
     
-    # provide a grid display
-    form = SQLFORM.grid((db.datasets.dataset_check_outcome == 'PASS') &
-                        (db.datasets.zenodo_submission_status == 'ZEN_PASS'),
+    # The grid displays the current version of published datasets
+    form = SQLFORM.grid((db.datasets.zenodo_submission_status == 'ZEN_PASS') &
+                        (db.datasets.current == 'T') ,
                         fields = [db.datasets.project_id,
-                                  # db.datasets.uploader_id,
+                                  db.datasets.dataset_id,
+                                  db.datasets.version,
                                   db.datasets.dataset_title,
-                                  db.datasets.zenodo_doi,
-                                  db.datasets.zenodo_badge
-                                  ],
-                        headers = {'datasets.zenodo_doi': 'Zenodo',
-                                   'datasets.zenodo_badge': 'Link',
+                                  db.datasets.zenodo_version_badge,
+                                  db.datasets.zenodo_version_doi],
+                        headers = {'datasets.zenodo_version_badge': 'DOI',
                                    'datasets.project_id': 'Project'},
                         maxtextlength = 100,
                         deletable=False,
@@ -46,7 +46,7 @@ def view_datasets():
 
 def view_dataset():
     
-    ds_id = request.vars['dataset_id']
+    ds_id = request.vars['id']
     record = db.datasets[ds_id]
     
     if ds_id is None:
@@ -57,13 +57,37 @@ def view_dataset():
         session.flash = "Database record id does not exist"
         redirect(URL('datasets','view_datasets'))
     
-    if record.zenodo_submission_status == 'ZEN_PASS':
-        description = XML(_dataset_description(record, include_gemini=True))
-    else:
-        description = XML(_dataset_description(record))
+    # get the version history
+    qry = ((db.datasets.dataset_id == record.dataset_id) &
+           (db.datasets.zenodo_submission_status == 'ZEN_PASS'))
+    
+    history = db(qry).select(db.datasets.id,
+                             db.datasets.zenodo_submission_date,
+                             db.datasets.zenodo_version_badge,
+                             db.datasets.zenodo_version_doi,
+                             orderby= ~ db.datasets.zenodo_submission_date)
+    
+    # style that into a table showing the currently viewed version
 
-    return(dict(record=record, description=description))
+    view = SPAN(_class="glyphicon glyphicon-eye-open", 
+                   _style="color:green;font-size: 1.4em;")
+    alt = SPAN(_class="glyphicon glyphicon-eye-close", 
+                    _style="color:grey;font-size: 1.4em;", 
+                    _title='View this version')
+    
+    history_table = TABLE(TR(TH('Viewing'), TH('Version publication date'), TH('Zenodo DOI')),
+                          *[TR(TD(view) if r.id == int(ds_id) else TD(A(alt, _href=URL(vars={'id': r.id}))),
+                               TD(r.zenodo_submission_date),
+                               TD(A(IMG(_src=r.zenodo_version_badge), 
+                                    _href=r.zenodo_version_doi)))
+                            for r in history],
+                         _width='100%', _class='table table-striped table-bordered')
 
+    # get the description
+    description = XML(_dataset_description(record, include_gemini=True))
+
+    return(dict(record=record, description=description, 
+                history_table=history_table))
 
 
 @auth.requires_membership('admin')
@@ -77,6 +101,9 @@ def administer_datasets():
     db.datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects','project_view', args=[value])) 
     db.datasets.dataset_check_outcome.represent =  lambda value, row: approval_icons[value]
     db.datasets.zenodo_submission_status.represent =  lambda value, row: approval_icons[value]
+    
+    # alter the file representation to add the dataset id as a variable to the download
+    db.datasets.file.represent = lambda value, row: A('Download file', _href=URL('datasets', 'download_dataset2', row.file, vars={'dataset_id': row.dataset_id}))
     
     # add buttons to provide options
     # - run check (can only be run if file has not passed)
@@ -97,39 +124,36 @@ def administer_datasets():
                      _style='padding: 3px 10px 3px 10px')
         else:
             btn =  A('Publish', _class='button btn btn-default',
-                     callback=URL("datasets","run_submit_dataset_to_zenodo", vars={'id':row.id, 'manage':''}),
+                     _href=URL("datasets","run_submit_dataset_to_zenodo", vars={'id':row.id, 'manage':''}),
                      _style='padding: 3px 10px 3px 10px;')
         return btn
     
-    # - run publish (can only be run if file has passed and not yet been published)
-    def _run_delete(row):
-        if row.zenodo_submission_status == 'ZEN_PASS':
-            btn =  A('Delete', _class='button btn btn-default disabled',
-                     _style='padding: 3px 10px 3px 10px')
-        else:
-            btn =  A('Delete', _class='button btn btn-default',
-                     callback=URL("datasets","run_delete_dataset", vars={'id':row.id, 'manage':''}),
+    # - submit page link
+    def _resubmit(row):
+        btn =  A('Resubmit', _class='button btn btn-default',
+                  _href=URL("datasets","submit_dataset", vars={'dataset_id':row.dataset_id}),
                      _style='padding: 3px 10px 3px 10px;')
         return btn
     
     links = [dict(header = '', body = lambda row: _run_check(row)),
              dict(header = '', body = lambda row: _run_publish(row)),
-             dict(header = '', body = lambda row: _run_delete(row))]
+             dict(header = '', body = lambda row: _resubmit(row))]
     
-    # provide a grid display
-    form = SQLFORM.grid(db.datasets,
-                        fields = [db.datasets.project_id,
+    # provide a grid display of current datasets
+    form = SQLFORM.grid(db.datasets.current == True,
+                        fields = [db.datasets.dataset_id,
+                                  db.datasets.version,
+                                  db.datasets.project_id,
                                   db.datasets.uploader_id,
                                   db.datasets.dataset_title,
                                   db.datasets.dataset_check_outcome,
-                                  db.datasets.zenodo_submission_status,
-                                  ],
+                                  db.datasets.zenodo_submission_status],
                         headers = {'datasets.dataset_check_outcome': 'Format status',
                                    'datasets.zenodo_submission_status': 'Published'},
-                        links = links, 
+                        links = links,
                         maxtextlength = 100,
                         deletable=False,
-                        editable=False,
+                        editable=True,
                         details=True,
                         create=False,
                         csv=False)
@@ -137,8 +161,57 @@ def administer_datasets():
     return dict(form=form)
 
 
+@auth.requires_membership('admin')
+def download_dataset():
+    
+    # if this is a dataset then should be able to point it to the right path
+    if 'dataset_id' in request.vars:
+        db.datasets.file.uploadfolder = os.path.join(request.folder, 'uploads', 'datasets', request.vars.dataset_id)
+    
+    return response.download(request, db)
+    
+
+# @auth.requires_membership('admin')
+# def download_dataset():
+#
+#     # get the id and record
+#     ds_id = request.vars['id']
+#
+#     if ds_id is None:
+#         # non-existent id provided
+#         session.flash = "Database id not provided"
+#         redirect(URL('datasets','administer_datasets'))
+#
+#     try:
+#         ds_id = int(ds_id)
+#     except ValueError:
+#         # non-integer id provided
+#         session.flash = "Database id not an integer"
+#         redirect(URL('datasets','administer_datasets'))
+#
+#     record = db.datasets[ds_id]
+#
+#     if record is None:
+#         # non-existent id provided
+#         session.flash = "Database record id does not exist"
+#         redirect(URL('datasets','administer_datasets'))
+#
+#     # get the file name into the download header
+#     file_header = "attachment; filename=" + record.file_name
+#
+#     # set up the response
+#     response.headers['ContentType'] = contenttype(record.file_name)
+#     response.headers['Content-Disposition'] = file_header
+#
+#     # get a stream of the file
+#     path = os.path.join(request.folder, 'uploads', 'datasets', str(record.dataset_id), record.file)
+#     stream = open(path, 'rb')
+#     return response.stream(stream)
+
+
+
 @auth.requires_login()
-def submit_dataset():
+def submit_dataset_old():
 
     """
     Interface for dataset submission. Flow is:
@@ -163,11 +236,10 @@ def submit_dataset():
         # non-existent id provided
         session.flash = "Database record id does not exist"
         redirect(URL('datasets','view_datasets'))
-    else:
+    elif (record.uploader_id != auth.user.id) and not auth.has_membership('admin'):
         # check if uploader is trying to view this submission
-        if record.uploader_id != auth.user.id:
-            session.flash = "Dataset uploaded by a different user"
-            redirect(URL('datasets','view_datasets'))
+        session.flash = "Dataset uploaded by a different user"
+        redirect(URL('datasets','view_datasets'))
     
     # Set up the form
     #  - restrict choice of projects for standard users 
@@ -340,6 +412,299 @@ def submit_dataset():
     return dict(form=form)
 
 
+@auth.requires_login()
+def submit_dataset():
+
+    """
+    Interface for dataset submission. Flow is:
+    1) Upload your file along with project ID.
+    2) It gets checked in the background and you get an email with the result and a link
+    3) That provides the opportunity to replace the file with an updated one
+    4) Once it passes, the website admin will check it and publish it.
+    
+    If users have a file that they think should pass, they can contact the
+    website admin team. It may be that the validator program needs modifying!
+    """
+    
+    # controller has one variable: dataset_id
+    ds_id = request.vars['dataset_id']
+    
+    # get the records associated with this ds_id and the uploaders,
+    # which will the original owner and any admins
+    qry = db.datasets.dataset_id == ds_id
+    records = db(qry).select(orderby= ~ db.datasets.version)
+    owners = [rw.uploader_id for rw in records]
+    
+    # check that ds_id makes sense and the user has the right to access the form
+    if ds_id is None:
+        # no id provided, so new form and draw a new id
+        record = None
+        new_ds_id = db.executesql("select nextval('dataset_static_id_seq') as id;")[0][0]
+    elif records is None:
+        # non-existent id provided
+        session.flash = "Database record id does not exist"
+        redirect(URL('datasets','view_datasets'))
+    elif auth.user.id not in owners and not auth.has_membership('admin'):
+        # check if uploader is trying to view this submission
+        session.flash = "Dataset uploaded by a different user"
+        redirect(URL('datasets','view_datasets'))
+    else:
+        # get the record with the most recent version, which 
+        # will be the first row
+        record = records.first()
+        new_ds_id = record.dataset_id
+    
+    # Set up the form
+    #  - restrict choice of projects for standard users 
+    #    but let admins submit to any project
+    if auth.has_membership('admin'):
+        query = db(db.project_id.project_details_id == db.project_details.id)
+    else:
+        query = db((db.project_members.user_id == auth.user.id) &
+                   (db.project_members.project_id == db.project_id.id) &
+                   (db.project_id.project_details_id == db.project_details.id))
+    
+    # display ID and title of projects
+    db.datasets.project_id.requires = IS_IN_DB(query, 'project_details.project_id',
+                                              '%(project_id)s: %(title)s',
+                                               zero='Select project.')
+    
+    # set the upload directory locally - this has to be done before creating 
+    # which is why we have to draw from the sequence before creating the form
+    upload_dir = os.path.join(request.folder, 'uploads', 'datasets', str(new_ds_id))
+    db.datasets.file.uploadfolder = upload_dir
+    
+    # Setup the form
+    form = SQLFORM(db.datasets, 
+                   record = record, 
+                   fields=['project_id', 'file'],
+                   showid=False,
+                   deletable=False,
+                   button='Upload')
+    
+    # Validate the form: bespoke data entry
+    if form.validate(onvalidation=validate_dataset_upload):
+        
+        # new blank record to hold the 
+        new_id = db.datasets.insert()
+        new_record = db.datasets[new_id]
+        
+        # set the fields that differ if this is new dataset or an update
+        if record is not None:
+            # uploading a new version. If the dataset version is already 
+            # published, then we need to use a previous Zenodo record id
+            # to launch a new draft deposit from the Zenodo API.
+            
+            if record.zenodo_record_id is not None:
+                # zenodo record id is only populated on publication, so
+                # the parent record here was successful
+                parent = record.zenodo_record_id
+            else:
+                # otherwise, what is currently in the parent record,
+                # which is either none or the last successful record
+                parent = record.zenodo_parent_id
+            
+            new_record.update(dataset_id = record.dataset_id,
+                              version = record.version + 1,
+                              project_id = form.vars.project_id,
+                              zenodo_parent_id = parent)
+            
+            # previous version loses its current status
+            record.update_record(current=False)
+        else:
+            new_record.update(dataset_id = new_ds_id,
+                              project_id = form.vars.project_id)
+        
+        # now update the other fields and commit the updates
+        new_record.uploader_id = auth.user.id
+        new_record.file_name = form.vars.file_name
+        new_record.file_hash = form.vars.file_hash
+        new_record.file_size = form.vars.file_size
+        new_record.upload_datetime = datetime.datetime.now()
+        new_record.file = form.vars.file
+        new_record.update_record()
+        
+        # schedule the dataset check
+        #  - set timeout to extend the default of 60 seconds. (If large files run
+        #    longer than this then the safe_dataset_checker code is going to need optimizing!)
+        #  - no start_time, so defaults to now.
+        task = scheduler.queue_task('verify_dataset', 
+                                    pvars = {'dataset_id': form.vars.id, 'email': True},
+                                    timeout = 5*60,
+                                    repeats=1,
+                                    immediate=True)
+        
+        # notify upload has worked
+        session.flash = ('Upload successful. A validation check will be run and '
+                          'you will get an email with the results when it finishes.')
+        
+        # send to the updated page
+        redirect(URL('datasets', 'submit_dataset', vars={'dataset_id': new_record.dataset_id}))
+    
+    elif form.errors:
+        response.flash = 'Errors in upload'
+    
+    # Package the page contents - this is a panel that contains
+    # 1) Information on the uploaded file verification (if a dataset id is provided)
+    # 2) Information on the publication status (if a dataset id is provided and it is published)
+    # 3a) Form controls to validate a replacement file (if check outcome is Fail or Error)
+    # 3b) Form controls to create a new version (if file is published)
+    
+    # Tone down the height of the project selector
+    form.custom.widget.project_id['_style'] = 'height:30px'
+    
+    form =  DIV(form.custom.begin, 
+                DIV(DIV(B('Project'), _class="col-sm-3" ),
+                    DIV(form.custom.widget.project_id,  _class="col-sm-9"),
+                    _class='row', _style='margin:5px 10px'),
+                DIV(DIV(B('File'), _class="col-sm-3" ),
+                    DIV(form.custom.widget.file,  _class="col-sm-6"),
+                    DIV(DIV(form.custom.submit, _class='pull-right'), _class="col-sm-3"),
+                    _class='row', _style='margin:10px 10px'),
+                   form.custom.end)
+    
+    # local function to pack rows
+    def _row(head, body):
+        
+        return  DIV(DIV(B(head), _class='col-sm-3'), DIV(body, _class='col-sm-9'),
+                    _class='row', _style='margin:5px 10px')
+    
+    # Work through the alternative states
+    if record is None:
+        # Set the heading for the form
+        panel_head = DIV(DIV(H4('Upload new dataset', _class="panel-title col-sm-8"),
+                             _class='row'),
+                         _class="panel-heading")
+        # There is no file check information, report, description or resubmit header
+        chk_panel = ""
+        chk_rprt = ""
+        dataset_desc = ""
+        resubmit_head = ""
+    else:
+        
+        # basic check information for any upload
+        project = db((db.project_id.id == record.project_id) &
+                     (db.project_id.project_details_id == db.project_details.id)).select(db.project_details.title).first()
+        
+        chk_info = [_row('Project assignment', '(' + str(record.project_id) + ') ' + project.title),
+                    _row('File name', record.file_name),
+                    _row('File size', '{:0.2f} MB'.format(record.file_size / 1024.0 ** 2)),
+                    _row('Uploaded', record.upload_datetime.strftime('%Y-%m-%d %H:%M')),
+                    _row('Current version', record.version)]
+        
+        # Status check
+        chk_stat = [_row('Check outcome', CAT(approval_icons[record.dataset_check_outcome],
+                                              XML('&nbsp') * 3, record.dataset_check_outcome)),
+                    _row('Check report', A('View details', _href='#show_check', **{'_data-toggle': 'collapse'}))]
+        
+        # Check report
+        chk_rprt =  DIV(DIV(XML(record.dataset_check_report), _class="panel-body"),
+                        _id="show_check", _class="panel-collapse collapse")
+        
+        # Resubmit header is only needed when a dataset version is checked or published
+        resubmit_head = ""
+        
+        # No description unless created further down
+        dataset_desc = ""
+        
+        if record.dataset_check_outcome == 'PENDING':
+            # Set the heading for the form
+            panel_head = DIV(DIV(H4('Dataset awaiting verification', _class="panel-title col-sm-8"),
+                                 _class='row'),
+                             _class="panel-heading")
+            # Don't display the form or the check report
+            form = ""
+            chk_rprt = ""
+        
+        elif record.dataset_check_outcome == 'FAIL':
+            # Set the heading for the form
+            panel_head = DIV(DIV(H4('Dataset failed verification', _class="panel-title col-sm-8"),
+                                 _class='row'),
+                             _class="panel-heading")
+            
+            # include the status outcome and the resubmit panel is available
+            chk_info += chk_stat
+            resubmit_head = DIV('Upload a new version', _class='panel-heading')
+            
+        elif record.dataset_check_outcome == 'ERROR':
+            # Set the heading for the form
+            panel_head = DIV(DIV(H4('Dataset verification error', _class="panel-title col-sm-8"),
+                                 _class='row'),
+                             _class="panel-heading")
+            
+            form  = DIV(P('There has been a problem with verification process on your dataset. '
+                          'Please bear with us while we investigate this and then update your '
+                          'dataset status'), _class='panel-body')
+            
+        elif record.dataset_check_outcome == 'PASS':
+            
+            # prepare the dataset description
+            metadata = record.dataset_metadata
+            if record.zenodo_submission_status == 'ZEN_PASS':
+                desc_content = XML(_dataset_description(record, include_gemini=True))
+            else:
+                desc_content = XML(_dataset_description(record))
+            
+            dataset_desc = CAT(_row('Dataset description', A('View details', _href='#show_desc', 
+                                                             **{'_data-toggle': 'collapse'})),
+                                DIV(DIV(DIV(desc_content, _class="well"), _class='container'),
+                                    _id="show_desc", _class="panel-collapse collapse"))
+            
+            if record.zenodo_submission_status == 'ZEN_PEND':
+                # Set the heading for the form
+                panel_head = DIV(DIV(H4('Dataset awaiting publication', _class="panel-title col-sm-8"),
+                                     _class='row'),
+                                 _class="panel-heading")
+                # include the status outcome
+                chk_info += chk_stat
+                # don't show the form
+                form = ''
+            
+            elif record.zenodo_submission_status == 'ZEN_PASS':
+                # Set the heading for the form
+                panel_head = DIV(DIV(H4('Dataset published', _class="panel-title col-sm-12"),
+                                     _class='row'),
+                                 _class="panel-heading")
+                # include the status outcome
+                chk_info += chk_stat
+                # publication_status - put right at the top (partly so that it doesn't have to
+                # go below the outcome panel-collapse, and complicate the structure)
+                chk_info = [_row('Version DOI', A(IMG(_src=record.zenodo_version_badge), 
+                                 _href=record.zenodo_version_doi)),
+                            _row('Concept DOI', A(IMG(_src=record.zenodo_concept_badge),
+                                 _href=record.zenodo_concept_doi))] + chk_info
+                # New versions can be submitted to a published dataset
+                resubmit_head = DIV('Upload a new version', _class='panel-heading')
+        
+        # unpack the rows into a panel
+        chk_panel = DIV(*chk_info, _class='panel_body')
+    
+    form = DIV(panel_head, chk_panel, chk_rprt, dataset_desc, resubmit_head, form, _class="panel panel-default")
+    
+    # Generate a collapsible version history
+    version_table = TABLE(TR(TH('Version'), TH('Date'), TH('Uploader'), 
+                             TH('Project'), TH('Name'), TH('Size'),
+                             TH('Checked'), TH('Published')), 
+                        *[TR(TD(r.version), TD(r.upload_datetime), 
+                             TD(r.uploader_id), TD(r.project_id), 
+                             TD(r.file_name), TD('{0:.2f} Mb'.format(r.file_size / 1024**2.0)),
+                             TD(approval_icons[r.dataset_check_outcome]),
+                             TD(approval_icons[r.zenodo_submission_status])) 
+                          for r in records],
+                   _width='100%', _class='table table-striped')
+    
+    vsn_hist  = DIV(DIV(DIV(H4('Version history', _class="panel-title col-sm-12"),
+                            _class='row'),
+                        _class="panel-heading", _href='#show_history',
+                        **{'_data-toggle': 'collapse'}),
+                    DIV(version_table, _id='show_history',
+                        _class='panel-collapse collapse collapsed'),
+                    _class='panel panel-default')
+    
+    return dict(form=form, vsn_hist=vsn_hist)
+
+
+
 def validate_dataset_upload(form):
     """
     Validation function for the dataset upload form
@@ -351,7 +716,7 @@ def validate_dataset_upload(form):
         # Check that the file isn't a string, which it is when 
         # submit is pushed with no file selected.
         form.errors.file = "No file selected"
-    elif request.vars.file.filename[-5:] != '.xlsx':
+    elif request.vars.file.filename[-5:].lower() != '.xlsx':
         # Is the file at least nominally an Excel file?
         form.errors.file = "File is not in XLSX format"
     elif ' ' in request.vars.file.filename:
@@ -366,10 +731,18 @@ def validate_dataset_upload(form):
         form.vars.uploader_id = auth.user.id
         form.vars.upload_datetime = datetime.datetime.utcnow().isoformat()
         
-        # # has this file already been submitted?
-        # hash_match = db(db.datasets.file_hash == form.vars.file_hash).select()
-        # if len(hash_match):
-        #      form.errors.file = "An identical file has already been submitted"
+        # Check if the file has already been published - Zenodo 
+        # won't publish deposits with unchanged file complements
+        if form.record is not None:
+            # are there any published version
+            qry = ((db.datasets.dataset_id == form.record.dataset_id) &
+                   (db.datasets.zenodo_submission_status == 'ZEN_PASS'))
+            pub_md5 = db(qry).select(db.datasets.file_hash)
+            pub_md5 = pub_md5.column('file_hash')
+            
+            if form.vars.file_hash in pub_md5:
+                form.errors.file = "This file has already been published to Zenodo"
+        
 
 
 """
@@ -449,47 +822,6 @@ def run_submit_dataset_to_zenodo():
         return res
 
 
-@auth.requires_membership('admin')
-def run_delete_dataset():
-    """
-    Controller to allow an admin to delete unpublished datasets.
-    """
-    
-    record_id = request.vars['id']
-    manage = 'manage' in request.vars
-    err = []
-    
-    if record_id is None:
-        err += ["Record ID missing"]
-    else:
-        try:
-            record_id = int(record_id)
-        except ValueError:
-            err += ["Record ID not an integer"]
-    
-    if len(err) == 0:
-        record = db.datasets[record_id]
-        if record is None:
-            err += ["Invalid record ID"]
-    else:
-        record = None
-    
-    # now double check we're not doing this to a published dataset
-    if record is not None and record.zenodo_submission_status == 'ZEN_PASS':
-        err += ["Dataset published: not deletable"]
-    
-    if len(err) == 0:
-        res = record.delete_record()
-    else:
-        res = ', '.join(err)
-        
-    if manage:
-        session.flash = res
-        redirect(URL('datasets','administer_datasets'))
-    else:
-        return res
-
-
 def xml_metadata():
     
     """
@@ -497,17 +829,17 @@ def xml_metadata():
     metadata record for a dataset passed as an id
     """
     
-    dataset_id = request.vars['dataset_id']
+    dataset_row_id = request.vars['id']
     
-    if dataset_id is None:
+    if dataset_row_id is None:
         return XML("No dataset id provided")
     
     try:
-        dataset_id = int(dataset_id)
+        dataset_row_id = int(dataset_row_id)
     except ValueError:
         return XML("Non-integer dataset id")
     
-    record = db.datasets[dataset_id]
+    record = db.datasets[dataset_row_id]
     
     if record is None:
         return XML("Invalid dataset id")

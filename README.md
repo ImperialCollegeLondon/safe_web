@@ -163,6 +163,11 @@ Before the application can work, we need to setup the database backend and edit 
     psql -h earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com template1 -U safe_admin
     create database safe_web2py;
 
+The application should use the web2py DAL to create / link to all of the tables. There is one thing that needs to be done from inside postgres: creating a sequence that is used to issue dataset id numbers. The code to do this is below - you will need to change the web2py_user to whatever username the application is using to access the database.
+
+    CREATE SEQUENCE dataset_static_id_seq;
+    GRANT USAGE, SELECT ON SEQUENCE dataset_static_id_seq TO web2py_user;
+
 Quit from the `psql` terminal using the command `\q`. If the database already exists then *think very hard about what you're doing* and look at the section below on resetting the database during development:
 
    2. **Edit the appconfig**. We now need to point the application to the database backend.

@@ -12,6 +12,7 @@ from gluon.contrib import simplejson
 local_hr = HR(_style='margin-top: 10px; margin-bottom: 0px; border: 0; border-top: 1px solid #325d88;')
 
 n_beds_available = 25
+bed_booking_capacity = 32
 n_transfers_available = 4
 
 project_roles = ['Lead Researcher', 'Supervisor', 'Co-supervisor', 'PhD Student',
@@ -272,19 +273,43 @@ db.define_table('project_outputs',
 ## -----------------------------------------------------------------------------
 ## DATASETS 
 ## - holds information on uploaded datasets
-## - Zenodo link selected to point to the concept record id
-##   rather than the specific
+## - supports versioning: 
+##    - a new upload gets a unique id number ('dataset_id')
+##    - that id is used as the key for the submit dataset webpage
+##    - if the page URL is called with a dataset id as a parameter
+##      then changes generate a new record sharing the parent id
+##    - Once a dataset is published then changes will inherit the
+##      Zenodo concept record DOI and may then gain a new zenodo 
+##      specific DOI if published as a revision.
 ## - store the md5 hash for preventing uploads of identical files and for
 ##   comparison to the md5 output of files published to Zenodo.
+## - datasets are stored in dataset_id specific folders, so versions
+##   are packaged neatly on the local filesystem
+##
+##  GOTCHA: In order to maintain a nice sequence of dataset_id values
+##  with no collisions, the controller expects to find and use the sequence
+##  'dataset_static_id_seq' on the backend database. There isn't a neat
+##  pydal API for this, so this has to be done manually. Make sure the 
+##  web2py user has permission to use the sequence!
+##
+##  CREATE SEQUENCE dataset_static_id_seq;
+##  GRANT USAGE, SELECT ON SEQUENCE dataset_static_id_seq TO web2py_user;
+##
+##  NOTE that on recovery from disaster it may be necessary to set
+##  the value of this sequence:
+##  
+##  SELECT setval('dataset_static_id_seq', current_max_value)
 ## -----------------------------------------------------------------------------
 
 db.define_table('datasets',
     # fields to handle the file upload and checking
+    Field('dataset_id', 'integer'),
+    Field('version', 'integer', default=1),
+    Field('current', 'boolean', default=True),
     Field('uploader_id', 'reference auth_user'),
     Field('project_id', 'reference project_id'),
     Field('file','upload',
-          uploadfolder= os.path.join(request.folder, 'uploads/datasets'),
-          autodelete=True),
+          uploadfolder= os.path.join(request.folder, 'uploads/datasets')),
     Field('file_name', 'string'),
     Field('file_hash', 'string'), 
     Field('file_size', 'integer'),
@@ -307,8 +332,11 @@ db.define_table('datasets',
     Field('zenodo_error', 'json'), 
     Field('zenodo_metadata', 'json'),
     Field('zenodo_record_id', 'integer'),
-    Field('zenodo_doi', 'string', requires=IS_EMPTY_OR(IS_URL())),
-    Field('zenodo_badge', 'string', requires=IS_EMPTY_OR(IS_URL())))
+    Field('zenodo_parent_id', 'integer'),
+    Field('zenodo_concept_doi', 'string', requires=IS_EMPTY_OR(IS_URL())),
+    Field('zenodo_concept_badge', 'string', requires=IS_EMPTY_OR(IS_URL())),
+    Field('zenodo_version_doi', 'string', requires=IS_EMPTY_OR(IS_URL())),
+    Field('zenodo_version_badge', 'string', requires=IS_EMPTY_OR(IS_URL())))
 
 
 ## -----------------------------------------------------------------------------
