@@ -126,11 +126,11 @@ def verify_dataset(dataset_id, email=False):
                 dataset.warn('Project ID in dataset and on upload do not match')
         
             if dataset.passed:
-                outcome = 'FAIL'
-                ret_msg = 'Verifying dataset {}: dataset checking FAILED'.format(dataset_id)
-            else:
                 outcome = 'PASS'
                 ret_msg = 'Verifying dataset {}: dataset checking PASSED'.format(dataset_id)
+            else:
+                outcome = 'FAIL'
+                ret_msg = 'Verifying dataset {}: dataset checking FAILED'.format(dataset_id)
             
             dataset_check_error = ''
         
