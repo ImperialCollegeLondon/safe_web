@@ -124,6 +124,13 @@ def verify_dataset(dataset_id, email=False):
             # to the one chosen on upload
             if dataset.project_id != record.project_id:
                 dataset.warn('Project ID in dataset and on upload do not match')
+        
+            if dataset.passed:
+                outcome = 'FAIL'
+                ret_msg = 'Verifying dataset {}: dataset checking FAILED'.format(dataset_id)
+            else:
+                outcome = 'PASS'
+                ret_msg = 'Verifying dataset {}: dataset checking PASSED'.format(dataset_id)
             
             dataset_check_error = ''
         
