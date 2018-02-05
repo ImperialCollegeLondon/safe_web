@@ -383,37 +383,6 @@ def submit_dataset_to_zenodo(recid):
             
             return "Published dataset to {}".format(pub_json['doi_url'])
 
-
-def _taxon_index_to_pre(taxon_index):
-    """
-    Turns the taxon index for a record into a text representation
-    of the taxonomic hierarchy used in the dataset. Loading networkx
-    to do this is a bit of a sledgehammer, but reinventing graph from
-    edges and depth first search is annoying.
-    """
-
-    # - turn the taxon index into indented text lines, keyed by taxon_id,
-    #   dropping all but accepted usages
-    indent = {'kingdom': 0, 'phylum': 2, 'class':4, 'order': 6,
-              'family': 8, 'genus': 10, 'species': 12, 'subspecies':14}
-    indent = {k: ' ' * v for k, v in indent.iteritems()}
-    text_lines = {tx[0]: indent[tx[3]] + tx[2] + '\n' 
-                  for tx in taxon_index if tx[4] == 'accepted'}
-    
-    # get a graph representation of the taxon index
-    edges = [[tx[1], tx[0]] for tx in taxon_index]
-    g = Graph(edges)
-    
-    # use a depth first search to order the text lines
-    order = dfs_preorder_nodes(g)
-    txt = ''
-    for nd in order:
-        if nd in text_lines:
-            txt += text_lines[nd]
-    
-    return PRE(txt)
-
-
 def _taxon_index_to_emsp(taxon_index):
     """
     Turns the taxon index for a record into a text representation
@@ -425,9 +394,9 @@ def _taxon_index_to_emsp(taxon_index):
     indent_str = '&emsp;-&emsp;'
     
     # italicise the names correctly
-    need_itals = (tx for tx in taxon_index if tx[3] in ['genus','species','subspecies'])
+    need_itals = (tx for tx in taxon_index if tx[1] in ['genus','species','subspecies'])
     for tx in need_itals:
-        tx[2] = '<i>' + tx[2] + '</i>'
+        tx[0] = '<i>' + tx[0] + '</i>'
     
     # the taxon index uses -1 for all unvalidated names, since it isn't
     # possible to assign sensible null values inside safe_dataset_checker
@@ -435,10 +404,10 @@ def _taxon_index_to_emsp(taxon_index):
     # formatted to make it clear they are unvalidated
     tmp_num = -1
     for tx in taxon_index:
-        if tx[4] != 'accepted':
-            tx[2] = '(' + tx[2] + ')'
-        if tx[0] == -1:
-            tx[0] = tmp_num
+        if tx[2] != 'accepted':
+            tx[0] = '(' + tx[0] + ')'
+        if tx[3] == -1:
+            tx[3] = tmp_num
             tmp_num -= 1
     
     # - turn the taxon index into indented text lines, keyed by taxon_id,
@@ -447,12 +416,12 @@ def _taxon_index_to_emsp(taxon_index):
               'family': 4, 'genus': 5, 'species': 6, 'subspecies': 6}
     indent = {k: indent_str * v for k, v in indent.iteritems()}
     
-    text_lines = {tx[0]: indent[tx[3]] + tx[2] + '</br>' 
-                  if tx[3] in indent else indent_str * 6 + tx[2] + '</br>' 
+    text_lines = {tx[3]: indent[tx[1]] + tx[0] + '</br>' 
+                  if tx[1] in indent else indent_str * 6 + tx[0] + '</br>' 
                   for tx in taxon_index}
     
     # get a graph representation of the taxon index
-    edges = [[tx[1], tx[0]] for tx in taxon_index]
+    edges = [[tx[4], tx[3]] for tx in taxon_index]
     g = Graph(edges)
     
     # Use a depth first search on edges to order the text lines,
@@ -464,14 +433,14 @@ def _taxon_index_to_emsp(taxon_index):
     sorted_order = []
     ind = []
     while order:
-        tx = order.pop(0)
-        if tx[1] < 0:
-            loc = ind.index(tx[0]) + 1
-            sorted_order.insert(loc, tx)
-            ind.insert(loc, tx[1])
+        edge = order.pop(0)
+        if edge[1] < 0:
+            loc = ind.index(edge[0]) + 1
+            sorted_order.insert(loc, edge)
+            ind.insert(loc, edge[1])
         else:
-            sorted_order.append(tx)
-            ind.append(tx[1])
+            sorted_order.append(edge)
+            ind.append(edge[1])
     
     txt = ''
     for nd in sorted_order:
@@ -479,50 +448,6 @@ def _taxon_index_to_emsp(taxon_index):
             txt += text_lines[nd[1]]
     
     return XML(txt)
-
-
-def _taxon_index_to_ul(taxon_index):
-    """
-    Turns the taxon index for a record into a nested unordered list
-    of the taxonomic hierarchy used in the dataset. This is largely
-    because Zenodo don't support anything like PRE that might allow
-    simple indented text
-    
-    Loading networkx to do this is a bit of a sledgehammer, but reinventing 
-    graph from edges and depth first search is annoying.
-    """
-
-    # - turn the taxon index into indented text lines, keyed by taxon_id,
-    #   dropping all but accepted usages
-    
-    # get a graph representation of the taxon index and a lookup for
-    # taxon_id to name
-    edges = [[tx[1], tx[0]] for tx in taxon_index]
-    g = Graph(edges)
-    id_to_name = {tx[0]: tx[2] for tx in taxon_index}
-    
-    # use a graph traversal to create the nested list
-    el = list(dfs_labeled_edges(g, source=0))
-    el = [e for e in el if e[2]['dir'] != 'nontree']
-    
-    txt = ''
-    previous_move = 'forward'
-    for e in el:
-        new_move = e[2]['dir']
-        
-        if e[1] != 0:
-            if previous_move == 'forward' and new_move == 'forward':
-                txt += '<ul><li>{}</li>'.format(id_to_name[e[1]])
-            elif previous_move == 'forward' and new_move == 'forward':
-                pass
-            elif previous_move == 'reverse' and new_move == 'forward':
-                txt += '<li>{}</li>'.format(id_to_name[e[1]])
-            elif previous_move == 'reverse' and new_move == 'reverse':
-                txt += '</ul>'
-        
-        previous_move = new_move
-    
-    return XML(txt + '</ul>')
 
 
 def _dataset_description(record, include_gemini=False):

@@ -153,7 +153,7 @@ def administer_datasets():
                         links = links,
                         maxtextlength = 100,
                         deletable=False,
-                        editable=True,
+                        editable=False,
                         details=True,
                         create=False,
                         csv=False)
