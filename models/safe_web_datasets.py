@@ -114,7 +114,7 @@ def verify_dataset(dataset_id, email=False):
                 dataset.warn('No data worksheets found')
             
             # cross check the taxa and locations
-            dataset.check_locations_and_taxa_used()
+            dataset.final_checks()
             
         except Exception as e:
             ret_msg = 'Verifying dataset {}: error running dataset checking'.format(dataset_id)
