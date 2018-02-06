@@ -9,23 +9,9 @@
 {{=history_table}}
 <DIV class='panel-body'>
 <DIV class='row'>
-	<DIV class='col-sm-2'> <H5><strong>Uploaded</strong></H5> </DIV>
-	<DIV class='col-sm-10'> 
-		{{=record.upload_datetime.isoformat() + ' by ' + 
-		  record.uploader_id.first_name + ' ' + record.uploader_id.last_name}}
-	</DIV>
-</DIV>
-<DIV class='row'>
-	<DIV class='col-sm-2'> <H5><strong>Published</strong></H5> </DIV>
-	<DIV class='col-sm-10'> 
-		{{=record.zenodo_submission_date.isoformat()}}
-	</DIV>
-</DIV>
-	<DIV class='row'>
 	<DIV class='col-sm-12'> 
 		{{=description}}
 	</DIV>
-</DIV>
 </DIV>
 </DIV>
 </DIV>

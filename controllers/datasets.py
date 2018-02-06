@@ -63,6 +63,7 @@ def view_dataset():
     
     history = db(qry).select(db.datasets.id,
                              db.datasets.zenodo_submission_date,
+                             db.datasets.uploader_id,
                              db.datasets.zenodo_version_badge,
                              db.datasets.zenodo_version_doi,
                              orderby= ~ db.datasets.zenodo_submission_date)
@@ -75,9 +76,11 @@ def view_dataset():
                     _style="color:grey;font-size: 1.4em;", 
                     _title='View this version')
     
-    history_table = TABLE(TR(TH('Viewing'), TH('Version publication date'), TH('Zenodo DOI')),
+    history_table = TABLE(TR(TH('Viewing'), TH('Version publication date'), 
+                             TH('Uploaded by'), TH('Zenodo DOI')),
                           *[TR(TD(view) if r.id == int(ds_id) else TD(A(alt, _href=URL(vars={'id': r.id}))),
                                TD(r.zenodo_submission_date),
+                               TD(r.uploader_id.first_name + ' ' + r.uploader_id.last_name),
                                TD(A(IMG(_src=r.zenodo_version_badge), 
                                     _href=r.zenodo_version_doi)))
                             for r in history],
