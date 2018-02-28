@@ -286,24 +286,17 @@ db.define_table('project_outputs',
 ## - datasets are stored in dataset_id specific folders, so versions
 ##   are packaged neatly on the local filesystem
 ##
-##  GOTCHA: In order to maintain a nice sequence of dataset_id values
-##  with no collisions, the controller expects to find and use the sequence
-##  'dataset_static_id_seq' on the backend database. There isn't a neat
-##  pydal API for this, so this has to be done manually. Make sure the 
-##  web2py user has permission to use the sequence!
-##
-##  CREATE SEQUENCE dataset_static_id_seq;
-##  GRANT USAGE, SELECT ON SEQUENCE dataset_static_id_seq TO web2py_user;
-##
-##  NOTE that on recovery from disaster it may be necessary to set
-##  the value of this sequence:
-##  
-##  SELECT setval('dataset_static_id_seq', current_max_value)
+## The dataset_id table is only used to provide a sequence of id values
+## to group versions of datasets - it is basically just using the DB
+## API to provide a sequence, because those aren't supported directly
 ## -----------------------------------------------------------------------------
+
+db.define_table('dataset_id',
+                Field('created', 'datetime'))
 
 db.define_table('datasets',
     # fields to handle the file upload and checking
-    Field('dataset_id', 'integer'),
+    Field('dataset_id', 'reference dataset_id'),
     Field('version', 'integer', default=1),
     Field('current', 'boolean', default=True),
     Field('uploader_id', 'reference auth_user'),

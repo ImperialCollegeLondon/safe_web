@@ -274,10 +274,10 @@ def research_visit_details():
         
         # fix up the dates to control the datepicker and the bed booking limits
         if auth.has_membership('admin'):
-            # admins can book any number of people and do so retrospectively
+            # admins can book up to capacity and do so over any time period
             visit_start_min = ''
             visit_end_max = ''
-            bed_booking_limit = 1e7
+            bed_booking_limit = bed_booking_capacity
         else:
             if new_rv_project_requested == '0' or (record is not None and record.project_id is None):
                 # look see visits can book up to the normal bed limit with a fortnights notice

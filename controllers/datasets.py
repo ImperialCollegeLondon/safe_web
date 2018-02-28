@@ -1,3 +1,4 @@
+import shutil
 import hashlib
 import datetime
 import safe_dataset_checker
@@ -43,6 +44,7 @@ def view_datasets():
                         links=links)
     
     return dict(form=form)
+
 
 def view_dataset():
     
@@ -106,7 +108,7 @@ def administer_datasets():
     db.datasets.zenodo_submission_status.represent =  lambda value, row: approval_icons[value]
     
     # alter the file representation to add the dataset id as a variable to the download
-    db.datasets.file.represent = lambda value, row: A('Download file', _href=URL('datasets', 'download_dataset2', row.file, vars={'dataset_id': row.dataset_id}))
+    db.datasets.file.represent = lambda value, row: A('Download file', _href=URL('datasets', 'download_dataset', row.file, vars={'dataset_id': row.dataset_id}))
     
     # add buttons to provide options
     # - run check (can only be run if file has not passed)
@@ -442,7 +444,6 @@ def submit_dataset():
     if ds_id is None:
         # no id provided, so new form and draw a new id
         record = None
-        new_ds_id = db.executesql("select nextval('dataset_static_id_seq') as id;")[0][0]
     elif records is None:
         # non-existent id provided
         session.flash = "Database record id does not exist"
@@ -472,11 +473,6 @@ def submit_dataset():
                                               '%(project_id)s: %(title)s',
                                                zero='Select project.')
     
-    # set the upload directory locally - this has to be done before creating 
-    # which is why we have to draw from the sequence before creating the form
-    upload_dir = os.path.join(request.folder, 'uploads', 'datasets', str(new_ds_id))
-    db.datasets.file.uploadfolder = upload_dir
-    
     # Setup the form
     form = SQLFORM(db.datasets, 
                    record = record, 
@@ -488,7 +484,7 @@ def submit_dataset():
     # Validate the form: bespoke data entry
     if form.validate(onvalidation=validate_dataset_upload):
         
-        # new blank record to hold the 
+        # Get new blank record to hold the dataset
         new_id = db.datasets.insert()
         new_record = db.datasets[new_id]
         
@@ -507,7 +503,8 @@ def submit_dataset():
                 # which is either none or the last successful record
                 parent = record.zenodo_parent_id
             
-            new_record.update(dataset_id = record.dataset_id,
+            ds_id = record.dataset_id
+            new_record.update(dataset_id = ds_id,
                               version = record.version + 1,
                               project_id = form.vars.project_id,
                               zenodo_parent_id = parent)
@@ -515,7 +512,9 @@ def submit_dataset():
             # previous version loses its current status
             record.update_record(current=False)
         else:
-            new_record.update(dataset_id = new_ds_id,
+            # get a value from the dataset_id table
+            ds_id = db.dataset_id.insert(created=datetime.datetime.now())
+            new_record.update(dataset_id = ds_id,
                               project_id = form.vars.project_id)
         
         # now update the other fields and commit the updates
@@ -526,6 +525,16 @@ def submit_dataset():
         new_record.upload_datetime = datetime.datetime.now()
         new_record.file = form.vars.file
         new_record.update_record()
+        
+        # I can't figure out how to stop the FORM automatically saving the file
+        # under its safe name in the default directory, so now move it
+        dataset_dir = os.path.join(request.folder, 'uploads', 'datasets', str(ds_id))
+        if not os.path.exists(dataset_dir):
+            os.makedirs(dataset_dir)
+        
+        src = os.path.join(request.folder, 'uploads', 'datasets', form.vars.file)
+        dst = os.path.join(request.folder, 'uploads', 'datasets', str(ds_id), form.vars.file)
+        shutil.move(src, dst)
         
         # schedule the dataset check
         #  - set timeout to extend the default of 60 seconds. (If large files run
@@ -660,8 +669,8 @@ def submit_dataset():
                                  _class="panel-heading")
                 # include the status outcome
                 chk_info += chk_stat
-                # don't show the form
-                form = ''
+                # New versions can still be submitted
+                resubmit_head = DIV('Upload a new version', _class='panel-heading')
             
             elif record.zenodo_submission_status == 'ZEN_PASS':
                 # Set the heading for the form

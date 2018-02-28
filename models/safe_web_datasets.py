@@ -4,7 +4,7 @@ import simplejson
 import copy
 import safe_dataset_checker
 from gluon.contrib.appconfig import AppConfig
-from networkx import Graph, dfs_preorder_nodes, dfs_labeled_edges, dfs_edges
+from networkx import Graph, dfs_edges
 
 """
 Functions to handle datasets. These are called from the datasets controller but 
@@ -391,45 +391,51 @@ def _taxon_index_to_emsp(taxon_index):
     edges and depth first search is annoying.
     """
     
-    indent_str = '&emsp;-&emsp;'
+    # drop synonyms, which will be represented using the two final tuple entries as_name and as_type
+    taxon_index = [tx for tx in taxon_index if tx[4] in ('doubtful', 'accepted', 'user')]
     
-    # italicise the names correctly
-    need_itals = (tx for tx in taxon_index if tx[1] in ['genus','species','subspecies'])
-    for tx in need_itals:
-        tx[0] = '<i>' + tx[0] + '</i>'
+    # italicise the accepted and as names correctly and combine
+    names = ['<i>' + tx[2] + '</i>' if tx[3] in ['genus','species','subspecies']
+             else tx[2] for tx in taxon_index]
+    as_names = [' (as <i>' + tx[5] + '</i>)' if tx[6] in ['genus','species','subspecies']
+                else tx[5] for tx in taxon_index]
+    as_names = [nm + '<br>' if nm is not None else "<br>" for nm in as_names]
+    tax_names = [nm + as_nm for nm, as_nm in zip(names, as_names)]
     
     # the taxon index uses -1 for all unvalidated names, since it isn't
     # possible to assign sensible null values inside safe_dataset_checker
     # These need to be made unique within this tree and the names are 
     # formatted to make it clear they are unvalidated
-    tmp_num = -1
+    root = -1
+    tmp_num = -2
     for tx in taxon_index:
-        if tx[2] != 'accepted':
-            tx[0] = '(' + tx[0] + ')'
-        if tx[3] == -1:
-            tx[3] = tmp_num
+        if tx[0] == -1:
+            tx[0] = tmp_num
             tmp_num -= 1
     
-    # - turn the taxon index into indented text lines, keyed by taxon_id,
-    #   defaulting to 6 for non-accepted usages
+    # get the indenting for each taxon, using 6 for non backbone 
+    indent_str = '&emsp;-&emsp;'
     indent = {'kingdom': 0, 'phylum': 1, 'class': 2, 'order': 3,
               'family': 4, 'genus': 5, 'species': 6, 'subspecies': 6}
     indent = {k: indent_str * v for k, v in indent.iteritems()}
+    tax_indent = [indent[tx[3]] if tx[3] in indent else indent_str * 6 
+                  for tx in taxon_index]
     
-    text_lines = {tx[3]: indent[tx[1]] + tx[0] + '</br>' 
-                  if tx[1] in indent else indent_str * 6 + tx[0] + '</br>' 
-                  for tx in taxon_index}
+    # get a dictionary keyed by the unique id of the text for each taxon
+    text_lines = {tx[0]: tx_in + tx_nm for tx, tx_in, tx_nm in 
+                  zip(taxon_index, tax_indent, tax_names)}
     
-    # get a graph representation of the taxon index
-    edges = [[tx[4], tx[3]] for tx in taxon_index]
+    # Get a graph representation of the taxon index. The root node is 
+    # None (since the db has null for the parent_key of kingdoms) but
+    # that causes issues for edge sorting, so set it to the constant value
+    edges = [[tx[1], tx[0]] if tx[1] is not None else [root, tx[0]] for tx in taxon_index]
     g = Graph(edges)
     
     # Use a depth first search on edges to order the text lines,
-    # starting with the root node at zero
-    # Need to pull unvalidated entries (negative indices) up to
-    # immediately under their parent, as otherwise they can appear
-    # nested within later taxa
-    order = list(dfs_edges(g, source=0))
+    # starting with the root. This is modified to pull unvalidated 
+    # entries (negative indices) up to immediately under their parent,
+    # as otherwise they can appear nested within later taxa
+    order = list(dfs_edges(g, source=root))
     sorted_order = []
     ind = []
     while order:
@@ -444,7 +450,7 @@ def _taxon_index_to_emsp(taxon_index):
     
     txt = ''
     for nd in sorted_order:
-        if nd[1] != 0:
+        if nd[1] != root:
             txt += text_lines[nd[1]]
     
     return XML(txt)
@@ -518,13 +524,17 @@ def _dataset_description(record, include_gemini=False):
     
     desc += dwshts
     
-    desc += CAT(P(B('Date range: '), '{0[0]} to {0[1]}'.format([x[:10] for x in metadata['temporal_extent']])), 
-                P(B('Latitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['latitudinal_extent'])), 
-                P(B('Longitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['longitudinal_extent'])),
-                P(B('Taxonomic coverage: '), BR(), ' All taxon names are validated against the GBIF backbone '
-                  'taxonomy unless in parentheses',
-                DIV(_taxon_index_to_emsp(record.dataset_taxon_index))))
-    
+    # Add extents if populated
+    if metadata['temporal_extent'] is not None:
+        desc += P(B('Date range: '), '{0[0]} to {0[1]}'.format([x[:10] for x in metadata['temporal_extent']]))
+    if metadata['latitudinal_extent'] is not None:
+        desc += P(B('Latitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['latitudinal_extent']))
+    if metadata['longitudinal_extent'] is not None:
+        desc += P(B('Longitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['longitudinal_extent']))
+    if record.dataset_taxon_index is not None:
+        desc +=  CAT(P(B('Taxonomic coverage: '), BR(), ' All taxon names are validated against the GBIF backbone '
+                       'taxonomy unless in parentheses',
+                     DIV(_taxon_index_to_emsp(record.dataset_taxon_index))))
     
     return desc
 

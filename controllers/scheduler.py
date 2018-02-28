@@ -127,7 +127,6 @@ def resend_email():
 	"""
 	
 	mail_id = request.vars['mail_id']
-	print mail_id
 	
 	rec = db.safe_web_email_log[mail_id]
 	
