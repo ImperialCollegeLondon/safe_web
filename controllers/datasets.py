@@ -541,7 +541,7 @@ def submit_dataset():
         #    longer than this then the safe_dataset_checker code is going to need optimizing!)
         #  - no start_time, so defaults to now.
         task = scheduler.queue_task('verify_dataset', 
-                                    pvars = {'dataset_id': form.vars.id, 'email': True},
+                                    pvars = {'dataset_id': new_id, 'email': True},
                                     timeout = 5*60,
                                     repeats=1,
                                     immediate=True)

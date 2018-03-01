@@ -139,7 +139,7 @@ The application needs a few extra python modules. I didn't muck around with virt
 
     sudo pip install gitpython 
     sudo pip install --upgrade google-api-python-client
-    sudo pip install openpyxl
+    sudo pip install xlrd
     sudo pip install html2text
     sudo pip install lxml
 
@@ -162,11 +162,6 @@ Before the application can work, we need to setup the database backend and edit 
  
     psql -h earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com template1 -U safe_admin
     create database safe_web2py;
-
-The application should use the web2py DAL to create / link to all of the tables. There is one thing that needs to be done from inside postgres: creating a sequence that is used to issue dataset id numbers. The code to do this is below - you will need to change the web2py_user to whatever username the application is using to access the database.
-
-    CREATE SEQUENCE dataset_static_id_seq;
-    GRANT USAGE, SELECT ON SEQUENCE dataset_static_id_seq TO web2py_user;
 
 Quit from the `psql` terminal using the command `\q`. If the database already exists then *think very hard about what you're doing* and look at the section below on resetting the database during development:
 
@@ -192,29 +187,15 @@ Note that if you update this module you'll need to restart workers and the websi
     sudo service apache2 reload
     sudo systemctl restart web2py-scheduler.service 
 
-That in turn uses the `ete3` python package for checking taxon names against the NCBI Taxonomy database, which also requires a local build of the NCBI database. The DB download and build can take quite a long time - it is a 300 MB dataset to repackage into a SQLite DB.
+You should also set the dataset checker up to use local files to
+validate dataset content (GBIF taxonomy and SAFE locations). See the
+module github page for details:
 
-    sudo pip install ete3
-    nohup python -c "from ete3 import NCBITaxa; createDB = NCBITaxa()" > ete2_install.txt &
+https://github.com/ImperialCollegeLondon/safe_dataset_checker#offline-usage
 
-This isn't a trivial build task - it hung the server once - so it is probably wiser not to build the sqlite database on the web server: build it on another machine and `ftp` it in.
-
-Now... The `ete3` package needs to find this database. By default, creating an instance of `NCBITaxa()` looks for the database in the user account home directory. If it doesn't find it there it __automatically launches a complete download and rebuild__. This is not a good thing to happen. So the `safe_dataset_checker` module takes a very cautious approach: users have to provide a path  to a built sqlite database and that gets checked as valid before the program will try and use `ete3`. For individual users, `safe_dataset_checker` falls back to use the Entrez webservice, but this web app will only permit the local DB route, for speed. 
-
-That means that you have to do two things:
-
-  1. Make sure the .sqlite database globally readable. It is installed in the home directory of the installing user, and may or may not be readable, so check it! On the AWS Ubuntu machines, it will be here: `/home/ubuntu/.etetoolkit/taxa.sqlite`
-
-    Check the web application can access the file by logging in as www-data (which doesn't normally have a login):
-
-        su -
-        su -s /bin/bash www-data
-        cd /home/www-data/
-        nohup python -c "import ete3;print ete3.is_taxadb_up_to_date(dbfile='/home/ubuntu/.etetoolkit/taxa.sqlite')" > nohup.log
-
-    The nohup.log file should just contain `True`! Don't forget to `exit` twice to get back to `root` and then the `ubuntu` user shell.
-  
-  2. Configure the web app to know where to find it. See the section below on the config for the web application
+You will need to configure the web app to know where to find the
+offline files. See the section below on the config for the web
+application.
 
 
 ### Setting the default application 
@@ -261,9 +242,9 @@ There are some standard bits of information for email and the db connection, but
 	formstyle = bootstrap3_inline
 	separator = 
 
-	; path to ete3 taxon database, requirement for taxon checking
-	[ete3]
-	ete3_database = /path/to/.etetoolkit/taxa.sqlite
+    ; path to GBIF taxon database, requirement for taxon checking
+    [gbif]
+    gbif_database = /path/to/backbone-current.sqlite
 
 	; host name. Used to provide the host URL for scheduler workers
 	[host]
