@@ -466,10 +466,8 @@ def submit_dataset():
     
     vsn_hist  = DIV(DIV(DIV(H4('Version history', _class="panel-title col-sm-12"),
                             _class='row'),
-                        _class="panel-heading", _href='#show_history',
-                        **{'_data-toggle': 'collapse'}),
-                    DIV(version_table, _id='show_history',
-                        _class='panel-collapse collapse collapsed'),
+                        _class="panel-heading"),
+                        version_table,
                     _class='panel panel-default')
     
     return dict(form=form, vsn_hist=vsn_hist)
