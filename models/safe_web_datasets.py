@@ -394,9 +394,14 @@ def _taxon_index_to_emsp(taxon_index):
     # drop synonyms, which will be represented using the two final tuple entries as_name and as_type
     taxon_index = [tx for tx in taxon_index if tx[4] in ('doubtful', 'accepted', 'user')]
     
-    # italicise the accepted and as names correctly and combine
+    # italicise the accepted and as names correctly
     names = ['<i>' + tx[2] + '</i>' if tx[3] in ['genus','species','subspecies']
              else tx[2] for tx in taxon_index]
+    
+    # put brackets around morphospecies and functional groups
+    names = ['[' + tx[2] + ']' if tx[3] in ['morphospecies','functional group']
+             else tx[2] for tx in taxon_index]
+    
     as_names = [' (as <i>' + tx[5] + '</i>)' if tx[6] in ['genus','species','subspecies']
                 else tx[5] for tx in taxon_index]
     as_names = [nm + '<br>' if nm is not None else "<br>" for nm in as_names]
@@ -533,7 +538,9 @@ def _dataset_description(record, include_gemini=False):
         desc += P(B('Longitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['longitudinal_extent']))
     if record.dataset_taxon_index is not None:
         desc +=  CAT(P(B('Taxonomic coverage: '), BR(), ' All taxon names are validated against the GBIF backbone '
-                       'taxonomy unless in parentheses',
+                       'taxonomy. For synonyms, both the accepted usage and the synonym used in the data are shown. '
+                       'If a dataset uses morphospecies and functional groups, the name is shown in square brackets '
+                       'underneath the parent taxon provided by the user.',
                      DIV(_taxon_index_to_emsp(record.dataset_taxon_index))))
     
     return desc
