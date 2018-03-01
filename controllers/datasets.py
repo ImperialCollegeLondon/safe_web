@@ -48,6 +48,11 @@ def view_datasets():
 
 def view_dataset():
     
+    """
+    View of a specific version of a dataset, taking the record id as the
+    id parameter, but which also shows the other versions of the dataset.
+    """
+    
     ds_id = request.vars['id']
     record = db.datasets[ds_id]
     
@@ -118,7 +123,7 @@ def administer_datasets():
                      _style='padding: 3px 10px 3px 10px')
         else:
             btn =  A('Check', _class='button btn btn-default',
-                     _href=URL("datasets","run_verify_dataset", vars={'dataset_id':row.id, 'email':0, 'manage':''}),
+                     _href=URL("datasets","run_verify_dataset", vars={'record_id':row.id, 'email':0, 'manage':''}),
                      _style='padding: 3px 10px 3px 10px;')
         return btn
     
@@ -296,11 +301,10 @@ def submit_dataset():
         shutil.move(src, dst)
         
         # schedule the dataset check
-        #  - set timeout to extend the default of 60 seconds. (If large files run
-        #    longer than this then the safe_dataset_checker code is going to need optimizing!)
+        #  - set timeout to extend the default of 60 seconds.
         #  - no start_time, so defaults to now.
         task = scheduler.queue_task('verify_dataset', 
-                                    pvars = {'dataset_id': ds_id, 'email': True},
+                                    pvars = {'record_id': new_id, 'email': True},
                                     timeout = 5*60,
                                     repeats=1,
                                     immediate=True)
@@ -473,7 +477,6 @@ def submit_dataset():
     return dict(form=form, vsn_hist=vsn_hist)
 
 
-
 def validate_dataset_upload(form):
     """
     Validation function for the dataset upload form
@@ -511,7 +514,6 @@ def validate_dataset_upload(form):
             
             if form.vars.file_hash in pub_md5:
                 form.errors.file = "This file has already been published to Zenodo"
-        
 
 
 """
@@ -528,16 +530,16 @@ def run_verify_dataset():
     uploader gets emailed with the outcome.
     """
     
-    dataset_id = request.vars['dataset_id']
+    record_id = request.vars['record_id']
     email = request.vars['email']
     manage = 'manage' in request.vars
     err = []
     
-    if dataset_id is None:
+    if record_id is None:
         err += ["Record ID missing"]
     else:
         try:
-            dataset_id = int(dataset_id)
+            record_id = int(record_id)
         except ValueError:
             err += ["Record ID not an integer"]
     
@@ -549,7 +551,7 @@ def run_verify_dataset():
         email = True if email == '1' else False
     
     if len(err) == 0:
-        res = verify_dataset(dataset_id, email)
+        res = verify_dataset(record_id, email)
     else:
         res = ', '.join(err)
     

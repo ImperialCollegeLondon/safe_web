@@ -13,7 +13,7 @@ in their own model.
 """
 
 
-def verify_dataset(dataset_id, email=False):
+def verify_dataset(record_id, email=False):
     """
     Function to run the safe_dataset_checker on an uploaded file. There
     are three possible outcomes for a dataset: PASS; FAIL, if the check
@@ -30,7 +30,7 @@ def verify_dataset(dataset_id, email=False):
     as well as in the environment of the website.
     
     Args:
-        dataset_id: The id of the record from the dataset table that is to be checked.
+        record_id: The id of the record from the dataset table that is to be checked.
         email: Should the dataset uploader be emailed the outcome?
     
     Returns:
@@ -57,26 +57,26 @@ def verify_dataset(dataset_id, email=False):
         raise RuntimeError('Site config does provide not the host name')
     
     # get the record
-    record = db.datasets[dataset_id]
+    record = db.datasets[record_id]
     
     # track errors to avoid hideous nested try statements
     error = False
         
     if record is None:
         # not a valid record? Can't email anyone so turn that off
-        ret_msg = 'Verifying dataset {}: unknown record ID'.format(dataset_id)
+        ret_msg = 'Verifying dataset {}: unknown record ID'.format(record_id)
         email = False
         error = True
     else:
         # otherwise, create a return dictionary for all remaining failure 
         # modes (no report, but file, uploader and URL should fine) and
         # set the default outcome
-        ret_dict = {'dataset_id': dataset_id, 
+        ret_dict = {'dataset_id': record.dataset_id, 
                     'report': '',
                     'filename': record.file_name,
                     'name': record.uploader_id.first_name,
                     'dataset_url': URL('datasets', 'submit_dataset', 
-                                       vars={'dataset_id': dataset_id}, scheme=True, host=host)}
+                                       vars={'dataset_id': record.dataset_id}, scheme=True, host=host)}
         outcome = 'ERROR'
     
     # Initialise the dataset checker:
@@ -93,7 +93,7 @@ def verify_dataset(dataset_id, email=False):
             # run output comes from, I'd do that too.
             record.update_record(dataset_check_outcome='ERROR',
                                  dataset_check_error=repr(e))
-            ret_msg = 'Verifying dataset {}: error initialising dataset checker'.format(dataset_id)
+            ret_msg = 'Verifying dataset {}: error initialising dataset checker'.format(record.dataset_id)
             error = True
     
     # main processing of the dataset
@@ -117,7 +117,7 @@ def verify_dataset(dataset_id, email=False):
             dataset.final_checks()
             
         except Exception as e:
-            ret_msg = 'Verifying dataset {}: error running dataset checking'.format(dataset_id)
+            ret_msg = 'Verifying dataset {}: error running dataset checking'.format(record.dataset_id)
             dataset_check_error = repr(e)
         else:
             # Catch the only bit of cross-validation: does the dataset project id match
@@ -127,10 +127,10 @@ def verify_dataset(dataset_id, email=False):
         
             if dataset.passed:
                 outcome = 'PASS'
-                ret_msg = 'Verifying dataset {}: dataset checking PASSED'.format(dataset_id)
+                ret_msg = 'Verifying dataset {}: dataset checking PASSED'.format(record.dataset_id)
             else:
                 outcome = 'FAIL'
-                ret_msg = 'Verifying dataset {}: dataset checking FAILED'.format(dataset_id)
+                ret_msg = 'Verifying dataset {}: dataset checking FAILED'.format(record.dataset_id)
             
             dataset_check_error = ''
         
@@ -580,7 +580,7 @@ def generate_inspire_xml(record):
     citation.find('gmd:date/gmd:CI_Date/gmd:date/gco:Date', nsmap).text = record.zenodo_submission_date.date().isoformat()
 
     # two identifiers - the safe project website and the DOI.
-    safe_url = URL('datasets', 'view_dataset', vars={'dataset_id': record.id}, scheme=True, host=True)
+    safe_url = URL('datasets', 'view_dataset', vars={'id': record.id}, scheme=True, host=True)
     citation.find('gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString', nsmap).text = safe_url
     citation.find('gmd:identifier/gmd:RS_Identifier/gmd:code/gco:CharacterString', nsmap).text = record.zenodo_version_doi
     
