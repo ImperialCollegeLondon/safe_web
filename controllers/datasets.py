@@ -456,23 +456,26 @@ def submit_dataset():
     
     form = DIV(panel_head, chk_panel, chk_rprt, dataset_desc, resubmit_head, form, _class="panel panel-default")
     
-    # Generate a collapsible version history
-    version_table = TABLE(TR(TH('Version'), TH('Date'), TH('Uploader'), 
-                             TH('Project'), TH('Name'), TH('Size'),
-                             TH('Checked'), TH('Published')), 
-                        *[TR(TD(r.version), TD(r.upload_datetime), 
-                             TD(r.uploader_id), TD(r.project_id), 
-                             TD(r.file_name), TD('{0:.2f} Mb'.format(r.file_size / 1024**2.0)),
-                             TD(approval_icons[r.dataset_check_outcome]),
-                             TD(approval_icons[r.zenodo_submission_status])) 
-                          for r in records],
-                   _width='100%', _class='table table-striped')
+    if ds_id is None:
+        vsn_hist = DIV()
+    else:
+        # Generate a collapsible version history
+        version_table = TABLE(TR(TH('Version'), TH('Date'), TH('Uploader'), 
+                                 TH('Project'), TH('Name'), TH('Size'),
+                                 TH('Checked'), TH('Published')), 
+                            *[TR(TD(r.version), TD(r.upload_datetime), 
+                                 TD(r.uploader_id), TD(r.project_id), 
+                                 TD(r.file_name), TD('{0:.2f} Mb'.format(r.file_size / 1024**2.0)),
+                                 TD(approval_icons[r.dataset_check_outcome]),
+                                 TD(approval_icons[r.zenodo_submission_status])) 
+                              for r in records],
+                       _width='100%', _class='table table-striped')
     
-    vsn_hist  = DIV(DIV(DIV(H4('Version history', _class="panel-title col-sm-12"),
-                            _class='row'),
-                        _class="panel-heading"),
-                        version_table,
-                    _class='panel panel-default')
+        vsn_hist  = DIV(DIV(DIV(H4('Version history', _class="panel-title col-sm-12"),
+                                _class='row'),
+                            _class="panel-heading"),
+                            version_table,
+                        _class='panel panel-default')
     
     return dict(form=form, vsn_hist=vsn_hist)
 
