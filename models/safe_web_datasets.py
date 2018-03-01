@@ -100,18 +100,15 @@ def verify_dataset(record_id, email=False):
     if not error:
         try:
             # load the metadata sheets
-            dataset.load_summary()
+            dataset.load_summary(validate_doi=True, project_id=record.project_id)
             dataset.load_taxa()
             # use a local locations file - there is some issue with using the service from within the code
             locations_json = os.path.join(request.folder,'static','files','locations.json')
             dataset.load_locations(locations_json=locations_json)
             
             # check the datasets
-            if dataset.dataworksheet_summaries:
-                for ws in dataset.dataworksheet_summaries:
-                    dataset.load_data_worksheet(ws)
-            else:
-                dataset.warn('No data worksheets found')
+            for ws in dataset.dataworksheet_summaries:
+                dataset.load_data_worksheet(ws)
             
             # cross check the taxa and locations
             dataset.final_checks()
@@ -120,11 +117,6 @@ def verify_dataset(record_id, email=False):
             ret_msg = 'Verifying dataset {}: error running dataset checking'.format(record.dataset_id)
             dataset_check_error = repr(e)
         else:
-            # Catch the only bit of cross-validation: does the dataset project id match
-            # to the one chosen on upload
-            if dataset.project_id != record.project_id:
-                dataset.warn('Project ID in dataset and on upload do not match')
-        
             if dataset.passed:
                 outcome = 'PASS'
                 ret_msg = 'Verifying dataset {}: dataset checking PASSED'.format(record.dataset_id)
