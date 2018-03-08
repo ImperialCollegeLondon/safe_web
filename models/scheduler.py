@@ -96,7 +96,7 @@ def update_deputy_coordinator():
         attach = {'SAFE_visits_{}.txt'.format(datetime.date.today().isoformat()): schedule}
     
         SAFEmailer(subject='Weekly research visit summary',
-                   to= ['deputy.coord@safeproject.net', 'annuar_jain@yahoo.com'], # 'd.orme@imperial.ac.uk',
+                   to= ['deputy.coord@safeproject.net', 'annuar@searrp.org'], # 'd.orme@imperial.ac.uk',
                    template='weekly_rv_summary.html',
                    template_dict=dict(),
                    attachment_string_objects=attach)

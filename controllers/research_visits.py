@@ -1240,7 +1240,7 @@ def research_visit_details():
                 
                 # send email message to the proposer and CC Ryan.
                 SAFEmailer(to=proposer.email,
-                           cc=['deputy.coord@safeproject.net', 'account@searrp.org'],
+                           cc=['deputy.coord@safeproject.net', 'account@searrp.org', 'annuar@searrp.org'],
                            subject='SAFE: research visit proposal approved',
                            template =  'research_visit_approved.html',
                            template_dict = template_dict)
@@ -1259,7 +1259,7 @@ def research_visit_details():
                                          'proposer_name': proposer_name}
                     
                     SAFEmailer(to='roserlie5@gmail.com',
-                               cc=[proposer.email, 'inid69@yahoo.com',
+                               cc=[proposer.email, 'inid69@yahoo.com', 'annuar@searrp.org',
                                    'jarizul.gjule@gmail.com', 'deputy.coord@safeproject.net'],
                                reply_to=proposer.email,
                                subject='Request for accommodation from the SAFE Project',
