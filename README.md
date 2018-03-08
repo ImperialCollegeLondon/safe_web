@@ -464,7 +464,9 @@ This will run through a set of option screens. For an explanation of the options
 [https://help.ubuntu.com/community/Postfix](https://help.ubuntu.com/community/Postfix)
 
 
-## Web2py Scheduler
+## Running in production
+
+### Web2py Scheduler
 
 The web2py framework includes a scheduling system for automating regular jobs. For the SAFE website, we currently only need relatively simple infrequent (daily) tasks which are mostly reminder emails and the like. However, I've set up the standard Scheduler system because it gives power and flexibility in case we need it.
 
@@ -517,6 +519,15 @@ You can then use:
     sudo systemctl restart web2py-scheduler.service 
 
 The two lines about restarting in the service file are there to ensure that the worker processes get recreated if a background job hangs or crashes one of the workers. Ultimately, you'd want to find out what caused the death and you could definitely get a cycle of crashing and rescheduling if a job is toxic and it is set to retry on failure.
+
+
+### Session cleanup
+
+When users connect, a session file is stored in the sessions folder that is used to record visit specific information. These are typically small but there are lots of them and they don't automatically get deleted so swiftly build up: when I discovered the issue, the `sessions` directory was up at  1.5GB and contained over 800K files.
+
+So, when the application is running in production, set this running from the web2py directory to periodically clean up expired session files.
+
+    nohup python web2py.py -S safe_web -M -R scripts/sessions2trash.py &> safe_web_session_cleaner.out&
 
 ## Backup in production
 
@@ -591,6 +602,80 @@ Having installed everything, we can take an snapshot of the server volume - this
     python vm_snapshot.py
 
 This should be run before any major changes to the server, to provide a recent fallback to relaunch in case, for example, a python package installation completely locks up the system... If those changes are succesful, it should also be run afterwards to bring the snapshot up to date!
+
+
+## Moving the database
+
+Not likely to happen often, but I've had to move the database from the original AWS RDBS instance created to explore Earthcape integration to a local PostgreSQL instance running on the web server. That meant doing a few things:
+
+1. Install the postgresql server 
+
+        sudo apt-get install libpq-dev
+
+2. Set the server running as the postgres user (this should definitely go into  a startup script)
+
+        sudo -i -u postgres
+        sudo /etc/init.d/postgresql start
+
+3. Still as the postgres user, create the user name that web2py is going to connect to the database as, setting a password to be used for the local connection authentication. Web2py is going to connect via localhost, which uses a hashed password authentication by default.
+
+        createuser -P safe_admin
+
+4. Create the database to be used and exit the postgres login. 
+
+        createdb -O safe_admin safe_web2py "Database backend for the SAFE website"
+        exit
+
+4. Now disable the website, to get a clean period to dump and restore the database without anybody trying to use it.
+
+5. As the root user, dump the database from the current host. For example:
+
+        /usr/bin/pg_dump -d safe_web2py \
+		-h earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com \
+		-U safe_admin  -f /home/www-data/data_to_be_transferred.pgdump
+
+6. Switch back to postgres to load the dumped database into the local server:
+
+        sudo -i -u postgres 
+        psql safe_web2py < /home/www-data/data_to_be_transferred.pgdump
+        exit
+
+7. It should now be possible to connect to the local database using the localhost and the web2py user name and the password set when that user was created.
+
+         psql -h localhost -U safe_admin -d safe_web2py
+
+    If this works, then it should be all set up for web2py to use it. However...
+
+8. Web2py considers switching database host to be the same as migrating to an entirely new database. That means allowing web2py to recreate all the files in the `databases` folder for the new host, but without actually allowing it to create the tables, since they already exist. First, archive all the old database files in the application folder and empty it:
+
+        tar -zcvf old_databases_contents.tgz
+        rm databases/*
+
+9. Now temporarily update the `models/db.py` so that when it creates the files in `databases`, it is just making descriptions and not trying to execute table creation. Change the line creating the DAL object (for example):
+
+		db = DAL(.., lazy_tables=False)
+
+    to one that uses fake migration:
+	
+        db = DAL(.., lazy_tables=False, fake_migrate_all=True)
+
+10. It now only remains to update `private/appconfig.ini`, keeping the old connection string as a comment in case it becomes necessary to switch back to it! 
+
+        ; db configuration
+        [db]
+        ;uri      = postgres://safe_admin:password@earthcape-pg.cx94g3kqgken.eu-west-1.rds.amazonaws.com/safe_web2py
+        uri       = postgres://safe_admin:password@localhost/safe_web2py
+        migrate   = 1
+        pool_size = 5
+
+11. Restart the wesbite and workers and then re-enable the website
+
+		sudo service apache2 restart
+		sudo systemctl restart web2py-scheduler.service
+
+12. If / Once the website has loaded correctly using the new database host, return to the `models\db.py` file and remove the instruction to use `fake_migrate_all=True`, otherwise any changes to the tables in the models won't actually make changes.
+
+13. Update the postgres backup script to use the new host and update the .pgpass file to add the new credentials.
 
 ## Restoring in production (aka Disaster recovery)
 
