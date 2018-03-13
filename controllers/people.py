@@ -449,7 +449,8 @@ def contacts():
                                   if r.auth_user.thumbnail_picture is None else
                                   URL('default', 'download', args = r.auth_user.thumbnail_picture,),
                             _height='100px')),
-                    TD(A(" ".join(['' if r.auth_user.title is None else r.auth_user.title, r.auth_user.first_name, r.auth_user.last_name]),
+                    TD(A(" ".join(['' if (r.auth_user.title is None or r.auth_user.title == 'None') else r.auth_user.title,
+                                  r.auth_user.first_name, r.auth_user.last_name]),
                         _href= URL('people', 'user_details', args=[r.auth_user.id]))),
                     # for most grid, list the role, but for malay collaborators link in expertise
                     TD('Expertise: ' + r.auth_user.scientific_expertise if k == "Malaysian Collaborators" else r.contacts.contacts_role))
