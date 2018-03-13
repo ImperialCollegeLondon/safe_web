@@ -359,7 +359,7 @@ def administer_volunteers():
     """
     
     
-    links = [link_button("marketplace","view_volunteer", 'id')]
+    links = [link_button("marketplace","volunteer_details", 'id')]
     
     # get a query of pending requests with user_id
     form = SQLFORM.grid(query=(db.help_offered.admin_status == 'Submitted'), csv=False,
