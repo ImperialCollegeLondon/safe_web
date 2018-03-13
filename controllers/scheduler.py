@@ -151,7 +151,7 @@ def resend_email():
 						template_dict=simplejson.loads(rec.template_dict),
 						to=to, cc=cc, cc_info=False, bcc=bcc, reply_to=rec.reply_to)
 
-	status = 'sent' if status else 'failed',
+	status = 'sent' if status else 'failed'
 	rec.update_record(status=status)
 	
 	session.flash = 'Attempted to resend email: ' + status
