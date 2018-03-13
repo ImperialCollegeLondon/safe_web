@@ -23,10 +23,21 @@ def view_datasets():
     # button to link to custom view
     links = [dict(header = '', body = lambda row: A('Details',_class='button btn btn-sm btn-default'
                   ,_href=URL("datasets","view_dataset", vars={'id': row.id})))]
+
+    # Get the ids of the most recently published version of each dataset_id
+    records = db.executesql("""select id from datasets d1
+                                inner join (
+                                    select max(zenodo_submission_date) mrp,
+                                        dataset_id
+                                    from datasets
+                                    where zenodo_submission_status = 'ZEN_PASS'
+                                    group by dataset_id) d2
+                                  on d1.dataset_id = d2.dataset_id
+                                  and d1.zenodo_submission_date = d2.mrp;""")
+    records = (r[0] for r in records)
     
-    # The grid displays the current version of published datasets
-    form = SQLFORM.grid((db.datasets.zenodo_submission_status == 'ZEN_PASS') &
-                        (db.datasets.current == 'T') ,
+    # Display those records as a grid
+    form = SQLFORM.grid(db.datasets.id.belongs(records),
                         fields = [db.datasets.project_id,
                                   db.datasets.dataset_id,
                                   db.datasets.version,
