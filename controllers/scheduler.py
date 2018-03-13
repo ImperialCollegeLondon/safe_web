@@ -145,12 +145,11 @@ def resend_email():
 	to = string_to_list(rec.email_to)
 	cc = string_to_list(rec.email_cc)
 	bcc = string_to_list(rec.email_bcc)
-	rep = string_to_list(rec.reply_to)
 	
 	SAFEmailer(subject=rec.subject,
 				template=rec.template,
 				template_dict=simplejson.loads(rec.template_dict),
-				to=to, cc=cc, cc_info=False, bcc=bcc, reply_to=rep)
+				to=to, cc=cc, cc_info=False, bcc=bcc, reply_to=rec.reply_to)
 	
 	rec.update_record(status='resent')
 	
