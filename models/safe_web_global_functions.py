@@ -196,6 +196,8 @@ def SAFEmailer(subject, to, template, template_dict, cc=None,
 								 reply_to=reply_to,
 								 status = 'sent' if msg_status else 'failed',
 								 message_date=datetime.datetime.now())
+	
+	return msg_status
 
 """
 The functions below provide files containing research visit summaries.
