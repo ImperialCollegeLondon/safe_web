@@ -233,7 +233,7 @@ def submit_dataset_to_zenodo(recid, sandbox=False):
         # set up the dataset creators - the format has already been checked and names
         # should be present and correct. Everything else is optional, so strip None
         # values and pass the rest to Zenodo
-        zenodo_metadata['metadata']['creators'] = [{ky: auth[ky] for ky in auth if auth[ky] is not None}
+        zenodo_metadata['metadata']['creators'] = [{ky: auth[ky] for ky in auth if auth[ky] is not None and ky != 'email'}
                                                    for auth in metadata['authors']]
         
         zenodo_metadata['metadata']['description'] = str(_dataset_description(record, include_gemini=True))
