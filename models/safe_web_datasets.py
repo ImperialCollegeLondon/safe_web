@@ -230,14 +230,11 @@ def submit_dataset_to_zenodo(recid, sandbox=False):
         else:
             return 'Publishing dataset: record ID {} has unknown access status: {}'.format(id, metadata['access'])
         
-        # set up the dataset creators
-        zenodo_metadata['metadata']['creators'] = []
-        for auth in  metadata['authors']:
-            creator = {ky: auth[ky] for ky in ('name', 'affiliation')}
-            if auth['orcid'] is not None:
-                creator['orcid'] = auth['orcid']
-            
-            zenodo_metadata['metadata']['creators'].append(creator)
+        # set up the dataset creators - the format has already been checked and names
+        # should be present and correct. Everything else is optional, so strip None
+        # values and pass the rest to Zenodo
+        zenodo_metadata['metadata']['creators'] = [{ky: auth[ky] for ky in auth if auth[ky] is not None}
+                                                   for auth in metadata['authors']]
         
         zenodo_metadata['metadata']['description'] = str(_dataset_description(record, include_gemini=True))
         
