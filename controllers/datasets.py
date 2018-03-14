@@ -445,7 +445,16 @@ def submit_dataset():
                 chk_info += chk_stat
                 # New versions can still be submitted
                 resubmit_head = DIV('Upload a new version', _class='panel-heading')
-            
+                
+            elif record.zenodo_submission_status == 'ZEN_FAIL':
+                # Set the heading for the form
+                panel_head = DIV(DIV(H4('Dataset publication failed', _class="panel-title col-sm-8"),
+                                     _class='row'),
+                                 _class="panel-heading")
+                # include the status outcome
+                chk_info += chk_stat
+                # No option to resubmit
+                form = ""
             elif record.zenodo_submission_status == 'ZEN_PASS':
                 # Set the heading for the form
                 panel_head = DIV(DIV(H4('Dataset published', _class="panel-title col-sm-12"),
