@@ -414,7 +414,7 @@ def _taxon_index_to_text(taxon_index):
     g.add_edges_from(edges)
 
     # get a list of successors at each node
-    bfs = bfs_successors(g, root)
+    bfs = dict(bfs_successors(g, root))
     names = get_node_attributes(g, 'nm')
 
     # order successors alphabetically
@@ -456,8 +456,11 @@ def _taxon_index_to_text(taxon_index):
             elif data['lv'] in taxon_indents:
                 string = data['nm']
             else:
-                # morphospecies, functional group and non backbone
-                string = '[{nm}]'.format(**data)
+                string = data['nm']
+	    
+	    # markup user defined taxa
+	    if data['tp'] == 'user':
+		string = '[' + string + ']'
                 
             # format and add synonym/misapplications
             if data['as'] is not None and data['aslv'] in ['genus','species','subspecies']:
@@ -559,7 +562,8 @@ def _dataset_description(record, include_gemini=False):
     if record.dataset_taxon_index is not None:
         desc +=  CAT(P(B('Taxonomic coverage: '), BR(), ' All taxon names are validated against the GBIF backbone '
                        'taxonomy. If a dataset uses a synonym, the accepted usage is shown followed by the dataset '
-                       'usage in brackets. Morphospecies, functional groups and taxonomic levels not used on the '
+                       'usage in brackets. Taxa that cannot be validated, including new species and other unknown '
+                       'taxa, morphospecies, functional groups and taxonomic levels not used in the '
                        'GBIF backbone are shown in square brackets.',
                      DIV(_taxon_index_to_text(record.dataset_taxon_index))))
     
