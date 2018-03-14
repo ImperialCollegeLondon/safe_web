@@ -580,11 +580,14 @@ def run_verify_dataset():
 def run_submit_dataset_to_zenodo():
     """
     Controller to allow an admin to (re)run dataset publication
-    on a dataset with a given row id.
+    on a dataset with a given row id. The extra key 'sandbox' can be
+    specified to publish to the Zenodo sandbox instead, but at present
+    this isn't exposed anywhere except via a manual url
     """
     
     record_id = request.vars['id']
     manage = 'manage' in request.vars
+    sandbox = 'sandbox' in request.vars
     err = []
     
     if record_id is None:
@@ -596,7 +599,7 @@ def run_submit_dataset_to_zenodo():
             err += ["Record ID not an integer"]
     
     if len(err) == 0:
-        res = submit_dataset_to_zenodo(record_id)
+        res = submit_dataset_to_zenodo(record_id, sandbox=sandbox)
     else:
         res = ', '.join(err)
     

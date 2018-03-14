@@ -4,7 +4,7 @@ import simplejson
 import copy
 import safe_dataset_checker
 from gluon.contrib.appconfig import AppConfig
-from networkx import Graph, dfs_edges
+from networkx import Graph, bfs_successors, get_node_attributes
 
 """
 Functions to handle datasets. These are called from the datasets controller but 
@@ -170,21 +170,27 @@ def verify_dataset(record_id, email=False):
     return ret_msg
 
 
-def submit_dataset_to_zenodo(recid):
+def submit_dataset_to_zenodo(recid, sandbox=False):
     
     """
     Controller to submit a dataset to Zenodo and to update the
     dataset record with the result of that attempt.
     
     Args:
-        id: The id of the dataset table record to be submitted
-    
+        recid: The id of the dataset table record to be submitted
+        sandbox: Should the sandbox API be used - retained for 
+            admin testing
     Returns:
         A string describing the outcome.
     """
     
     # check the record exists and hasn't already been submitted
     record = db.datasets[recid]
+    
+    if sandbox:
+        api = 'https://sandbox.zenodo.org/api'
+    else:
+        api = 'https://zenodo.org/api/'
     
     if record is None:
         return 'Publishing dataset: unknown record ID {}'.format(id)
@@ -249,11 +255,10 @@ def submit_dataset_to_zenodo(recid):
         
         if record.zenodo_parent_id is None:
             # get a new deposit resource
-            dep = requests.post('https://sandbox.zenodo.org/api/deposit/depositions', 
-                                 params=token, json={}, headers= hdr)
+            dep = requests.post(api + '/deposit/depositions', params=token, json={}, headers= hdr)
         else:
             # get a new draft by passing in a reference to the previous version.
-            api = 'https://sandbox.zenodo.org/api/deposit/depositions/{}/actions/newversion'.format(record.zenodo_parent_id)
+            api = api + '/deposit/depositions/{}/actions/newversion'.format(record.zenodo_parent_id)
             new_draft = requests.post(api, params=token, json={}, headers= hdr)
             
             # trap errors in creating the new version
@@ -375,7 +380,9 @@ def submit_dataset_to_zenodo(recid):
             
             return "Published dataset to {}".format(pub_json['doi_url'])
 
-def _taxon_index_to_emsp(taxon_index):
+
+def _taxon_index_to_text(taxon_index):
+    
     """
     Turns the taxon index for a record into a text representation
     of the taxonomic hierarchy used in the dataset. Loading networkx
@@ -385,19 +392,6 @@ def _taxon_index_to_emsp(taxon_index):
     
     # drop synonyms, which will be represented using the two final tuple entries as_name and as_type
     taxon_index = [tx for tx in taxon_index if tx[4] in ('doubtful', 'accepted', 'user')]
-    
-    # italicise the accepted and as names correctly
-    names = ['<i>' + tx[2] + '</i>' if tx[3] in ['genus','species','subspecies']
-             else tx[2] for tx in taxon_index]
-    
-    # put brackets around morphospecies and functional groups
-    names = ['[' + tx[2] + ']' if tx[3] in ['morphospecies','functional group']
-             else tx[2] for tx in taxon_index]
-    
-    as_names = [' (as <i>' + tx[5] + '</i>)' if tx[6] in ['genus','species','subspecies']
-                else tx[5] for tx in taxon_index]
-    as_names = [nm + '<br>' if nm is not None else "<br>" for nm in as_names]
-    tax_names = [nm + as_nm for nm, as_nm in zip(names, as_names)]
     
     # the taxon index uses -1 for all unvalidated names, since it isn't
     # possible to assign sensible null values inside safe_dataset_checker
@@ -409,48 +403,82 @@ def _taxon_index_to_emsp(taxon_index):
         if tx[0] == -1:
             tx[0] = tmp_num
             tmp_num -= 1
+        if tx[1] is None:
+            tx[1] = root
+
+    # Get a graph representation of the taxon index
+    g = Graph()
+    nodes = [(tx[0], {'nm': tx[2], 'lv': tx[3], 'tp': tx[4], 'as': tx[5], 'aslv': tx[6]}) for tx in taxon_index]
+    g.add_nodes_from(nodes)
+    edges = [[tx[1], tx[0]] for tx in taxon_index]
+    g.add_edges_from(edges)
+
+    # get a list of successors at each node
+    bfs = bfs_successors(g, root)
+    names = get_node_attributes(g, 'nm')
+
+    # order successors alphabetically
+    for k, v in bfs.iteritems():
+        succ = [[nd, names[nd]] for nd in v]
+        succ.sort(key=lambda x: x[1])
+        bfs[k] = [s[0] for s in succ]
     
-    # get the indenting for each taxon, using 6 for non backbone 
-    indent_str = '&emsp;-&emsp;'
-    indent = {'kingdom': 0, 'phylum': 1, 'class': 2, 'order': 3,
-              'family': 4, 'genus': 5, 'species': 6, 'subspecies': 6}
-    indent = {k: indent_str * v for k, v in indent.iteritems()}
-    tax_indent = [indent[tx[3]] if tx[3] in indent else indent_str * 6 
-                  for tx in taxon_index]
+    # indent depths - fixed depths for core taxon levels
+    taxon_indents = {'kingdom': 0, 'phylum': 1, 'class': 2, 'order': 3, 
+                     'family': 4, 'genus': 5, 'species': 6, 'subspecies': 7}
+    indent_str = '&ensp;-&ensp;'
     
-    # get a dictionary keyed by the unique id of the text for each taxon
-    text_lines = {tx[0]: tx_in + tx_nm for tx, tx_in, tx_nm in 
-                  zip(taxon_index, tax_indent, tax_names)}
+    # walk the tree, collecting html
+    current = root
+    stack = []
+    html = ''
     
-    # Get a graph representation of the taxon index. The root node is 
-    # None (since the db has null for the parent_key of kingdoms) but
-    # that causes issues for edge sorting, so set it to the constant value
-    edges = [[tx[1], tx[0]] if tx[1] is not None else [root, tx[0]] for tx in taxon_index]
-    g = Graph(edges)
+    while True:
     
-    # Use a depth first search on edges to order the text lines,
-    # starting with the root. This is modified to pull unvalidated 
-    # entries (negative indices) up to immediately under their parent,
-    # as otherwise they can appear nested within later taxa
-    order = list(dfs_edges(g, source=root))
-    sorted_order = []
-    ind = []
-    while order:
-        edge = order.pop(0)
-        if edge[1] < 0:
-            loc = ind.index(edge[0]) + 1
-            sorted_order.insert(loc, edge)
-            ind.insert(loc, edge[1])
+        if current in bfs:
+            # if this is an internal node, add its children on to
+            # the end of the stack
+            stack.append(bfs[current])
+    
+        if stack[-1] == []:
+            # if the end node on the stack has been emptied then
+            # pop it off and drop back up to the next node in the stack
+            stack.pop()
         else:
-            sorted_order.append(edge)
-            ind.append(edge[1])
+            # otherwise, pop the first entry from the node and format and 
+            # print out the information for the node
+            current = stack[-1].pop(0)
+            data = g.node[current]
+            
+            # format the canonical name
+            if data['lv'] in ['genus','species','subspecies']:
+                string = '<i>{nm}</i>'.format(**data)
+            elif data['lv'] in taxon_indents:
+                string = data['nm']
+            else:
+                # morphospecies, functional group and non backbone
+                string = '[{nm}]'.format(**data)
+                
+            # format and add synonym/misapplications
+            if data['as'] is not None and data['aslv'] in ['genus','species','subspecies']:
+                string += ' (as <i>{as}</i>)'.format(**data)
+            elif data['as'] is not None:
+                string += ' (as {as})'.format(**data)
+            
+            # get the indent depth
+            if data['lv'] in taxon_indents:
+                # use the standard depth for this taxonomic level
+                ind = indent_str * taxon_indents[data['lv']]
+            else:
+                # 1 step further in than the current stack length
+                ind = indent_str * (len(stack) - 1) 
+            
+            html += ind + string + '</br>'
     
-    txt = ''
-    for nd in sorted_order:
-        if nd[1] != root:
-            txt += text_lines[nd[1]]
+        if stack == []:
+            break
     
-    return XML(txt)
+    return XML(html)
 
 
 def _dataset_description(record, include_gemini=False):
@@ -530,10 +558,10 @@ def _dataset_description(record, include_gemini=False):
         desc += P(B('Longitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['longitudinal_extent']))
     if record.dataset_taxon_index is not None:
         desc +=  CAT(P(B('Taxonomic coverage: '), BR(), ' All taxon names are validated against the GBIF backbone '
-                       'taxonomy. For synonyms, both the accepted usage and the synonym used in the data are shown. '
-                       'If a dataset uses morphospecies and functional groups, the name is shown in square brackets '
-                       'underneath the parent taxon provided by the user.',
-                     DIV(_taxon_index_to_emsp(record.dataset_taxon_index))))
+                       'taxonomy. If a dataset uses a synonym, the accepted usage is shown followed by the dataset '
+                       'usage in brackets. Morphospecies, functional groups and taxonomic levels not used on the '
+                       'GBIF backbone are shown in square brackets.',
+                     DIV(_taxon_index_to_text(record.dataset_taxon_index))))
     
     return desc
 
