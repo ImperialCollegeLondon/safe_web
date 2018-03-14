@@ -559,7 +559,7 @@ def _dataset_description(record, include_gemini=False):
         desc += P(B('Latitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['latitudinal_extent']))
     if metadata['longitudinal_extent'] is not None:
         desc += P(B('Longitudinal extent: '), '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['longitudinal_extent']))
-    if record.dataset_taxon_index is not None:
+    if record.dataset_taxon_index is not None and record.dataset_taxon_index != []:
         desc +=  CAT(P(B('Taxonomic coverage: '), BR(), ' All taxon names are validated against the GBIF backbone '
                        'taxonomy. If a dataset uses a synonym, the accepted usage is shown followed by the dataset '
                        'usage in brackets. Taxa that cannot be validated, including new species and other unknown '
