@@ -203,7 +203,7 @@ def project_view():
             datasets_table = TABLE(TR(TH('Dataset ID'), TH('Version'), TH('Dataset title'), TH()),
                                   *[TR(TD(r.dataset_id), TD(r.version),
                                        TD(A(r.dataset_title, 
-                                            _href=URL('datasets','view_dataset', vars={'dataset_id': r.id}))),
+                                            _href=URL('datasets','view_dataset', vars={'id': r.id}))),
                                        TD(A(IMG(_src=r.zenodo_version_badge), _href=r.zenodo_version_doi)))
                                        for r in datasets],
                                   _class='table table-striped', _style='width:100%')
