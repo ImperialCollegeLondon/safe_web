@@ -19,6 +19,8 @@ def view_datasets():
     db.datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects','project_view', args=[value])) 
     db.datasets.zenodo_version_badge.represent = lambda value, row:  A(IMG(_src=value), _href=row.zenodo_version_doi)
     db.datasets.zenodo_version_doi.readable = False
+    db.datasets.zenodo_submission_date.represent = lambda value, row: value.date().isoformat()
+
     
     # button to link to custom view
     links = [dict(header = '', body = lambda row: A('Details',_class='button btn btn-sm btn-default'
@@ -128,6 +130,8 @@ def administer_datasets():
     
     # alter the file representation to add the dataset id as a variable to the download
     db.datasets.file.represent = lambda value, row: A('Download file', _href=URL('datasets', 'download_dataset', row.file, vars={'dataset_id': row.dataset_id}))
+    # alter the upload datetime representation
+    db.datasets.upload_datetime.represent = lambda value, row: value.date().isoformat()
     
     # add buttons to provide options
     # - run check (can only be run if file has not passed)
