@@ -196,7 +196,7 @@ def my_safe():
                                     'cntr': 'datasets', 'view': 'submit_dataset',
                                     'display': db.datasets.dataset_title,
                                     'url_args': [],
-                                    'url_vars': [('dataset_id', db.datasets.id)],
+                                    'url_vars': [('dataset_id', db.datasets.dataset_id)],
                                     'status': db.datasets.dataset_check_outcome,
                                     'header': 'Datasets'},
                        'request':  {'query': (db.help_request.user_id == auth.user.id),
