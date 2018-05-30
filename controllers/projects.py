@@ -200,8 +200,6 @@ def project_view():
                                   db.datasets.zenodo_version_doi,
                                   orderby=[db.datasets.dataset_id, ~ db.datasets.version])
 
-        print datasets
-
         if len(datasets) > 0:
             datasets_table = TABLE(TR(TH('Dataset ID'), TH('Version'), TH('Dataset title'), TH()),
                                   *[TR(TD(r.dataset_id), TD(r.version),
