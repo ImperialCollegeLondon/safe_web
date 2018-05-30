@@ -219,6 +219,7 @@ db.define_table('project_details',
     # - admin_history is used to maintain a record of proposal processing
     Field('admin_status','string', requires=IS_IN_SET(project_status_set), default='Pending'), 
     Field('admin_history','text', writable=False), 
+    Field('merged_to', 'reference project_id', default=None),
     # set the way the row is represented in foreign tables
     format='%(title)s') 
 
