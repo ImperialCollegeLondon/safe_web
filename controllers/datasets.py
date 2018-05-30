@@ -23,8 +23,9 @@ def view_datasets():
 
     
     # button to link to custom view
-    links = [dict(header = '', body = lambda row: A('Details',_class='button btn btn-sm btn-default'
-                  ,_href=URL("datasets","view_dataset", vars={'id': row.id})))]
+    links = [dict(header = '',
+                  body = lambda row: A('Details', _class='button btn btn-sm btn-default',
+                                       _href=URL("datasets","view_dataset", vars={'id': row.id})))]
 
     # Get the ids of the most recently published version of each dataset_id
     records = db.executesql("""select id from datasets d1
@@ -101,7 +102,8 @@ def view_dataset():
     
     history_table = TABLE(TR(TH('Viewing'), TH('Version publication date'), 
                              TH('Uploaded by'), TH('Zenodo DOI')),
-                          *[TR(TD(view) if r.id == int(ds_id) else TD(A(alt, _href=URL(vars={'id': r.id}))),
+                          *[TR(TD(view) if r.id == int(ds_id)
+                               else TD(A(alt, _href=URL(vars={'id': r.id}))),
                                TD(r.zenodo_submission_date),
                                TD(r.uploader_id.first_name + ' ' + r.uploader_id.last_name),
                                TD(A(IMG(_src=r.zenodo_version_badge), 
@@ -219,23 +221,27 @@ def submit_dataset():
     # controller has one variable: dataset_id
     ds_id = request.vars['dataset_id']
     
-    # get the records associated with this ds_id and the uploaders,
-    # which will the original owner and any admins
+    # get the records associated with this ds_id
     qry = db.datasets.dataset_id == ds_id
-    records = db(qry).select(orderby= ~ db.datasets.version)
-    owners = [rw.uploader_id for rw in records]
-    
-    # check that ds_id makes sense and the user has the right to access the form
+    records = db(qry).select(orderby=~ db.datasets.version)
+
+    # Establish a set of users that have the right to upload to an
+    # existing dataset_id: admins and members of projects associated
+    # with this dataset.
+    owners = db((db.project_datasets.project_id == db.project_members.project_id) &
+                (db.project_datasets.dataset_id == ds_id)).select(db.project_members.user_id)
+    owners = [r.user_id for r in owners]
+
     if ds_id is None:
-        # no id provided, so new form and draw a new id
+        # no id provided, so new form
         record = None
-    elif records is None:
+    elif len(records) == 0:
         # non-existent id provided
         session.flash = "Database record id does not exist"
         redirect(URL('datasets','view_datasets'))
     elif auth.user.id not in owners and not auth.has_membership('admin'):
         # check if uploader is trying to view this submission
-        session.flash = "Dataset uploaded by a different user"
+        session.flash = "You are not a member of a project associated with that dataset ID"
         redirect(URL('datasets','view_datasets'))
     else:
         # get the record with the most recent version, which 
@@ -301,6 +307,13 @@ def submit_dataset():
             ds_id = db.dataset_id.insert(created=datetime.datetime.now())
             new_record.update(dataset_id = ds_id,
                               project_id = form.vars.project_id)
+
+            # add an entry to the project_datasets table to link the
+            # dataset to the project personnel
+            db.project_datasets.insert(dataset_id = ds_id,
+                                       project_id = form.vars.project_id,
+                                       user_id = auth.user.id,
+                                       date_added = datetime.date.today())
         
         # now update the other fields and commit the updates
         new_record.uploader_id = auth.user.id
