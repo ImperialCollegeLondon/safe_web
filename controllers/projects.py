@@ -190,16 +190,26 @@ def project_view():
             project_links = DIV()
         
         # dataset links
-        datasets = db((db.datasets.project_id == project_record.id) &
-                      (db.datasets.dataset_check_outcome == 'PASS') &
-                      (db.datasets.zenodo_submission_status == 'ZEN_PASS')).select(orderby=[db.datasets.dataset_id, ~ db.datasets.version])
-        
+        qry = ((db.project_datasets.project_id == project_record.id) &
+               (db.project_datasets.dataset_id == db.datasets.dataset_id) &
+               (db.datasets.dataset_check_outcome == 'PASS') &
+               (db.datasets.zenodo_submission_status == 'ZEN_PASS'))
+
+        datasets = db(qry).select(db.datasets.id, db.datasets.dataset_id, db.datasets.version,
+                                  db.datasets.dataset_title, db.datasets.zenodo_version_badge,
+                                  db.datasets.zenodo_version_doi,
+                                  orderby=[db.datasets.dataset_id, ~ db.datasets.version])
+
+        print datasets
+
         if len(datasets) > 0:
             datasets_table = TABLE(TR(TH('Dataset ID'), TH('Version'), TH('Dataset title'), TH()),
                                   *[TR(TD(r.dataset_id), TD(r.version),
-                                       TD(A(r.dataset_title, 
-                                            _href=URL('datasets','view_dataset', vars={'id': r.id}))),
-                                       TD(A(IMG(_src=r.zenodo_version_badge), _href=r.zenodo_version_doi)))
+                                       TD(A(r.dataset_title,
+                                            _href=URL('datasets','view_dataset',
+                                                      vars={'id': r.id}))),
+                                       TD(A(IMG(_src=r.zenodo_version_badge),
+                                            _href=r.zenodo_version_doi)))
                                        for r in datasets],
                                   _class='table table-striped', _style='width:100%')
 
