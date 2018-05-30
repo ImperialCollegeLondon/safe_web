@@ -219,6 +219,7 @@ db.define_table('project_details',
     # - admin_history is used to maintain a record of proposal processing
     Field('admin_status','string', requires=IS_IN_SET(project_status_set), default='Pending'), 
     Field('admin_history','text', writable=False), 
+    Field('merged_to', 'reference project_id', default=None),
     # set the way the row is represented in foreign tables
     format='%(title)s') 
 
@@ -289,6 +290,11 @@ db.define_table('project_outputs',
 ## The dataset_id table is only used to provide a sequence of id values
 ## to group versions of datasets - it is basically just using the DB
 ## API to provide a sequence, because those aren't supported directly
+##
+## The project_datasets table provides the links between projects and
+## datasets. One is created when the dataset is uploaded but others
+## can be created, for example when projects are merged.
+##
 ## -----------------------------------------------------------------------------
 
 db.define_table('dataset_id',
@@ -331,6 +337,11 @@ db.define_table('datasets',
     Field('zenodo_version_doi', 'string', requires=IS_EMPTY_OR(IS_URL())),
     Field('zenodo_version_badge', 'string', requires=IS_EMPTY_OR(IS_URL())))
 
+db.define_table('project_datasets',
+    Field('project_id', 'reference project_id', notnull=True),
+    Field('dataset_id', 'reference dataset_id', notnull=True),
+    Field('user_id','reference auth_user'),
+    Field('date_added','date'))
 
 ## -----------------------------------------------------------------------------
 ## GAZETTEER

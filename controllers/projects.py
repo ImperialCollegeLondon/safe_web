@@ -1,29 +1,23 @@
 import datetime
-import uuid
 
-## -----------------------------------------------------------------------------
-## PROJECT CONTROLLERS
-## - the project system requires the ability to revise projects both for initial 
-##   approval and for any later edits. The underlying database needs permanent ID
-##   numbers (and paired UUIDs for the Earthcape database), so we have the concept
-##   of a permanent record of authority and a set of revisions. 
-## - These controllers implement that via two tables 
-##   A) A project_details table, which stores all revisions and from which project 
-##      coordinators can submit a proposal.
-## - B) A project_id table, which just holds the permanent ids and a link to the
-##      current version of the project details table.
-## - The two tables are connected by project_details.id = project_id.project_details_id. 
-##   When a project is first created, a row is created in project_id to create the
-##   permanent ID record.
-## -----------------------------------------------------------------------------
+"""
+-----------------------------------------------------------------------------
+PROJECT CONTROLLERS
+- the project system requires the ability to revise projects both for initial 
+  approval and for any later edits. The underlying database needs permanent ID
+  numbers (and paired UUIDs for the Earthcape database), so we have the concept
+  of a permanent record of authority and a set of revisions. 
+- These controllers implement that via two tables 
+  A) A project_details table, which stores all revisions and from which project 
+     coordinators can submit a proposal.
+- B) A project_id table, which just holds the permanent ids and a link to the
+     current version of the project details table.
+- The two tables are connected by project_details.id = project_id.project_details_id. 
+  When a project is first created, a row is created in project_id to create the
+  permanent ID record.
+-----------------------------------------------------------------------------
+"""
 
-
-
-## -----------------------------------------------------------------------------
-## PUBLIC CONTROLLERS
-## - presents a grid view of approved projects and a simple view of the current
-##   details for that project
-## -----------------------------------------------------------------------------
 
 def projects():
     
@@ -111,29 +105,30 @@ def project_view():
         methods = XML(project_details.methods.replace('\n', '<br />'), sanitize=True, permitted_tags=['br/'])
         
         # project details panel
-        project_details =   CAT(DIV(DIV(H4(project_details.title), _class='col-sm-10'),
-                                    DIV(DIV(IMG(_src=pic, _width='100px'), _class= 'pull-right'), _class='col-sm-2'),
-                                    _class='row', _style='margin:10px 10px;'), 
-                                DIV(DIV('Project Number ' + str(project_details.project_id) , 
-                                        A(SPAN('',_class="icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left"),
-                                            SPAN(' Back to projects'),
-                                            _href=URL("projects","projects", user_signature=True),
-                                            _class='pull-right', _style='color:white'),
-                                        _class="panel-heading"),
-                                    DIV(DIV(DIV(H4('Start date') + project_details.start_date, _class='col-sm-3', 
-                                                _style='padding-right:0; padding-left:0;'),
-                                            DIV(H4('End date') + project_details.end_date, _class='col-sm-3',
-                                                _style='padding-right:0; padding-left:0;'),
-                                            DIV(H4('Research areas') + XML(('<br>').join(project_details.research_areas)), _class='col-sm-3',
-                                                _style='padding-right:0; padding-left:0;'),
-                                            DIV(H4('Data use') + XML(('<br>').join(project_details.data_use)), _class='col-sm-3',
-                                                _style='padding-right:0; padding-left:0;'),
-                                            _class='row'),
-                                        DIV(H4('Rationale') + rationale, _class='row'),
-                                        DIV(H4('Methods') + methods, _class='row'),
-                                    _class='panel-body', _style='margin:10px 10px'),
-                                DIV(_class='panel-footer'),
-                                _class="panel panel-primary"))
+        project_details_panel = CAT(
+            DIV(DIV(H4(project_details.title), _class='col-sm-10'),
+                DIV(DIV(IMG(_src=pic, _width='100px'), _class= 'pull-right'), _class='col-sm-2'),
+                _class='row', _style='margin:10px 10px;'),
+            DIV(DIV('Project Number ' + str(project_details.project_id) ,
+                    A(SPAN('',_class="icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left"),
+                      SPAN(' Back to projects'),
+                      _href=URL("projects","projects", user_signature=True),
+                      _class='pull-right', _style='color:white'),
+                    _class="panel-heading"),
+                DIV(DIV(DIV(H4('Start date') + project_details.start_date, _class='col-sm-3',
+                            _style='padding-right:0; padding-left:0;'),
+                        DIV(H4('End date') + project_details.end_date, _class='col-sm-3',
+                            _style='padding-right:0; padding-left:0;'),
+                        DIV(H4('Research areas') + XML(('<br>').join(project_details.research_areas)), _class='col-sm-3',
+                            _style='padding-right:0; padding-left:0;'),
+                        DIV(H4('Data use') + XML(('<br>').join(project_details.data_use)), _class='col-sm-3',
+                            _style='padding-right:0; padding-left:0;'),
+                        _class='row'),
+                    DIV(H4('Rationale') + rationale, _class='row'),
+                    DIV(H4('Methods') + methods, _class='row'),
+                    _class='panel-body', _style='margin:10px 10px'),
+                DIV(_class='panel-footer'),
+                _class="panel panel-primary"))
         
         # members panel
         members_table = TABLE(TR(TH('Researcher'), TH('Project role'), TH('Project contact')),
@@ -214,12 +209,22 @@ def project_view():
                           _class="panel panel-primary")
         else:
             datasets = DIV()
-        
-    
+
+        if project_details.merged_to is not None:
+            merged = DIV(P('The research carried out in this project is now being continued ' 
+                           'under a different project. Follow ',
+                           A('this link', _href=URL('projects', 'project_view',
+                                                    args=project_details.merged_to),
+                             _class='alert-link'),
+                           ' to see the most recent updates.'),
+                         _class="alert alert-info", _role="alert", _style='background-color:grey')
+        else:
+            merged = DIV()
+
     # pass components to the view
-    return dict(project_id = project_id, project_details = project_details,
+    return dict(project_id = project_id, project_details = project_details_panel,
                 members = members, outputs=outputs, project_links = project_links,
-                datasets=datasets)
+                datasets=datasets, merged=merged)
 
 
 ## -----------------------------------------------------------------------------
