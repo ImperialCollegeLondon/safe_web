@@ -133,6 +133,7 @@ if (auth.user_id != None) and (auth.has_membership(role = 'admin')):
                         (T('Manage contacts'), True, URL('people', 'manage_contacts'), []),
                         (T('Manage news'), True, URL('news', 'manage_news'), []),
                         (T('Manage blogs'), True, URL('blogs', 'manage_blogs'), []),
+                        (T('Merge projects'), True, URL('projects', 'merge_projects'), []),
                         (T('Health and safety info'), True, URL('health_safety', 'admin_view_health_and_safety'), []),
                         (T('Public holidays'), True, URL('info', 'public_holidays'), []),
                         (T('Create research visit'), True, URL('research_visits', 'create_late_research_visit'), []),

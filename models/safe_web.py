@@ -133,30 +133,31 @@ visib_glyph = SPAN('', _class="glyphicon glyphicon-eye-open")
 hide_style = "padding:3px 10px;background:darkred"
 visib_style = "padding:3px 10px;background:darkgreen"
 
-## -----------------------------------------------------------------------------
-## SAFE TABLE DEFINITIONS
-## -----------------------------------------------------------------------------
+"""
+SAFE TABLE DEFINITIONS
+
+ ON EARTHCAPE INTEGRATION: 
+ We'd prefer to use a single shared DB but the two applications use different 
+ frameworks and some tables and fields would need to be called 
+ something different in the this DB to allow Earthcape to read them.
+ This would need use of the rname option to set the real DB name  
+ and then the name used by web2py is an internal alias. This is a bit of
+ a hack but Earthcape names require capitalisation, where web2py by
+ default maps Field_Name to the standard SQL lowercase field_name. We'd also
+ need to hand alter primary keys from the default btree on id, to include an
+ EC compatible UUID field in the table primary key (id, "Oid"). 
+ -     Field('oid', length=64, default=uuid.uuid4),
+ We've explored this in some depth and it just engineers in more fragility 
+ than is worthwhile to avoid. Commit d6b93a3 is tagged as the last version 
+ containing this integration code, which has now been stripped back out to 
+ reduce processing complexity.
+"""
 
 
-## ON EARTHCAPE INTEGRATION: 
-## We'd prefer to use a single shared DB but the two applications use different 
-## frameworks and some tables and fields would need to be called 
-## something different in the this DB to allow Earthcape to read them.
-## This would need use of the rname option to set the real DB name  
-## and then the name used by web2py is an internal alias. This is a bit of
-## a hack but Earthcape names require capitalisation, where web2py by
-## default maps Field_Name to the standard SQL lowercase field_name. We'd also
-## need to hand alter primary keys from the default btree on id, to include an
-## EC compatible UUID field in the table primary key (id, "Oid"). 
-## -     Field('oid', length=64, default=uuid.uuid4),
-## We've explored this in some depth and it just engineers in more fragility 
-## than is worthwhile to avoid. Commit d6b93a3 is tagged as the last version 
-## containing this integration code, which has now been stripped back out to 
-## reduce processing complexity.
 
-## -----------------------------------------------------------------------------
-## CONTACTS - a simple table to map users to contacts roles
-## -----------------------------------------------------------------------------
+"""
+CONTACTS - a simple table to map users to contacts roles
+"""
 
 db.define_table('contacts',
     Field('user_id', 'reference auth_user'),
@@ -165,24 +166,24 @@ db.define_table('contacts',
                               'Malaysian Collaborators','Field Team'])),
     Field('contacts_role', 'string'))
 
-## -----------------------------------------------------------------------------
-## PROJECTS:
-## -- Four tables:
-##    * a permanent table of IDs, matching a project number to...
-##    * a table of project details, which can contain new and old versions. As 
-##      users edit or update a project, the approval process updates the linked
-##      version on the project_id table
-##    * a table that matches members to project id
-##    * a table that links related projects
-## -- Populated from fixtures file
-## -- 'legacy_project_id': used only to match in links when loading old website data
-## -- 'legacy_sampling_scales' and 'legacy_sampling_sites': in previous website but discarded 
-## -----------------------------------------------------------------------------
-
-
+"""
+PROJECTS:
+ -- Four tables:
+    * a permanent table of IDs, matching a project number to version details and 
+      containing project info applying  to all versions
+    * a table of project details, which can contain new and old versions. As 
+      users edit or update a project, the approval process updates the linked
+      version on the project_id table
+    * a table that matches members to project id
+    * a table that links related projects
+ -- Populated from fixtures file
+ -- 'legacy_project_id': used only to match in links when loading old website data
+ -- 'legacy_sampling_scales' and 'legacy_sampling_sites': in previous website but discarded 
+"""
 
 db.define_table('project_id', 
-    Field('project_details_id', 'integer'))
+    Field('project_details_id', 'integer'),
+    Field('merged_to', 'reference project_id', default=None))
 
 db.define_table('project_details',
     Field('project_id', 'reference project_id'),
@@ -219,7 +220,6 @@ db.define_table('project_details',
     # - admin_history is used to maintain a record of proposal processing
     Field('admin_status','string', requires=IS_IN_SET(project_status_set), default='Pending'), 
     Field('admin_history','text', writable=False), 
-    Field('merged_to', 'reference project_id', default=None),
     # set the way the row is represented in foreign tables
     format='%(title)s') 
 
