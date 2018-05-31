@@ -16,7 +16,7 @@ def view_datasets():
     """
     
     # format fields for the display
-    db.datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects','project_view', args=[value])) 
+    db.datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects', 'project_view', args=[value]))
     db.datasets.zenodo_version_badge.represent = lambda value, row:  A(IMG(_src=value), _href=row.zenodo_version_doi)
     db.datasets.zenodo_version_doi.readable = False
     db.datasets.zenodo_submission_date.represent = lambda value, row: value.date().isoformat()
@@ -126,7 +126,7 @@ def administer_datasets():
     """
     
     # format fields for the display, giving the check outcome and zenodo publishing status as icons.
-    db.datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects','project_view', args=[value])) 
+    db.datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects','project_view', args=[value]))
     db.datasets.dataset_check_outcome.represent =  lambda value, row: approval_icons[value]
     db.datasets.zenodo_submission_status.represent =  lambda value, row: approval_icons[value]
     
@@ -308,13 +308,20 @@ def submit_dataset():
             new_record.update(dataset_id = ds_id,
                               project_id = form.vars.project_id)
 
-            # add an entry to the project_datasets table to link the
-            # dataset to the project personnel
+            # add an entry to the project_datasets table to link the dataset to the project
             db.project_datasets.insert(dataset_id = ds_id,
                                        project_id = form.vars.project_id,
                                        user_id = auth.user.id,
                                        date_added = datetime.date.today())
-        
+
+            # repeat for merged projects
+            project_record = db.project_id[form.vars.project_id]
+            if project_record.merged_to is not None:
+                db.project_datasets.insert(project_id=project_record.merged_to,
+                                           dataset_id=ds_id,
+                                           user_id=auth.user.id,
+                                           date_added=datetime.date.today())
+
         # now update the other fields and commit the updates
         new_record.uploader_id = auth.user.id
         new_record.file_name = form.vars.file_name

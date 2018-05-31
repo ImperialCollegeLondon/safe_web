@@ -375,12 +375,15 @@ def output_details():
             # wrap everything into a form with a list of projects to select
             linkable_query  = db((db.project_id.id == db.project_details.project_id) & 
                                  (~ db.project_id.id.belongs(projects_query.select(db.project_id.id))))
-            linkable = linkable_query.select(db.project_id.id, db.project_details.title, orderby=db.project_details.title)
+            linkable = linkable_query.select(db.project_id.id, db.project_details.title,
+                                             orderby=db.project_id.id)
             
-            selector = SELECT(*[OPTION(r.project_details.title, _value=r.project_id.id) for r in linkable],
+            selector = SELECT(*[OPTION('({}) {}'.format(r.project_id.id,r.project_details.title),
+                                       _value=r.project_id.id) for r in linkable],
                               _class="generic-widget form-control", _name='project_id')
             add_button = TAG.BUTTON(add_member_icon, _type="submit",
-                                    _style='background:none; border:none;padding:0px 10px;font-size: 100%;')
+                                    _style='background:none; border:none;'
+                                           'padding:0px 10px;font-size: 100%;')
             
             projects_rows.append(TR(selector, add_button))
             
@@ -396,7 +399,15 @@ def output_details():
                                           output_id = output_id,
                                           user_id = auth.user.id,
                                           date_added = datetime.datetime.now())
-                
+
+                # look for merged projects and add to the umbrella project as well
+                project_record = db.project_id[projects.vars.project_id]
+                if project_record.merged_to is not None:
+                    db.project_outputs.insert(project_id=project_record.merged_to,
+                                              output_id=output_id,
+                                              user_id=auth.user.id,
+                                              date_added=datetime.datetime.now())
+
                 session.flash = CENTER(B('Output added to new project.'), _style='color: green')
                 redirect(URL('outputs', 'output_details', args=output_id))
             elif projects.errors:

@@ -101,8 +101,10 @@ def project_view():
         else:
             pic = URL('default','download', args = project_details.thumbnail_figure)
         
-        rationale = XML(project_details.rationale.replace('\n', '<br />'), sanitize=True, permitted_tags=['br/'])
-        methods = XML(project_details.methods.replace('\n', '<br />'), sanitize=True, permitted_tags=['br/'])
+        rationale = XML(project_details.rationale.replace('\n', '<br />'),
+                        sanitize=True, permitted_tags=['br/'])
+        methods = XML(project_details.methods.replace('\n', '<br />'),
+                      sanitize=True, permitted_tags=['br/'])
         
         # project details panel
         project_details_panel = CAT(
@@ -110,19 +112,19 @@ def project_view():
                 DIV(DIV(IMG(_src=pic, _width='100px'), _class= 'pull-right'), _class='col-sm-2'),
                 _class='row', _style='margin:10px 10px;'),
             DIV(DIV('Project Number ' + str(project_details.project_id) ,
-                    A(SPAN('',_class="icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left"),
+                    A(SPAN('', _class="icon leftarrow icon-arrow-left glyphicon glyphicon-arrow-left"),
                       SPAN(' Back to projects'),
                       _href=URL("projects","projects", user_signature=True),
                       _class='pull-right', _style='color:white'),
                     _class="panel-heading"),
-                DIV(DIV(DIV(H4('Start date') + project_details.start_date, _class='col-sm-3',
-                            _style='padding-right:0; padding-left:0;'),
-                        DIV(H4('End date') + project_details.end_date, _class='col-sm-3',
-                            _style='padding-right:0; padding-left:0;'),
-                        DIV(H4('Research areas') + XML(('<br>').join(project_details.research_areas)), _class='col-sm-3',
-                            _style='padding-right:0; padding-left:0;'),
-                        DIV(H4('Data use') + XML(('<br>').join(project_details.data_use)), _class='col-sm-3',
-                            _style='padding-right:0; padding-left:0;'),
+                DIV(DIV(DIV(H4('Start date') + project_details.start_date,
+                            _class='col-sm-3', _style='padding-right:0; padding-left:0;'),
+                        DIV(H4('End date') + project_details.end_date,
+                            _class='col-sm-3', _style='padding-right:0; padding-left:0;'),
+                        DIV(H4('Research areas') + XML(('<br>').join(project_details.research_areas)),
+                            _class='col-sm-3', _style='padding-right:0; padding-left:0;'),
+                        DIV(H4('Data use') + XML(('<br>').join(project_details.data_use)),
+                            _class='col-sm-3', _style='padding-right:0; padding-left:0;'),
                         _class='row'),
                     DIV(H4('Rationale') + rationale, _class='row'),
                     DIV(H4('Methods') + methods, _class='row'),
@@ -218,36 +220,62 @@ def project_view():
         else:
             datasets = DIV()
 
-        if project_details.merged_to is not None:
-            merged = DIV(P('The research carried out in this project is now being continued ' 
-                           'under a different project. Follow ',
-                           A('this link', _href=URL('projects', 'project_view',
-                                                    args=project_details.merged_to),
-                             _class='alert-link'),
-                           ' to see the most recent updates.'),
-                         _class="alert alert-info", _role="alert", _style='background-color:grey')
+        # Project merging
+        # a) is this project merged with another one
+        if project_record.merged_to is not None:
+            merged_to = DIV(P(SPAN(_class='glyphicon glyphicon-info-sign'),
+                              ' The research carried out in this project is now being continued '
+                              'under a different project. Follow ',
+                              A('this link', _href=URL('projects', 'project_view',
+                                                       args=project_record.merged_to),
+                                _class='alert-link', _style='text-decoration: underline;'),
+                              ' to see the most recent updates.'),
+                            _class="alert alert-info", _role="alert",
+                            _style='background-color:grey')
         else:
-            merged = DIV()
+            merged_to = DIV()
+
+        # b) Does this project include merged projects
+        qry = ((db.project_id.merged_to == project_id) &
+               (db.project_id.project_details_id == db.project_details.id))
+        merged_from = db(qry).select()
+
+        if len(merged_from):
+            lnks = [A(r.project_details.title,
+                      _href=URL('projects', 'project_view', args=r.project_id.id))
+                    for r in merged_from]
+
+            merged_from_div = DIV(P(SPAN(_class='glyphicon glyphicon-info-sign'),
+                                    " This project continues research started under "
+                                    "the following  projects."),
+                                  UL(lnks),
+                                  P("Any datasets and outputs originally collected under "
+                                    "those projects are also included below."),
+                                  _class = "alert alert-info", _role = "alert",
+                                  _style = 'background-color:grey')
+        else:
+
+            merged_from_div = DIV()
+
 
     # pass components to the view
     return dict(project_id = project_id, project_details = project_details_panel,
                 members = members, outputs=outputs, project_links = project_links,
-                datasets=datasets, merged=merged)
+                datasets=datasets, merged_to=merged_to, merged_from_div=merged_from_div)
 
-
-## -----------------------------------------------------------------------------
-## PROJECT DETAIL CONTROLLERS
-## -- DESIGN NOTES: A project can be created by a single user, who is automatically
-##                  added as a project member and coordinator. Once a new project
-##                  is created via a form accept then the view is refreshed to add 
-##                  a project members view.
-##                  
-##                  The view for this controller contains a lot of code to provide
-##                  a single URL for a project that can expose either an editing
-##                  interface or a detailed record for oversight
-##                  
-## -- TODO - extend new_project to require non-student status?
-## -----------------------------------------------------------------------------
+"""
+PROJECT DETAIL CONTROLLERS
+-- DESIGN NOTES: A project can be created by a single user, who is automatically
+                 added as a project member and coordinator. Once a new project
+                 is created via a form accept then the view is refreshed to add 
+                 a project members view.
+                 
+                 The view for this controller contains a lot of code to provide
+                 a single URL for a project that can expose either an editing
+                 interface or a detailed record for oversight
+                 
+-- TODO - extend new_project to require non-student status?
+"""
 
 @auth.requires_login()
 def project_details():
@@ -381,36 +409,44 @@ def project_details():
             if auth.user.id in project_coords and details.admin_status in ['Draft', 'Resubmit']:
                 # an active draft
                 mode = 'edit'
-                buttons = [TAG.button('Save draft',_type="submit", 
+                buttons = [TAG.button('Save draft', _type="submit",
                                       _name='save_draft', _style='padding: 5px 15px 5px 15px;'), 
                            XML('&nbsp;')*5,
-                           TAG.button('Save and Submit draft',_type="submit", 
+                           TAG.button('Save and Submit draft', _type="submit",
                                       _name='submit_draft', _style='padding: 5px 15px 5px 15px;')]
                 header_text = CAT(H2('Edit Project Draft'), 
-                                   P('Please use the form below to edit your draft project proposal. You can save your changes by ',
+                                   P('Please use the form below to edit your draft project '
+                                     'proposal. You can save your changes by ',
                                      'clicking on the Save Draft button below'),
-                                   P('Once you have completed your proposal, click the Save and Submit Draft button to submit your ',
-                                     ' proposal. It will first be screened by an ',
-                                     'administrator and then sent out to the research community at SAFE for comments. This process ',
-                                     'usually takes about 14 days. You will get an email to confirm that you have submitted a project ',
-                                     'and then another email to confirm whether the project has been accepted or not.'))
+                                   P('Once you have completed your proposal, click the Save and '
+                                     'Submit Draft button to submit your proposal. It will first '
+                                     'be screened by an administrator and then sent out to the '
+                                     'research community at SAFE for comments. This process '
+                                     'usually takes about 14 days. You will get an email to '
+                                     'confirm that you have submitted a project and then another '
+                                     'email to confirm whether the project has been accepted '
+                                     'or not.'))
             elif auth.user.id in project_coords and launch_new_version:
                 # able to create a new draft?
                 mode = 'view'
                 header_text = CAT(H2('Project details'), 
-                                   P('The form below shows the most recent version of your project proposal. If you want to update ',
-                                     'the project details or need to re-submit an updated version of a rejected proposal, then ',
-                                     'click on the Edit New Draft button.'))
+                                   P('The form below shows the most recent version of your '
+                                     'project proposal. If you want to update the project details '
+                                     'or need to re-submit an updated version of a rejected '
+                                     'proposal, then click on the Edit New Draft button.'))
 
             else:
                 # view only
                 mode = 'view'
                 header_text = CAT(H2('Project details'), 
-                                   P('The form below shows the details of a project proposal submitted to SAFE. Note that proposals ',
-                                     'cannot be edited once they have been submitted or are in review - you will have to wait for a', 
-                                     'decision to be made before you can alter a proposal.'),
-                                   P('You can add new project members to submitted project proposals both you and other project '
-                                     'coordinators may add new project links.'))
+                                   P('The form below shows the details of a project proposal '
+                                     'submitted to SAFE. Note that proposals cannot be edited '
+                                     'once they have been submitted or are in review - you will '
+                                     'have to wait for a decision to be made before you can alter '
+                                     'a proposal.'),
+                                   P('You can add new project members to submitted project '
+                                     'proposals both you and other project coordinators may add '
+                                     'new project links.'))
 
         else:
             # otherwise, we're providing a blank form with only a save changes button, 
@@ -1029,13 +1065,30 @@ def project_details():
                 pass
         else:
             admin = DIV()
-        
+
+        # flag merged projects
+        if project_id is not None and project_record.merged_to is not None:
+            merged_to = DIV(P(SPAN(_class='glyphicon glyphicon-info-sign'),
+                              ' The research carried out in this project '
+                              'is now being continued under a ',
+                              A('different project.', _href=URL('projects', 'project_view',
+                                                       args=project_record.merged_to),
+                                _class='alert-link', _style='text-decoration: underline;'),
+                              ' You can still update the project description. If you add new '
+                              'outputs here then they will also be added to the new project.'),
+                            _class="alert alert-info", _role="alert",
+                            _style='background-color:grey')
+        else:
+            merged_to = DIV()
+
         return dict(header_text = header_text,
                     form=form,
                     members=members,
                     linked_projects = linked_projects,
                     admin_history = admin_history,
-                    admin = admin)
+                    admin = admin,
+                    merged_to=merged_to)
+
 
 def validate_project_details(form):
     
@@ -1080,7 +1133,6 @@ def validate_project_details(form):
         form.errors.data_use = 'You must select at least one data use option'
 
 
-
 def validate_new_project_member(form):
     
     # Because we're using SQLFORM always in create mode (there's no existing record
@@ -1099,12 +1151,12 @@ def validate_new_project_member(form):
     for r in existing_record:
         db.project_members(r.id).delete_record()
 
+"""
+ADMINISTER NEW PROJECTS
+    - viewing a simple list of proposals that need action, with links to the
+    project_details page, which exposes an admin interface 
+"""
 
-## -----------------------------------------------------------------------------
-## ADMINISTER NEW PROJECTS
-## - viewing a simple list of proposals that need action, with links to the
-##   project_details page, which exposes an admin interface 
-## -----------------------------------------------------------------------------
 
 @auth.requires_membership('admin')
 def administer_projects():
@@ -1152,3 +1204,65 @@ def administer_projects():
                          )
     
     return dict(form=form)
+
+
+@auth.requires_login()
+def merge_projects():
+    """
+    Controller to merge an old project with a new umbrella project.
+    """
+
+    # get a set of current project names
+    qry = (db.project_id.id == db.project_details.project_id)
+    rowset = db(qry)
+
+    # create a form to select a source and destination project
+    form = SQLFORM.factory(
+        Field('merge_source_project', requires=IS_IN_DB(rowset, 'project_details.project_id',
+                                                        '(%(project_id)i) %(title)s')),
+        Field('merge_destination_project', requires=IS_IN_DB(rowset, 'project_details.project_id',
+                                                             '(%(project_id)i) %(title)s')))
+
+    if form.process(onvalidation=validate_merge).accepted:
+
+        # carry out the merging operations
+        src = form.vars.merge_source_project
+        dst = form.vars.merge_destination_project
+
+        # 1) get the source project record, which contains sets of references
+        # to other tables
+        qry = (db.project_id.project_details_id == src)
+        source_merge = db(qry).select().first()
+
+        # copy the outputs and datasets to the destination.
+        outputs = source_merge['project_outputs'].select()
+        for row in outputs:
+            db.project_outputs.insert(project_id=dst,
+                                      output_id=row.output_id,
+                                      user_id=auth.user.id,
+                                      date_added=datetime.date.today())
+
+        datasets = source_merge['project_datasets'].select()
+        for row in datasets:
+            db.project_datasets.insert(project_id=dst,
+                                       dataset_id=row.output_id,
+                                       user_id=auth.user.id,
+                                       date_added=datetime.date.today())
+
+        # set the source project as merged
+        db.project_id[src].update_record(merged_to=dst)
+
+    return dict(form=form)
+
+def validate_merge(form):
+
+    # projects should be different
+    if form.vars.merge_source_project == form.vars.merge_destination_project:
+        form.errors.merge_source_project = "Choose two different projects to merge"
+        form.errors.merge_destination_project = "Choose two different projects to merge"
+
+    # source project should not already be merged.
+    src_record = db.project_id[form.vars.merge_source_project]
+
+    if src_record.merged_to is not None:
+        form.errors.merge_source_project = "Source project has already been merged"
