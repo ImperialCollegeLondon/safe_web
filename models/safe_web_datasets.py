@@ -227,6 +227,8 @@ def submit_dataset_to_zenodo(recid, sandbox=False):
             zenodo_metadata['metadata']['embargo_date'] = metadata['embargo_date']
         elif metadata['access'] == 'Open':
             zenodo_metadata['metadata']['access_right'] = 'open'
+        elif metadata['access'] == 'Closed':
+            zenodo_metadata['metadata']['access_right'] = 'closed'
         else:
             return 'Publishing dataset: record ID {} has unknown access status: {}'.format(id, metadata['access'])
         
@@ -249,6 +251,13 @@ def submit_dataset_to_zenodo(recid, sandbox=False):
         # Are we publishing a new version of a file that has already been published?
         # The record will have a populated zenodo_parent_id field, either None or 
         # inherited from the last published predecessor .
+        
+        # TODO - non excel files. Users will submit metadata as an excel file and
+        # then connect this to a existing _unpublished_ deposition to which the files
+        # have been uploaded. So, this scenario needs a new variable showing the 
+        # deposition to adopt and then use the /api/deposit/depositions/:id/actions/edit
+        # action to amalgamate the two. So the dataset management page needs an option / form
+        # to provide a deposit number for submitted files that contain external_files
         
         if record.zenodo_parent_id is None:
             # get a new deposit resource
