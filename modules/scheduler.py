@@ -1,8 +1,18 @@
 import datetime
-import os
-import safe_dataset_checker
-import simplejson
-import requests
+from safe_web_datasets import verify_dataset
+from safe_web_global_functions import SAFEmailer, all_rv_summary_text
+
+"""
+The web2py HTML helpers are provided by gluon. This also provides the 'current' object, which
+provides the web2py 'request' API (note the single letter difference from the requests package!).
+The 'current' object is also extended by models/db.py to include the current 'db' DAL object
+and the 'myconf' AppConfig object so that they can accessed by this module
+"""
+
+from gluon.scheduler import Scheduler
+from gluon import *
+db = current.db
+
 
 """
 This module contains code for scheduled tasks on the 
@@ -47,15 +57,15 @@ def remind_about_unknowns():
                (db.research_visit.arrival_date > today) &
                (db.auth_user.id == db.research_visit.proposer_id) &
                (db.research_visit_member.research_visit_id == db.research_visit.id) &
-               (db.research_visit_member.user_id == None))
+               (db.research_visit_member.user_id is None))
     
     offenders = query.select(db.auth_user.first_name,
                              db.auth_user.email,
                              db.research_visit.title,
                              db.research_visit.id,
                              db.research_visit_member.id.count().with_alias('count'),
-                             groupby = [db.auth_user.first_name, db.auth_user.email, 
-                                        db.research_visit.id, db.research_visit.title])
+                             groupby=[db.auth_user.first_name, db.auth_user.email,
+                                      db.research_visit.id, db.research_visit.title])
     
     # now email each offender
     for offence in offenders:
@@ -78,9 +88,9 @@ def remind_about_unknowns():
     
     ids = [str(o.research_visit.id) for o in offenders]
     if len(ids) > 0:
-    	return 'Emailed proposers of the following research visits: ' + ','.join(ids)
+        return 'Emailed proposers of the following research visits: ' + ','.join(ids)
     else: 
-    	return 'No incomplete research visits found within the next week' 
+        return 'No incomplete research visits found within the next week'
 
 
 def update_deputy_coordinator():
@@ -96,7 +106,7 @@ def update_deputy_coordinator():
         attach = {'SAFE_visits_{}.txt'.format(datetime.date.today().isoformat()): schedule}
     
         SAFEmailer(subject='Weekly research visit summary',
-                   to= ['deputy.coord@safeproject.net', 'annuar@searrp.org'], # 'd.orme@imperial.ac.uk',
+                   to=['deputy.coord@safeproject.net', 'annuar@searrp.org'],
                    template='weekly_rv_summary.html',
                    template_dict=dict(),
                    attachment_string_objects=attach)
@@ -105,7 +115,7 @@ def update_deputy_coordinator():
         db.commit()
         
         return 'Weekly research visit summary emailed'
-    except:
+    except BaseException:
         raise RuntimeError('Failed to email weekly research visit summary')
 
 
@@ -115,8 +125,7 @@ def update_deputy_coordinator():
 # can set immediate=TRUE to get prompter running of a task, but that still might
 # wait for one or two heartbeats to actually run.
 
-from gluon.scheduler import Scheduler
-scheduler = Scheduler(db, 
+scheduler = Scheduler(db,
                       tasks=dict(remind_about_unknowns=remind_about_unknowns,
                                  update_deputy_coordinator=update_deputy_coordinator,
                                  verify_dataset=verify_dataset))
