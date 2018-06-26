@@ -5,7 +5,7 @@ import simplejson
 import requests
 
 """
-This model contains code for scheduled tasks on the 
+This module contains code for scheduled tasks on the 
 SAFE website DB. At present these are:
 
 Weekly:
