@@ -1,5 +1,5 @@
 import datetime
-from fs.osfs import OSFS
+from safe_web_global_functions import thumbnail, link_button
 
 ## -----------------------------------------------------------------------------
 ## NEWS

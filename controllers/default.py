@@ -1,20 +1,9 @@
 # -*- coding: utf-8 -*-
 # this file is released under public domain and you can use without limitations
 
-import datetime
-import dateutil.parser
-import requests
 from collections import Counter
 import random
-from gluon.serializers import json
-
-## -----------------------------------------------------------------------------
-## Used to access the Google Calendar API
-## -----------------------------------------------------------------------------
-
-from oauth2client.service_account import ServiceAccountCredentials
-from httplib2 import Http
-from apiclient.discovery import build
+from safe_web_global_functions import thumbnail
 
 ## -----------------------------------------------------------------------------
 ## Default page controllers

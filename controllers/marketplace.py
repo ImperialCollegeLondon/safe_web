@@ -1,4 +1,6 @@
 import datetime
+from safe_web_global_functions import (link_button, admin_decision_form,
+                                       safe_mailer, datepicker_script)
 
 ## -----------------------------------------------------------------------------
 ## Volunteer marketplace
@@ -179,7 +181,7 @@ def volunteer_details():
                              'url': URL('marketplace', 'volunteer_details', args=[id], scheme=True, host=True),
                              'submission_type': 'volunteer offer'}
             
-            SAFEmailer(to=auth.user.email,
+            safe_mailer(to=auth.user.email,
                        subject='SAFE: volunteer offer submitted',
                        template =  'generic_submitted.html',
                        template_dict = template_dict)
@@ -290,7 +292,7 @@ def volunteer_details():
             # pick an decision
             if admin.vars.decision == 'Approved':
                 
-                SAFEmailer(to=poster.email,
+                safe_mailer(to=poster.email,
                            subject='SAFE: volunteer offer approved',
                            template =  'generic_approved.html',
                            template_dict = template_dict)
@@ -299,7 +301,7 @@ def volunteer_details():
             
             elif admin.vars.decision == 'Resubmit':
 
-                SAFEmailer(to=poster.email,
+                safe_mailer(to=poster.email,
                            subject='SAFE: volunteer offer requires resubmission',
                            template =  'generic_resubmit.html',
                            template_dict = template_dict)
@@ -643,7 +645,7 @@ def help_request_details():
                                      'url': URL('marketplace', 'help_request_details', args=[id], scheme=True, host=True),
                                      'submission_type': 'project help request'}
             
-                    SAFEmailer(to=auth.user.email,
+                    safe_mailer(to=auth.user.email,
                                subject='SAFE: Vacancy advert submitted',
                                template =  'generic_submitted.html',
                                template_dict = template_dict)
@@ -782,7 +784,7 @@ def help_request_details():
             # pick an decision
             if admin.vars.decision == 'Approved':
                 
-                SAFEmailer(to=poster.email,
+                safe_mailer(to=poster.email,
                            subject='SAFE: vacancy advert approved',
                            template =  'generic_approved.html',
                            template_dict = template_dict)
@@ -791,7 +793,7 @@ def help_request_details():
             
             elif admin.vars.decision == 'Resubmit':
 
-                SAFEmailer(to=poster.email,
+                safe_mailer(to=poster.email,
                            subject='SAFE: Vacancy advert requires resubmission',
                            template =  'generic_resubmit.html',
                            template_dict = template_dict)

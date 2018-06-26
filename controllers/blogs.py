@@ -1,4 +1,4 @@
-
+from safe_web_global_functions import thumbnail, link_button, admin_decision_form, safe_mailer
 import datetime
 
 ## -----------------------------------------------------------------------------
@@ -84,7 +84,8 @@ def blog_details():
             readonly = False
         else:
             readonly = True if record.admin_status == 'Submitted' else False
-            buttons =  [TAG.BUTTON('Update and resubmit', _type="submit", _class="button btn btn-default",
+            buttons =  [TAG.BUTTON('Update and resubmit', _type="submit",
+                                   _class="button btn btn-default",
                                    _style='padding: 5px 15px 5px 15px;', _name='update')]
         
         # provide a form to create or edit
@@ -102,20 +103,23 @@ def blog_details():
             # get and add a comment to the history
             hist_str = '[{}] {} {}\\n -- {}\\n'
             new_history = hist_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
-                                                       auth.user.first_name,
-                                                       auth.user.last_name,
-                                                       'Post created' if blog_id is None else "Post edited")
-            
+                                          auth.user.first_name,
+                                          auth.user.last_name,
+                                          'Post created' if blog_id is None else "Post edited")
+
             if 'update' in req_keys:
                 id = record.update_record(admin_history = new_history + record.admin_history,
                                           **db.blog_posts._filter_fields(form.vars))
                 id = id.id
-                msg = CENTER(B('Blog post updated and resubmitted for approval.'), _style='color: green')
+                msg = CENTER(B('Blog post updated and resubmitted for approval.'),
+                             _style='color: green')
+
             elif 'create' in req_keys:
                 id = db.blog_posts.insert(admin_history=new_history, 
                                           **db.blog_posts._filter_fields(form.vars))
                 
-                msg = CENTER(B('Blog post created and submitted for approval.'), _style='color: green')
+                msg = CENTER(B('Blog post created and submitted for approval.'),
+                             _style='color: green')
             else:
                 pass
             
@@ -124,7 +128,7 @@ def blog_details():
                              'url': URL('blogs', 'blog_details', args=[id], scheme=True, host=True),
                              'submission_type': 'blog post'}
             
-            SAFEmailer(to=auth.user.email,
+            safe_mailer(to=auth.user.email,
                        subject='SAFE: blog post submitted',
                        template =  'generic_submitted.html',
                        template_dict = template_dict)
@@ -225,7 +229,7 @@ def blog_details():
             # pick an decision
             if admin.vars.decision == 'Approved':
                 
-                SAFEmailer(to=poster.email,
+                safe_mailer(to=poster.email,
                            subject='SAFE: blog post approved',
                            template =  'generic_approved.html',
                            template_dict = template_dict)
@@ -234,7 +238,7 @@ def blog_details():
             
             elif admin.vars.decision == 'Resubmit':
 
-                SAFEmailer(to=poster.email,
+                safe_mailer(to=poster.email,
                            subject='SAFE: blog post requires resubmission',
                            template =  'generic_resubmit.html',
                            template_dict = template_dict)

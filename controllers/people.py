@@ -1,4 +1,4 @@
-import datetime
+from safe_web_global_functions import link_button, safe_mailer
 
 ## -----------------------------------------------------------------------------
 ## INTERFACES TO VIEW AND MANAGE USERS AND PROJECT CONTACTS
@@ -374,7 +374,7 @@ def approve_new_user():
                      'h_and_s_url': URL('health_safety', 'health_and_safety', scheme=True, host=True),
                      'admin': auth.user.first_name + " " + auth.user.last_name}
     
-    SAFEmailer(to=user.email,
+    safe_mailer(to=user.email,
                subject='SAFE: registration approved',
                template =  'registration_approved.html',
                template_dict = template_dict)
@@ -402,7 +402,7 @@ def reject_new_user():
     
     template_dict = {'name': user.first_name, 'admin': auth.user.first_name + " " + auth.user.last_name}
     
-    SAFEmailer(to=user.email,
+    safe_mailer(to=user.email,
                subject='SAFE: registration rejected',
                template =  'registration_rejected.html',
                template_dict = template_dict)

@@ -1,4 +1,7 @@
 import datetime
+from safe_web_global_functions import (thumbnail, link_button, admin_decision_form,
+                                       safe_mailer, datepicker_script)
+
 
 """
 -----------------------------------------------------------------------------
@@ -496,7 +499,7 @@ def project_details():
                                           admin_history = new_history)
                     
                     # ii) email the proposer
-                    SAFEmailer(to=auth.user.email,
+                    safe_mailer(to=auth.user.email,
                                subject='SAFE: project proposal submitted',
                                template =  'project_submitted.html',
                                template_dict = {'name': auth.user.first_name,
@@ -532,7 +535,7 @@ def project_details():
                                               is_coordinator = True)
                     
                     # iv) email the proposer
-                    SAFEmailer(to=auth.user.email,
+                    safe_mailer(to=auth.user.email,
                                subject='SAFE: draft project proposal created',
                                template =  'project_draft_created.html',
                                template_dict = {'name': auth.user.first_name,
@@ -656,10 +659,10 @@ def project_details():
                                 _class='panel_body'),
                             _class="panel panel-primary"),
                         form.custom.end,
-                        datepicker_script(id = 'proj_datepicker',
-                                          autoclose = 'true',
-                                          startDate ='"+0d"',
-                                          endDate ='"2020-01-01"')) # approx end date
+                        datepicker_script(html_id='proj_datepicker',
+                                          autoclose='true',
+                                          startDate='"+0d"',
+                                          endDate='"2020-01-01"')) # approx end date
         
         elif mode == 'view':
             
@@ -1010,14 +1013,14 @@ def project_details():
                 # pick an decision
                 if admin.vars.decision == 'Approved':
                     
-                    SAFEmailer(to=proposer.email,
+                    safe_mailer(to=proposer.email,
                                subject='SAFE: project proposal approved',
                                template =  'project_approved.html',
                                template_dict = template_dict)
                     
                 elif admin.vars.decision == 'Resubmit':
                     
-                    SAFEmailer(to=proposer.email,
+                    safe_mailer(to=proposer.email,
                                subject='SAFE: project proposal requires resubmission',
                                template =  'project_resubmit.html',
                                template_dict = template_dict)
@@ -1025,7 +1028,7 @@ def project_details():
                 elif admin.vars.decision == 'In Review':
                     
                     # Email the proposer
-                    SAFEmailer(to=proposer.email,
+                    safe_mailer(to=proposer.email,
                                subject='SAFE: project proposal sent for review',
                                template =  'project_in_review.html',
                                template_dict = template_dict)
@@ -1041,7 +1044,7 @@ def project_details():
                     coords = list(set([r.email for r in coords]))
                     
                     # Email the review panel
-                    SAFEmailer(to = ['info@safeproject.net'],
+                    safe_mailer(to = ['info@safeproject.net'],
                                bcc = coords,
                                cc_info = False,
                                subject='SAFE Project Proposal Review (' + str(project_id) + ')',
