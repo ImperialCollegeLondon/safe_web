@@ -16,11 +16,6 @@ and the 'myconf' AppConfig object so that they can accessed by this module
 """
 
 from gluon import *
-db = current.db
-session = current.session
-response = current.response
-request = current.request
-mail = current.mail
 
 """
 Formatting functions for SQLFORM grids, taking values from 
@@ -77,6 +72,9 @@ def datepicker_script(html_id, **settings):
     at all and certainly isn't reflective of my general attitude to CSS in setting this up...
     """
 
+    db = current.db
+    session = current.session
+
     # load the db table into session if it isn't there already
     if not session.public_holidays:
         holidays = db(db.public_holidays).select()
@@ -92,40 +90,41 @@ def datepicker_script(html_id, **settings):
         settings_str = ''
 
     javascript = """
-        $('head').append($('<link  href="%(cssurl)s" type="text/css" rel="stylesheet" />'));
-        var sabah_holiday_dates = %(holiday_dates)s;
-        var sabah_holiday_names = %(holiday_titles)s;
-        $.getScript('%(scripturl)s').done(function(){
-            $('#%(_id)s').datepicker({
-                format: w2p_ajax_date_format.replace('%%Y', 'yyyy').replace('%%m', 
-                    'mm').replace('%%d', 'dd'),
-                %(settings)s,
-                beforeShowDay: function(date){
+        $('head').append($('<link  href="{cssurl}" type="text/css" rel="stylesheet" />'));
+        var sabah_holiday_dates = {holiday_dates};
+        var sabah_holiday_names = {holiday_titles};
+        $.getScript('{scripturl}').done(function(){{
+            $('#{html_id}').datepicker({{
+                format: w2p_ajax_date_format.replace('%Y', 'yyyy').replace('%m', 
+                    'mm').replace('%d', 'dd'),
+                {settings},
+                beforeShowDay: function(date){{
                     var d = date;
                     var curr_date = d.getDate();
                     var curr_month = d.getMonth() + 1; //Months are zero based
                     var curr_year = d.getFullYear();
                     var formattedDate = curr_date + "/" + curr_month + "/" + curr_year
                     var holiday_index = $.inArray(formattedDate, sabah_holiday_dates) 
-                    if (holiday_index != -1) {
-                        return {
+                    if (holiday_index != -1) {{
+                        return {{
                             classes: 'holiday',
                             tooltip: sabah_holiday_names[holiday_index]
-                        };
-                    }
+                        }};
+                    }}
                     return;
-                 }
-            })
-        });
+                }}
+            }})
+        }});
         """
     
-    javascript = javascript.format({
-        'cssurl': URL('static', 'plugin_bs_datepicker/datepicker.css'),
-        'scripturl': URL('static', 'plugin_bs_datepicker/bootstrap-datepicker.js'),
-        '_id': html_id,
-        'settings': settings_str,
-        'holiday_dates': session.public_holidays['dates'],
-        'holiday_titles': session.public_holidays['titles']})
+    javascript = javascript.format(
+        cssurl=URL('static', 'plugin_bs_datepicker/datepicker.css'),
+        scripturl=URL('static', 'plugin_bs_datepicker/bootstrap-datepicker.js'),
+        html_id=html_id,
+        settings=settings_str,
+        holiday_dates=session.public_holidays['dates'],
+        holiday_titles=session.public_holidays['titles']
+    )
 
     return CAT(STYLE(XML('.holiday {background: #FE9781;}')), SCRIPT(javascript))
 
@@ -171,6 +170,10 @@ def safe_mailer(subject, to, template, template_dict, cc=None,
     we're typically attaching virtual files made on the fly. The contents
     object must have a read method.
     """
+
+    db = current.db
+    response = current.response
+    mail = current.mail
 
     # get the html version, strip it down to text and combine
     html_msg = response.render('email_templates/' + template, template_dict)
@@ -272,6 +275,9 @@ def single_rv_summary_excel(rv_id):
     json used to populate the logistics and costs page, so can be updated from
     a single location
     """
+
+    db = current.db
+    request = current.request
 
     # load costs from the json data
     f = os.path.join(request.folder, 'private', 'content/en/info/costs.json')
@@ -585,6 +591,9 @@ def all_rv_summary_excel():
     a single location
     """
 
+    db = current.db
+    request = current.request
+
     # load costs from the json data
     f = os.path.join(request.folder, 'private', 'content/en/info/costs.json')
     costs_dict = simplejson.load(open(f))
@@ -896,6 +905,8 @@ def all_rv_summary_text():
     """
     This creates a text file compiling ongoing and future research visit data.
     """
+
+    db = current.db
 
     # GET THE ONGOING RVs
     today = datetime.date.today()
