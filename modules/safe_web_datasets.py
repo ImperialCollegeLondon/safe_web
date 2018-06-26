@@ -6,6 +6,7 @@ import copy
 import safe_dataset_checker
 from networkx import Graph, bfs_successors, get_node_attributes
 import requests
+from safe_web_global_functions import safe_mailer
 
 """
 The web2py HTML helpers are provided by gluon. This also provides the 'current' object, which
@@ -173,10 +174,10 @@ def verify_dataset(record_id, email=False):
                 'FAIL': ['Dataset failed checks', 'dataset_check_fail.html'],
                 'ERROR': ['Error checking dataset', 'dataset_check_error.html']}
         
-        SAFEmailer(to=record.uploader_id.email,
-                   subject=opts[outcome][0],
-                   template=opts[outcome][1],
-                   template_dict=ret_dict)
+        safe_mailer(to=record.uploader_id.email,
+                    subject=opts[outcome][0],
+                    template=opts[outcome][1],
+                    template_dict=ret_dict)
     
     # A task run by a worker does not automatically commit changes, so
     # save any by changes before ending

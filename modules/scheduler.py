@@ -1,6 +1,6 @@
 import datetime
 from safe_web_datasets import verify_dataset
-from safe_web_global_functions import SAFEmailer, all_rv_summary_text
+from safe_web_global_functions import safe_mailer, all_rv_summary_text
 
 """
 The web2py HTML helpers are provided by gluon. This also provides the 'current' object, which
@@ -11,7 +11,6 @@ and the 'myconf' AppConfig object so that they can accessed by this module
 
 from gluon.scheduler import Scheduler
 from gluon import *
-db = current.db
 
 
 """
@@ -37,7 +36,8 @@ def remind_about_unknowns():
     completed the visitor details for visits that start 
     within the next week.
     """
-    
+    db = current.db
+
     # get a list of research visits with <= a week to go.
     today = datetime.date.today()
     one_week_from_now = today + datetime.timedelta(days=7)
@@ -78,10 +78,10 @@ def remind_about_unknowns():
                                     args=[offence.research_visit.id], scheme='https', 
                                     host='www.safeproject.net')}
         # email this offender
-        SAFEmailer(subject='SAFE Research Visit details',
-                   to=offence.auth_user.email,
-                   template='research_visit_details_reminder.html',
-                   template_dict=template_dict)
+        safe_mailer(subject='SAFE Research Visit details',
+                    to=offence.auth_user.email,
+                    template='research_visit_details_reminder.html',
+                    template_dict=template_dict)
         
         # commit changes to the db - necessary for things running from models
         db.commit()
@@ -99,17 +99,19 @@ def update_deputy_coordinator():
     Emails the deputy coordinator attaching a text representation
     of the research visit schedule.
     """
-    
+
+    db = current.db
+
     # get the file contents
     try:
         schedule = all_rv_summary_text()
         attach = {'SAFE_visits_{}.txt'.format(datetime.date.today().isoformat()): schedule}
     
-        SAFEmailer(subject='Weekly research visit summary',
-                   to=['deputy.coord@safeproject.net', 'annuar@searrp.org'],
-                   template='weekly_rv_summary.html',
-                   template_dict=dict(),
-                   attachment_string_objects=attach)
+        safe_mailer(subject='Weekly research visit summary',
+                    to=['deputy.coord@safeproject.net', 'annuar@searrp.org'],
+                    template='weekly_rv_summary.html',
+                    template_dict=dict(),
+                    attachment_string_objects=attach)
         
         # commit changes to the db - necessary for things running from models
         db.commit()
@@ -125,7 +127,7 @@ def update_deputy_coordinator():
 # can set immediate=TRUE to get prompter running of a task, but that still might
 # wait for one or two heartbeats to actually run.
 
-scheduler = Scheduler(db,
+scheduler = Scheduler(current.db,
                       tasks=dict(remind_about_unknowns=remind_about_unknowns,
                                  update_deputy_coordinator=update_deputy_coordinator,
                                  verify_dataset=verify_dataset))
