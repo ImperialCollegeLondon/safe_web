@@ -2,11 +2,100 @@
 
 {{=H2('Administer datasets')}}
 
-<p>This page shows the status of the most recent version of all the datasets submitted to the website and provides some management tools.</p>
+<p>This page shows the status of the most recent version of all the datasets submitted
+    to the website and provides some management tools.</p>
 
-<p>Click <a href={{=URL(vars={'keywords': 'datasets.check_outcome+%3D+%22PASS%22+and+datasets.zenodo_submission_status+%21%3D+%22Published%22'})}}>here</a> to focus in on datasets that have passed verification but which haven't been published.</p>
+<p>When a new dataset or new version is uploaded, the metadata formatting should be checked
+    automatically but if it has not yet been run for a dataset, then the 'Check' button will
+    start the check immediately.
+</p>
+<p>When a dataset has passed checking, it can be published to Zenodo. When a dataset only
+    consists of the Excel datafile and metadata, the 'Publish' button will send the metadata
+    and data to Zenodo. When a dataset has other associated files, then this button will show
+    'Adopt' instead of 'Publish'. The other files will first need to be uploaded to a draft
+    Zenodo deposit. When you click on the Adopt button, you will be prompted for the ID of that
+    deposit and then the metadata and data in the submitted Excel file will be linked to the
+    external deposit, which will then be published.
+</p>
+
+<p>If you want to resubmit a corrected version of a file that another user has submitted
+    but which has failed checks, then the 'Resubmit' button will take you to the submission
+    page for the dataset.
+</p>
+
+<p>Click <a href={{=URL(vars={'keywords': 'datasets.check_outcome+%3D+%22PASS%22+and+datasets.zenodo_submission_status+%21%3D+%22Published%22'})}}>here</a> to
+    focus in on datasets that have passed verification but which haven't been published.</p>
 
 
 <br>
 {{=form}}
 <br>
+
+<div class="modal fade" id="adopt_record" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h4>Adopt record</h4></div>
+            <div class="modal-body">This dataset contains some external files which must be
+                uploaded to a Zenodo deposition and then adopted to tie it to the metadata.
+                Please provide the deposit ID number here:
+                <label for="zenodo_record">Deposit ID:</label>
+                <input id="zenodo_record" type="text"/>
+                <div id="zenodo_valid" style="color: red"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-default" data-dismiss="modal">
+                    Cancel
+                </button>
+                <a href="javascript:void(0);" id="submit_adopted" class="btn btn-sm btn-success success">Submit</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{block page_js}}
+<script>
+    //This JS is to handle datasets that adopt external files already in an
+    // unpublished Zenodo deposit. These need a reference to the Zenodo deposit
+    // to be passed back to the server.
+
+    var rec_id = null;
+
+    // 1) When an adopt button (as opposed to just a publish button for
+    //    only internal dataset) is clicked, populate the global variable with
+    //    the dataset record id, and expose a modal containing an input for
+    //    the Zenodo ID
+
+    $( ".adopt").click(function(e) {
+
+        // stop the redirect and grab the element
+        e.preventDefault();
+        var elem = e.target;
+        rec_id = elem.getAttribute('record_id');
+
+        // popup an input to get the
+        $('#adopt_record').modal('show');
+    });
+
+    // 2) When the submit button on the modal is pressed, create the URL
+    //    and follow it.
+    $( "#submit_adopted").click(function(e) {
+
+        // grab the dataset record and the zenodo record
+        var elem = e.target;
+        var zenodo = document.getElementById('zenodo_record');
+        var zenodo_id = zenodo.value;
+        console.log(zenodo_id);
+        if(/^\d+$/.test(zenodo_id)){
+            // put the URL together and load it
+            url = '/datasets/run_submit_dataset_to_zenodo?id=' + rec_id +
+                    '&zenodo=' + zenodo_id + '&manage=';
+            window.location = url;
+        } else {
+            // give an error message
+            var valid = document.getElementById('zenodo_valid');
+            valid.innerText = "Zenodo deposit must be a number"
+        }
+    });
+
+</script>
+{{end page_js}}
