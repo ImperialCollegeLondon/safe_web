@@ -1,5 +1,4 @@
 import datetime
-from safe_web_datasets import verify_dataset
 from safe_web_global_functions import safe_mailer, all_rv_summary_text
 
 """
@@ -9,7 +8,6 @@ The 'current' object is also extended by models/db.py to include the current 'db
 and the 'myconf' AppConfig object so that they can accessed by this module
 """
 
-from gluon.scheduler import Scheduler
 from gluon import *
 
 
@@ -36,6 +34,7 @@ def remind_about_unknowns():
     completed the visitor details for visits that start 
     within the next week.
     """
+
     db = current.db
 
     # get a list of research visits with <= a week to go.
@@ -120,20 +119,3 @@ def update_deputy_coordinator():
     except BaseException:
         raise RuntimeError('Failed to email weekly research visit summary')
 
-
-# Load the scheduler and set the task names. With only daily tasks, a slower
-# heartbeat is fine, but with dataset checking, a snappier response is needed, 
-# so the default 3 second heartbeat is used. Note that individual queue tasks 
-# can set immediate=TRUE to get prompter running of a task, but that still might
-# wait for one or two heartbeats to actually run.
-
-scheduler = Scheduler(current.db,
-                      tasks=dict(remind_about_unknowns=remind_about_unknowns,
-                                 update_deputy_coordinator=update_deputy_coordinator,
-                                 verify_dataset=verify_dataset))
-
-# These tasks then need to be queued using scheduler.queue_task or manually via 
-# the appadmin interface. Don't do it here as they'll be queued every time the 
-# model runs, which is basically every time a webpage is loaded! So, 
-# programatically, they can go in a controller which an admin can run once to 
-# get a defined set of queues going.
