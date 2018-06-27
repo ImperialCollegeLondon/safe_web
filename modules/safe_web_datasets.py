@@ -237,22 +237,23 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
 
     metadata = record.dataset_metadata
 
-    if record.zenodo_parent_id is None:
-        if metadata['external_files'] is not None:
-            code, links, response = adopt_external_zenodo(api, token, record, deposit_id)
-        else:
-            code, links, response = create_excel_zenodo(api, token, record)
+    if 'external_files' in metadata and metadata['external_files'] is not None:
+        code, links, response = adopt_external_zenodo(api, token, record, deposit_id)
+        external = True
     else:
-        if metadata['external_files'] is not None:
-            code, links, response = adopt_external_zenodo(api, token, record, deposit_id)
+        if record.zenodo_parent_id is None:
+            code, links, response = create_excel_zenodo(api, token, record)
         else:
             code, links, response = update_excel_zenodo(api, token, record)
+        external = False
 
     if code > 0:
-        # There has been a problem - try and delete the failed deposit and update the record
-        if links is not None:
+        # There has been a problem. If this is an internal Excel file only, then try
+        # and delete the failed deposit and update the record
+        if links is not None and not external:
             # This can fail and leave a hanging deposit, but we won't let that stop the function
             _, _ = delete_deposit(links, token)
+
         # update the record
         record.update_record(zenodo_submission_status='ZEN_FAIL',
                              zenodo_submission_date=datetime.datetime.now(),
@@ -391,19 +392,22 @@ def adopt_external_zenodo(api, token, record, deposit_id):
     # upload the record metadata
     if code == 0:
         # store previous response containing the links dictionary
+        # and the list of remote files
+        remote_files = response['files']
         links = response['links']
         code, response = upload_metadata(links, token, record)
+
+        # If we got a deposit, check the files found in the deposit match
+        # with the external files specified in the record metadata.
+        remote_filenames = {rfile['filename'] for rfile in remote_files}
+        external_files = set(record.dataset_metadata['external_files'])
+
+        if not remote_filenames == external_files:
+            code = 1
+            response = "Files in deposit do not match external files listed in Excel file"
+            links = None
     else:
         links = None
-
-    # Check the files found in the deposit match with the external files specified
-    # in the record metadata.
-    deposit_files = {zfile['filename'] for zfile in response['files']}
-    external_files = set(record.dataset_metadata['external_files'])
-
-    if not deposit_files == external_files:
-        code = 1
-        response = "Files in deposit do not match external files listed in Excel file"
 
     # Upload the Excel file - the expectation here is that the Excel file
     # associated with previous drafts is deleted as part of the manual file
@@ -763,24 +767,24 @@ def taxon_index_to_text(taxon_index):
             else:
                 string = data['nm']
 
-        # markup user defined taxa
-        if data['tp'] == 'user':
-            string = '[' + string + ']'
-                
-            # format and add synonym/misapplications
-            if data['as'] is not None and data['aslv'] in ['genus', 'species', 'subspecies']:
-                string += ' (as <i>{as}</i>)'.format(**data)
-            elif data['as'] is not None:
-                string += ' (as {as})'.format(**data)
-            
+            # markup user defined taxa
+            if data['tp'] == 'user':
+                string = '[' + string + ']'
+
+                # format and add synonym/misapplications
+                if data['as'] is not None and data['aslv'] in ['genus', 'species', 'subspecies']:
+                    string += ' (as <i>{as}</i>)'.format(**data)
+                elif data['as'] is not None:
+                    string += ' (as {as})'.format(**data)
+
             # get the indent depth
             if data['lv'] in taxon_indents:
                 # use the standard depth for this taxonomic level
                 ind = indent_str * taxon_indents[data['lv']]
             else:
                 # 1 step further in than the current stack length
-                ind = indent_str * (len(stack) - 1) 
-            
+                ind = indent_str * (len(stack) - 1)
+
             html += ind + string + '</br>'
     
         if not stack:
