@@ -9,11 +9,12 @@
 #request.requires_https()
 
 ## app configuration made easy. Look inside private/appconfig.ini
+import os
 from gluon.contrib.appconfig import AppConfig
 from gluon.tools import Auth, Service #, PluginManager
 from gluon.tools import Recaptcha2
 from gluon import current
-import os
+from plugin_ckeditor import CKEditor
 
 ## LOAD THE CONFIG to get DB and mail settings. This file is not under
 ## version control, so can be different on production and development servers
@@ -39,10 +40,6 @@ response.formstyle = myconf.take('forms.formstyle')
 response.form_label_separator = myconf.take('forms.separator')
 
 
-## Store db and conf in the current object so they can be imported by modules
-current.myconf = myconf
-current.db = db
-
 ## ----------------------------------------------------------------------------
 ## ENABLE AUTH
 ## - authentication (registration, login, logout, ... )
@@ -64,6 +61,11 @@ mail.settings.server = myconf.take('smtp.server')
 mail.settings.sender = myconf.take('smtp.sender')
 mail.settings.login = myconf.take('smtp.login')
 mail.settings.ssl = True
+
+## Store db, conf and mail in the current object so they can be imported by modules
+current.myconf = myconf
+current.db = db
+current.mail = mail
 
 ## -----------------------------------------------------------------------------
 ## EXTEND THE USER TABLE DEFINITION
@@ -162,7 +164,6 @@ auth.settings.captcha = Recaptcha2(request,
 ##    it turns out to be quite hard to switch the settings
 ## -----------------------------------------------------------------------------
 
-from plugin_ckeditor import CKEditor
 ckeditor = CKEditor(db)
 
 from fs.osfs import OSFS
