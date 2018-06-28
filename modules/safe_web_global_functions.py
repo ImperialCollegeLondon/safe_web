@@ -565,7 +565,7 @@ class SummaryTracker:
         self.summary = OrderedDict(counts)
 
         # add all the transfer types
-        for t in transfer_set:
+        for t in current.transfer_set:
             self.summary[t] = {d: 0 for d in self.dates}
 
     def update(self, k, start, end):
