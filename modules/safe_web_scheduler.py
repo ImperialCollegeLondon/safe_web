@@ -92,7 +92,7 @@ def remind_about_unknowns():
         return 'No incomplete research visits found within the next week'
 
 
-def update_deputy_coordinator():
+def update_deputy_coordinator(send_to=('deputy.coord@safeproject.net', 'annuar@searrp.org')):
     
     """
     Emails the deputy coordinator attaching a text representation
@@ -107,7 +107,7 @@ def update_deputy_coordinator():
         attach = {'SAFE_visits_{}.txt'.format(datetime.date.today().isoformat()): schedule}
     
         safe_mailer(subject='Weekly research visit summary',
-                    to=['deputy.coord@safeproject.net', 'annuar@searrp.org'],
+                    to=send_to,
                     template='weekly_rv_summary.html',
                     template_dict=dict(),
                     attachment_string_objects=attach)
@@ -118,4 +118,3 @@ def update_deputy_coordinator():
         return 'Weekly research visit summary emailed'
     except BaseException:
         raise RuntimeError('Failed to email weekly research visit summary')
-
