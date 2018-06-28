@@ -242,7 +242,7 @@ def volunteer_details():
                             form.custom.end,
                            _class='panel_body'),
                         _class="panel panel-primary"),
-                        datepicker_script(id = 'vol_datepicker',
+                        datepicker_script(html_id = 'vol_datepicker',
                                           autoclose = 'true',
                                           startDate ='"+0d"',
                                           endDate ='"+365d"'))
@@ -733,7 +733,7 @@ def help_request_details():
                                 form.custom.end,
                                _class='panel_body'),
                             _class="panel panel-primary"),
-                            datepicker_script(id = 'help_datepicker',
+                            datepicker_script(html_id = 'help_datepicker',
                                               autoclose = 'true',
                                               startDate ='"+0d"',
                                               endDate ='""'))

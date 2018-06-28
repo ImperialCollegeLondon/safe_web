@@ -4,7 +4,7 @@ from gluon.serializers import json
 
 from safe_web_global_functions import (admin_decision_form, safe_mailer, datepicker_script,
                                        all_rv_summary_text, all_rv_summary_excel,
-                                       single_rv_summary_excel)
+                                       single_rv_summary_excel, uname)
 
 ## -----------------------------------------------------------------------------
 ## RESEARCH VISITS
@@ -298,10 +298,10 @@ def research_visit_details():
                     visit_end_max = project_end.isoformat()
             
         # javascript to run the datepicker
-        visit_js =datepicker_script(id = 'visit_datepicker',
-                                    autoclose = 'true',
-                                    startDate ='"' + visit_start_min + '"',
-                                    endDate ='"' + visit_end_max + '"')
+        visit_js = datepicker_script(html_id = 'visit_datepicker',
+                                     autoclose = 'true',
+                                     startDate ='"' + visit_start_min + '"',
+                                     endDate ='"' + visit_end_max + '"')
         
         # status flag
         if record is not None:
@@ -579,7 +579,7 @@ def research_visit_details():
                         _class='panel panel-primary')
         
         # add javascript to power and constrain the daterange picker and hide/reveal maliau options
-        accom_js = datepicker_script(id = 'accom_datepicker',
+        accom_js = datepicker_script(html_id = 'accom_datepicker',
                                      autoclose = 'true',
                                      startDate ='"' + record.arrival_date.isoformat() + '"',
                                      endDate ='"' + record.departure_date.isoformat() + '"')
@@ -622,7 +622,7 @@ def research_visit_details():
         else:
             transfer_days = '"12456"'
         
-        transfers_js = datepicker_script(id = 'transfer_datepicker', 
+        transfers_js = datepicker_script(html_id = 'transfer_datepicker', 
                                          autoclose = "true",
                                          startDate ='"' + record.arrival_date.isoformat() + '"',
                                          endDate ='"' + record.departure_date.isoformat() + '"',
@@ -675,7 +675,7 @@ def research_visit_details():
                         # DIV(_class='panel-footer'),
                         _class='panel panel-primary')
         
-        ra_js = datepicker_script(id = 'ra_datepicker', 
+        ra_js = datepicker_script(html_id = 'ra_datepicker', 
                                   autoclose = "true",
                                   startDate ='"' + record.arrival_date.isoformat() + '"',
                                   endDate ='"' + record.departure_date.isoformat() + '"')
@@ -1403,7 +1403,7 @@ def create_late_research_visit():
                        _class='row', _style='margin:10px 10px')
         
         # javascript to run the datepicker without date constraints
-        visit_js =datepicker_script(id = 'visit_datepicker',
+        visit_js =datepicker_script(html_id = 'visit_datepicker',
                                     autoclose = 'true',
                                     startDate ='""',
                                     endDate ='""')
