@@ -9,19 +9,18 @@
 #request.requires_https()
 
 ## app configuration made easy. Look inside private/appconfig.ini
+import os
 from gluon.contrib.appconfig import AppConfig
 from gluon.tools import Auth, Service #, PluginManager
 from gluon.tools import Recaptcha2
-
-import base64
-import os
+from gluon import current
+from plugin_ckeditor import CKEditor
 
 ## LOAD THE CONFIG to get DB and mail settings. This file is not under
 ## version control, so can be different on production and development servers
 
 ## once in production, remove reload=True to gain full speed
 myconf = AppConfig(reload=True)
-
 
 ## ----------------------------------------------------------------------------
 ## DB connection definitions
@@ -37,14 +36,9 @@ db = DAL(myconf.take('db.uri'), pool_size=myconf.take('db.pool_size', cast=int),
 response.generic_patterns = ['*'] if request.is_local else []
 
 ## choose a style for forms
-response.formstyle = myconf.take('forms.formstyle')  # or 'bootstrap3_stacked' or 'bootstrap2' or other
+response.formstyle = myconf.take('forms.formstyle')
 response.form_label_separator = myconf.take('forms.separator')
 
-## (optional) optimize handling of static files
-# response.optimize_css = 'concat,minify,inline'
-# response.optimize_js = 'concat,minify,inline'
-## (optional) static assets folder versioning
-# response.static_version = '0.0.0'
 
 ## ----------------------------------------------------------------------------
 ## ENABLE AUTH
@@ -67,6 +61,11 @@ mail.settings.server = myconf.take('smtp.server')
 mail.settings.sender = myconf.take('smtp.sender')
 mail.settings.login = myconf.take('smtp.login')
 mail.settings.ssl = True
+
+## Store db, conf and mail in the current object so they can be imported by modules
+current.myconf = myconf
+current.db = db
+current.mail = mail
 
 ## -----------------------------------------------------------------------------
 ## EXTEND THE USER TABLE DEFINITION
@@ -165,7 +164,6 @@ auth.settings.captcha = Recaptcha2(request,
 ##    it turns out to be quite hard to switch the settings
 ## -----------------------------------------------------------------------------
 
-from plugin_ckeditor import CKEditor
 ckeditor = CKEditor(db)
 
 from fs.osfs import OSFS

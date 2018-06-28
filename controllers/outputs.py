@@ -1,4 +1,5 @@
 import datetime
+from safe_web_global_functions import thumbnail, link_button, admin_decision_form, safe_mailer
 
 ## -----------------------------------------------------------------------------
 ## OUTPUTS
@@ -219,7 +220,7 @@ def output_details():
             if form.submit:
                 
                 # Submit button pressed: Signal success and email the proposer
-                SAFEmailer(to=auth.user.email,
+                safe_mailer(to=auth.user.email,
                            subject='SAFE: project output submitted',
                            template =  'output_submitted.html',
                            template_dict = template_dict)
@@ -236,7 +237,7 @@ def output_details():
             else:
                 # is this brand new? If so send a link
                 if record is None:
-                    SAFEmailer(to=auth.user.email,
+                    safe_mailer(to=auth.user.email,
                                subject='SAFE: project output draft created',
                                template =  'output_created.html',
                                template_dict = template_dict)
@@ -476,7 +477,7 @@ def output_details():
             
             if admin.vars.decision == 'Approved':
                 
-                SAFEmailer(to=record.user_id.email,
+                safe_mailer(to=record.user_id.email,
                            subject='SAFE: project output approved',
                            template =  'output_approved.html',
                            template_dict = admin_template_dict)
@@ -485,7 +486,7 @@ def output_details():
                 
             elif admin.vars.decision == 'Resubmit':
                 
-                SAFEmailer(to=record.user_id.email,
+                safe_mailer(to=record.user_id.email,
                            subject='SAFE: resubmit project output',
                            template =  'output_resubmit.html',
                            template_dict = admin_template_dict)

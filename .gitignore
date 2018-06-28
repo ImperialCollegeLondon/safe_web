@@ -33,5 +33,3 @@ private/appconfig.ini
 # and ignore David's appadmin password reminder file
 private/password.txt
 
-# ignore modules since these are loaded externally from their own repos and shouldn't be under VC here
-modules/

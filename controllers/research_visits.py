@@ -1,9 +1,10 @@
 import datetime
-from gluon.storage import Storage
-import openpyxl
-import itertools
 from collections import Counter
 from gluon.serializers import json
+
+from safe_web_global_functions import (admin_decision_form, safe_mailer, datepicker_script,
+                                       all_rv_summary_text, all_rv_summary_excel,
+                                       single_rv_summary_excel)
 
 ## -----------------------------------------------------------------------------
 ## RESEARCH VISITS
@@ -211,7 +212,7 @@ def research_visit_details():
             
             # if this is a new draft, email the proposer the link for the page
             if rv_id is None:
-                SAFEmailer(to=auth.user.email,
+                safe_mailer(to=auth.user.email,
                            subject='SAFE: draft research visit proposal created',
                            template =  'research_visit_created.html',
                            template_dict = {'name': auth.user.first_name,
@@ -1165,7 +1166,7 @@ def research_visit_details():
                                          admin_history = new_history)
             
                     # ii) email the proposer
-                    SAFEmailer(to=auth.user.email,
+                    safe_mailer(to=auth.user.email,
                                subject='SAFE: research visit proposal submitted',
                                template =  'research_visit_submitted.html',
                                template_dict = {'name': auth.user.first_name,
@@ -1239,7 +1240,7 @@ def research_visit_details():
             if admin.vars.decision == 'Approved':
                 
                 # send email message to the proposer and CC Ryan.
-                SAFEmailer(to=proposer.email,
+                safe_mailer(to=proposer.email,
                            cc=['deputy.coord@safeproject.net', 'account@searrp.org', 'annuar@searrp.org'],
                            subject='SAFE: research visit proposal approved',
                            template =  'research_visit_approved.html',
@@ -1258,7 +1259,7 @@ def research_visit_details():
                                          'maliau_table': maliau_table,
                                          'proposer_name': proposer_name}
                     
-                    SAFEmailer(to='roserlie5@gmail.com',
+                    safe_mailer(to='roserlie5@gmail.com',
                                cc=[proposer.email, 'inid69@yahoo.com', 'annuar@searrp.org',
                                    'jarizul.gjule@gmail.com', 'deputy.coord@safeproject.net'],
                                reply_to=proposer.email,
@@ -1268,7 +1269,7 @@ def research_visit_details():
                     
             elif admin.vars.decision == 'Resubmit':
                 
-                SAFEmailer(to=proposer.email,
+                safe_mailer(to=proposer.email,
                            subject='SAFE: research visit proposal requires resubmission',
                            template =  'research_visit_resubmit.html',
                            template_dict = template_dict)
@@ -1374,7 +1375,7 @@ def create_late_research_visit():
             
             # email the identified coordinator the link for the page
             proposer = db.auth_user[visit.vars.proposer_id]
-            SAFEmailer(to=proposer.email,
+            safe_mailer(to=proposer.email,
                         subject='SAFE: draft short notice research visit proposal created on your behalf',
                         template =  'research_visit_created.html',
                         template_dict = {'name': auth.user.first_name,

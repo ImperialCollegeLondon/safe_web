@@ -1,8 +1,7 @@
 import shutil
 import hashlib
 import datetime
-import safe_dataset_checker
-from gluon.contenttype import contenttype
+from safe_web_datasets import submit_dataset_to_zenodo, dataset_description
 
 def view_datasets():
     """
@@ -112,7 +111,7 @@ def view_dataset():
                          _width='100%', _class='table table-striped table-bordered')
 
     # get the description
-    description = XML(_dataset_description(record, include_gemini=True))
+    description = XML(dataset_description(record, include_gemini=True))
 
     return(dict(record=record, description=description, 
                 history_table=history_table))
@@ -132,9 +131,13 @@ def administer_datasets():
     
     # alter the file representation to add the dataset id as a variable to the download
     db.datasets.file.represent = lambda value, row: A('Download file', _href=URL('datasets', 'download_dataset', row.file, vars={'dataset_id': row.dataset_id}))
+
     # alter the upload datetime representation
     db.datasets.upload_datetime.represent = lambda value, row: value.date().isoformat()
-    
+
+    # hide the metadata
+    db.datasets.dataset_metadata.readable = False
+
     # add buttons to provide options
     # - run check (can only be run if file has not passed)
     def _run_check(row):
@@ -143,7 +146,8 @@ def administer_datasets():
                      _style='padding: 3px 10px 3px 10px')
         else:
             btn =  A('Check', _class='button btn btn-default',
-                     _href=URL("datasets","run_verify_dataset", vars={'record_id':row.id, 'email':0, 'manage':''}),
+                     _href=URL("datasets","run_verify_dataset",
+                               vars={'record_id':row.id, 'email':0, 'manage':''}),
                      _style='padding: 3px 10px 3px 10px;')
         return btn
     
@@ -151,11 +155,16 @@ def administer_datasets():
     def _run_publish(row):
         if row.dataset_check_outcome != 'PASS' or row.zenodo_submission_status == 'ZEN_PASS':
             btn =  A('Publish', _class='button btn btn-default disabled',
-                     _style='padding: 3px 10px 3px 10px')
+                     _style='padding: 3px 10px 3px 10px;width: 70px;')
+        elif 'external_files' in row.dataset_metadata and row.dataset_metadata['external_files'] is not None:
+            btn =  A('Adopt', _class='button btn btn-default adopt',
+                     _href=None,
+                     _style='padding: 3px 10px 3px 10px;width: 70px;',
+                     _record_id=row.id)
         else:
             btn =  A('Publish', _class='button btn btn-default',
                      _href=URL("datasets","run_submit_dataset_to_zenodo", vars={'id':row.id, 'manage':''}),
-                     _style='padding: 3px 10px 3px 10px;')
+                     _style='padding: 3px 10px 3px 10px;width: 70px;')
         return btn
     
     # - submit page link
@@ -178,7 +187,8 @@ def administer_datasets():
                                   db.datasets.uploader_id,
                                   db.datasets.dataset_title,
                                   db.datasets.dataset_check_outcome,
-                                  db.datasets.zenodo_submission_status],
+                                  db.datasets.zenodo_submission_status,
+                                  db.datasets.dataset_metadata],
                         headers = {'datasets.upload_datetime': 'Upload date',
                                    'datasets.dataset_check_outcome': 'Format status',
                                    'datasets.zenodo_submission_status': 'Published'},
@@ -457,9 +467,9 @@ def submit_dataset():
             # prepare the dataset description
             metadata = record.dataset_metadata
             if record.zenodo_submission_status == 'ZEN_PASS':
-                desc_content = XML(_dataset_description(record, include_gemini=True))
+                desc_content = XML(dataset_description(record, include_gemini=True))
             else:
-                desc_content = XML(_dataset_description(record))
+                desc_content = XML(dataset_description(record))
             
             dataset_desc = CAT(_row('Dataset description', A('View details', _href='#show_desc', 
                                                              **{'_data-toggle': 'collapse'})),
@@ -483,8 +493,8 @@ def submit_dataset():
                                  _class="panel-heading")
                 # include the status outcome
                 chk_info += chk_stat
-                # No option to resubmit
-                form = ""
+                # New versions can be submitted to a failed publication dataset
+                resubmit_head = DIV('Upload a new version', _class='panel-heading')
             elif record.zenodo_submission_status == 'ZEN_PASS':
                 # Set the heading for the form
                 panel_head = DIV(DIV(H4('Dataset published', _class="panel-title col-sm-12"),
@@ -619,16 +629,21 @@ def run_verify_dataset():
 def run_submit_dataset_to_zenodo():
     """
     Controller to allow an admin to (re)run dataset publication
-    on a dataset with a given row id. The extra key 'sandbox' can be
-    specified to publish to the Zenodo sandbox instead, but at present
-    this isn't exposed anywhere except via a manual url
+    on a dataset with a given row id. The key 'zenodo' can be passed
+    in as well - this is used to adopt existing zenodo deposits to allow
+    for non-Excel datasets. The app config contains a switch that allows
+    the application to use the Zenodo sandbox rather than the main site.
     """
-    
+
     record_id = request.vars['id']
     manage = 'manage' in request.vars
-    sandbox = 'sandbox' in request.vars
     err = []
-    
+
+    if 'zenodo' in request.vars:
+        deposit_id = int(request.vars['zenodo'])
+    else:
+        deposit_id = None
+
     if record_id is None:
         err += ["Record ID missing"]
     else:
@@ -636,9 +651,12 @@ def run_submit_dataset_to_zenodo():
             record_id = int(record_id)
         except ValueError:
             err += ["Record ID not an integer"]
-    
+
+    # Is the application currently publishing to the sandbox or the main Zenodo site
+    sandbox = int(myconf.take('zenodo.use_sandbox'))
+
     if len(err) == 0:
-        res = submit_dataset_to_zenodo(record_id, sandbox=sandbox)
+        res = submit_dataset_to_zenodo(record_id, deposit_id=deposit_id, sandbox=sandbox)
     else:
         res = ', '.join(err)
     
