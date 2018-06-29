@@ -7,21 +7,21 @@ import safe_dataset_checker
 from networkx import Graph, bfs_successors, get_node_attributes
 import requests
 from safe_web_global_functions import safe_mailer
+from itertools import groupby
 
-"""
-The web2py HTML helpers are provided by gluon. This also provides the 'current' object, which
-provides the web2py 'request' API (note the single letter difference from the requests package!).
-The 'current' object is also extended by models/db.py to include the current 'db' DAL object
-and the 'myconf' AppConfig object so that they can accessed by this module
-"""
+# The web2py HTML helpers are provided by gluon. This also provides the 'current' object, which
+# provides the web2py 'request' API (note the single letter difference from the requests package!).
+# The 'current' object is also extended by models/db.py to include the current 'db' DAL object
+# and the 'myconf' AppConfig object so that they can accessed by this module
 
 from gluon import *
 
 """
-Functions to handle datasets. These are called from the datasets controller but 
-are also needed from other locations, such as the scheduler, so are defined here
-in their own module.
+This module providese functions to handle datasets within the SAFE website. 
+These are called from the datasets controller but are also needed from other locations, 
+such as the scheduler, so are defined here in their own module.
 """
+
 
 def verify_dataset(record_id, email=False):
     """
@@ -237,7 +237,9 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
 
     metadata = record.dataset_metadata
 
-    if 'external_files' in metadata and metadata['external_files'] is not None:
+    # old records may not contain the external_files but if they do then
+    # it is a dictionary, defaulting to empty.
+    if 'external_files' in metadata and metadata['external_files']:
         code, links, response = adopt_external_zenodo(api, token, record, deposit_id)
         external = True
     else:
@@ -400,7 +402,7 @@ def adopt_external_zenodo(api, token, record, deposit_id):
         # If we got a deposit, check the files found in the deposit match
         # with the external files specified in the record metadata.
         remote_filenames = {rfile['filename'] for rfile in remote_files}
-        external_files = set(record.dataset_metadata['external_files'])
+        external_files = set(record.dataset_metadata['external_files'].keys())
 
         if not remote_filenames == external_files:
             code = 1
@@ -840,30 +842,64 @@ def dataset_description(record, include_gemini=False):
                   'GEMINI compliant metadata for this dataset is available ',
                   A('here', _href=md_url))
 
-    desc += P(B('Data worksheets: '), 'There are {} data worksheets in this '
-              'dataset:'.format(len(metadata['dataworksheets'])))
-    
-    dwshts = OL()
-    
-    for ds in metadata['dataworksheets']:
+    # Present a description of the file or files including 'external' files
+    # (data files loaded directly to Zenodo).
+    if 'external_files' in metadata and metadata['external_files']:
+        ex_files = metadata['external_files']
+        desc += P(B('Files: '), 'This dataset consists of ', len(ex_files) + 1, ' files: ',
+                  ', '.join([record.file_name] + ex_files.keys()))
+    else:
+        ex_files = {}
+        desc += P(B('Files: '), 'This consists of 1 file: ', record.file_name)
 
-        # data worksheet summary
-        dwsh = CAT(P(B(ds['title']), ' (Worksheet ', ds['name'], ')'),
-                   P('Dimensions: ', ds['max_row'], ' rows by ', ds['max_col'], ' columns') +
-                   P('Description: ', ds['description']),
-                   P('Fields: '))
-        
-        # fields summary
-        flds = UL()
-        for each_fld in ds['fields']:
-            flds.append(LI(B(each_fld['field_name']), 
-                           ': ', each_fld['description'],
-                           ' (Field type: ', each_fld['field_type'], ')'))
-        
-        dwshts.append(LI(CAT(dwsh, flds, BR())))
-    
-    desc += dwshts
-    
+    # Group the sheets by their 'external' file - which is None for sheets
+    # in the submitted workbook - and collect them into a dictionary by source file
+    tables_by_source = metadata['dataworksheets']
+
+    # Files submitted using early versions of the dataset submission process
+    # don't have external in their worksheet dictionaries (but none of those will
+    # have external files).
+    for tab in tables_by_source:
+        if 'external' not in tab:
+            tab['external'] = None
+
+    # now group into a dictionary keyed by source file
+    tables_by_source.sort(key=lambda sh: sh['external'])
+    tables_by_source = groupby(tables_by_source, key=lambda sh: sh['external'])
+    tables_by_source = {g: list(v) for g, v in tables_by_source}
+
+    # We've now got a set of files (worksheet + externals) and a dictionary of table
+    # descriptions that might have an entry for each file.
+
+    # Report the worksheet first
+    desc += P(B(record.file_name))
+
+    if None in tables_by_source:
+        # Report internal tables
+        desc += P('This file contains dataset metadata and '
+                  '{} data tables:'.format(len(tables_by_source[None])))
+        table_ol = OL()
+        for tab in tables_by_source[None]:
+            table_ol.append(LI(table_description(tab)))
+
+        desc += table_ol
+    else:
+        # No internal tables at all.
+        desc += P('This file only contains metadata for the files below')
+
+    # Report on the other files
+    for exf, exf_desc in ex_files.iteritems():
+        desc += P(B(exf)) + P('Description: ' + exf_desc)
+
+        if exf in tables_by_source:
+            # Report table description
+            desc += P('This file contains {} data tables:'.format(len(tables_by_source[exf])))
+            table_ol = OL()
+            for tab in tables_by_source[exf]:
+                table_ol.append(LI(P(table_description(tab))))
+
+            desc += table_ol
+
     # Add extents if populated
     if metadata['temporal_extent'] is not None:
         desc += P(B('Date range: '),
@@ -884,6 +920,47 @@ def dataset_description(record, include_gemini=False):
                       DIV(taxon_index_to_text(record.dataset_taxon_index))))
     
     return desc
+
+
+def table_description(tab):
+    """
+    Function to return a description for an individual source file in a dataset.
+    Typically datasets only have a single source file - the Excel workbook that
+    also contains the metadata - but they may also report on external files loaded
+    directly to Zenodo, and which uses the same mechanism.
+
+    Args:
+        tab: A dict describing a data table
+
+    Returns:
+        A gluon object containing an HTML description of the table
+    """
+
+    # table summary
+    tab_desc = CAT(P(B(tab['title']), ' (described in worksheet ', tab['name'], ')'),
+                   P('Description: ', tab['description']),
+                   P('Number of fields: ', tab['max_col'] - 1))
+
+    # The explicit n_data_row key isn't available for older records
+    if 'n_data_row' in tab:
+        if tab['n_data_row'] == 0:
+            tab_desc += P('Number of data rows: Unavailable (table metadata description only).')
+        else:
+            tab_desc += P('Number of data rows: {}'.format(tab['n_data_row']))
+    else:
+        tab_desc += P('Number of data rows: {}'.format(tab['max_row'] - len(tab['descriptors'])))
+
+    # add fields
+    tab_desc += P('Fields: ')
+
+    # fields summary
+    flds = UL()
+    for each_fld in tab['fields']:
+        flds.append(LI(B(each_fld['field_name']),
+                       ': ', each_fld['description'],
+                       ' (Field type: ', each_fld['field_type'], ')'))
+
+    return tab_desc + flds
 
 
 def generate_inspire_xml(record):

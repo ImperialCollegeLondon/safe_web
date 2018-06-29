@@ -151,9 +151,10 @@ auth.settings.create_user_groups = False
 # auth.settings.on_failed_authentication = lambda url: redirect(url)
 
 # Turn on captcha for registration
-auth.settings.captcha = Recaptcha2(request,
-                                   myconf.take('recaptcha.site_key'),
-                                   myconf.take('recaptcha.secret_key'))
+if int(myconf.take('recaptcha.use')):
+    auth.settings.captcha = Recaptcha2(request,
+                                       myconf.take('recaptcha.site_key'),
+                                       myconf.take('recaptcha.secret_key'))
 
 # -----------------------------------------------------------------------------
 # IMPORT the CKEDITOR PLUGIN TO GIVE A WYSIWYG EDITOR FOR BLOGS AND NEWS
