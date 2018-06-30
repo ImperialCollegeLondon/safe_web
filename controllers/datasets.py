@@ -156,14 +156,15 @@ def administer_datasets():
         if row.dataset_check_outcome != 'PASS' or row.zenodo_submission_status == 'ZEN_PASS':
             btn =  A('Publish', _class='button btn btn-default disabled',
                      _style='padding: 3px 10px 3px 10px;width: 70px;')
-        elif 'external_files' in row.dataset_metadata and row.dataset_metadata['external_files'] is not None:
+        elif 'external_files' in row.dataset_metadata and row.dataset_metadata['external_files']:
             btn =  A('Adopt', _class='button btn btn-default adopt',
                      _href=None,
                      _style='padding: 3px 10px 3px 10px;width: 70px;',
                      _record_id=row.id)
         else:
             btn =  A('Publish', _class='button btn btn-default',
-                     _href=URL("datasets","run_submit_dataset_to_zenodo", vars={'id':row.id, 'manage':''}),
+                     _href=URL("datasets","run_submit_dataset_to_zenodo",
+                               vars={'id':row.id, 'manage':''}),
                      _style='padding: 3px 10px 3px 10px;width: 70px;')
         return btn
     
