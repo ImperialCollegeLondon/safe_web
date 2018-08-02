@@ -538,7 +538,75 @@ def submit_dataset():
                             version_table,
                         _class='panel panel-default')
     
-    return dict(form=form, vsn_hist=vsn_hist)
+    # provide a list of existing datasets for users when no record provided
+    if record is None:
+        
+        resubmit_text = CAT(H4('Resubmitting datasets'),
+                            P('If you have uploaded a dataset that has not passed checking '
+                              'or have an updated version of an existing published dataset, '
+                              'then please ', B('do not create a new dataset'), '. The links '
+                              'below show datasets you have already uploaded - follow the '
+                              'link to the dataset you want to update and upload a new version.'))
+        
+        db.datasets.dataset_title.represent = lambda value, row: A(row.dataset_title, 
+                                                _href=URL('datasets', 'submit_dataset', 
+                                                          vars={'dataset_id': row.id}))
+        existing_user_ds = db((db.datasets.uploader_id == auth.user.id) & 
+                              (db.datasets.current == 'true')
+                              ).select(db.datasets.dataset_id, db.datasets.dataset_title)
+        if len(existing_user_ds):
+            # create a table - can't insert the rows directly because the TABLE helper
+            # tries to unpack the DIV as a row, rather than as a wrapper around rows.
+            user_table = TABLE(TR(TH('Existing datasets', 
+                                     SPAN(_class='glyphicon glyphicon-plus pull-right'),
+                                     **{'_data-toggle': "collapse", '_data-target':"#accordion", 
+                                        '_class':"clickable"})),
+                              _class='table table-striped')
+            
+            # package up the rows in a collapse DIV
+            existing_user_ds = [TR(TD(A(row.dataset_title, 
+                                        _href=URL('datasets', 'submit_dataset', 
+                                        vars={'dataset_id': row.dataset_id}))))
+                                for row in existing_user_ds]
+            
+            existing_user_ds = TAG.tbody(*existing_user_ds, _id="accordion", _class="collapse")
+            
+            # and insert into the table object
+            user_table.components.extend([existing_user_ds])
+            
+            resubmit = DIV(resubmit_text, user_table)
+        else:
+            resubmit = DIV()
+        
+        submit_info = CAT(H4('Submission process'),
+                          OL(LI('Prepare your Excel file, following the ',
+                                A('guidelines.', _href='https://www.safeproject.net/dokuwiki/working_at_safe/data_submission_format')),
+                             LI('Upload the new dataset to the website using the form below.'),
+                             LI('The file format will be checked automatically: wait for the email of the result.'),
+                             LI("If the file has failed format checking, then click on 'View details' to see the "
+                                "check report. Once you've fixed any problems, come back and upload a new version. "
+                                "If a reported problem is unclear or doesn't seem like it should be a problem then ",
+                                A('email us', _href='mailto:admin@safeproject.net'),
+                                " to get clarification."),
+                             LI("If the file has passed format checking, then an administrator will look at the data "
+                                "before publishing it to Zenodo.")))
+    else:
+        resubmit = DIV()
+        submit_info = CAT(H4('Resubmitting this dataset'),
+                          OL(LI('If you are fixing problems with a previous version, make sure you look at the check '
+                                'report details and the ',
+                                A('guidelines.', _href='https://www.safeproject.net/dokuwiki/working_at_safe/data_submission_format'),
+                             LI('Upload the replacement file using the form below.'),
+                             LI('The file format will be checked again: wait for the email of the result.'),
+                             LI("If the file has failed format checking, then click on 'View details' to see the "
+                                "check report. Once you've fixed any problems, come back and upload a new version. "
+                                "If a reported problem is unclear or doesn't seem like it should be a problem then ",
+                                A('email us', _href='mailto:admin@safeproject.net'),
+                                " to get clarification."),
+                             LI("If the file has passed format checking, then an administrator will look at the data "
+                                "before publishing it to Zenodo."))))
+                                
+    return dict(form=form, vsn_hist=vsn_hist, resubmit=resubmit, submit_info=submit_info)
 
 
 def validate_dataset_upload(form):
