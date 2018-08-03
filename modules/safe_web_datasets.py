@@ -81,7 +81,7 @@ def verify_dataset(record_id, email=False):
         # otherwise, create a return dictionary for all remaining failure 
         # modes (no report, but file, uploader and URL should fine) and
         # set the default outcome
-        ret_dict = {'dataset_id': record.dataset_id, 
+        ret_dict = {'dataset_id': int(record.dataset_id), 
                     'report': '',
                     'filename': record.file_name,
                     'name': record.uploader_id.first_name,
