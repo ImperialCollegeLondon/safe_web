@@ -1,7 +1,8 @@
 import shutil
 import hashlib
 import datetime
-from safe_web_datasets import submit_dataset_to_zenodo, dataset_description
+from safe_web_datasets import submit_dataset_to_zenodo, dataset_description, generate_inspire_xml
+
 
 def view_datasets():
     """
@@ -284,40 +285,50 @@ def submit_dataset():
                    button='Upload')
     
     # Validate the form: bespoke data entry
+    
+    # The basic structure is that completely new datasets get a unique
+    # dataset_id that groups versions of datasets. A row in datasets
+    # reflects an attempt to upload a version - once a version is accepted
+    # and published then it is permanent and new uploads to that dataset
+    # id spawn a new row.
+    
     if form.validate(onvalidation=validate_dataset_upload):
         
-        # Get new blank record to hold the dataset
-        new_id = db.datasets.insert()
-        new_record = db.datasets[new_id]
-        
-        # set the fields that differ if this is new dataset or an update
         if record is not None:
-            # uploading a new version. If the dataset version is already 
-            # published, then we need to use a previous Zenodo record id
-            # to launch a new draft deposit from the Zenodo API.
+            # Uploading a new version of an existing dataset.
             
             if record.zenodo_record_id is not None:
-                # zenodo record id is only populated on publication, so
-                # the parent record here was successful
+                # The most recent version is already published, so swap to a new
+                # record to hold the update rather than amending the existing record.
+                # Get the dataset id and the zenodo parent record id and then remove
+                # the current flag from the published record
                 parent = record.zenodo_record_id
-            else:
-                # otherwise, what is currently in the parent record,
-                # which is either none or the last successful record
-                parent = record.zenodo_parent_id
-            
-            ds_id = record.dataset_id
-            new_record.update(dataset_id = ds_id,
-                              version = record.version + 1,
+                ds_id = record.dataset_id
+                version = record.version
+                record.update_record(current=False)
+                
+                # Swap to a new blank record to hold the new version
+                record_id = db.datasets.insert()
+                record = db.datasets[record_id]
+                
+                record.update(dataset_id = ds_id,
+                              version = version + 1,
                               project_id = form.vars.project_id,
                               zenodo_parent_id = parent)
-            
-            # previous version loses its current status
-            record.update_record(current=False)
+            else:
+                # We're updating the most recently submitted unpublished row.
+                record_id = record.id
+                record.update(dataset_check_outcome = "PENDING")
+        
         else:
-            # get a value from the dataset_id table
+            # Creating a completely new dataset so get a value from the dataset_id table
             ds_id = db.dataset_id.insert(created=datetime.datetime.now())
-            new_record.update(dataset_id = ds_id,
-                              project_id = form.vars.project_id)
+            
+            # Get new blank record to hold the dataset
+            record_id = db.datasets.insert()
+            record = db.datasets[record_id]
+            record.update(dataset_id = ds_id,
+                          project_id = form.vars.project_id)
 
             # add an entry to the project_datasets table to link the dataset to the project
             db.project_datasets.insert(dataset_id = ds_id,
@@ -334,13 +345,13 @@ def submit_dataset():
                                            date_added=datetime.date.today())
 
         # now update the other fields and commit the updates
-        new_record.uploader_id = auth.user.id
-        new_record.file_name = form.vars.file_name
-        new_record.file_hash = form.vars.file_hash
-        new_record.file_size = form.vars.file_size
-        new_record.upload_datetime = datetime.datetime.now()
-        new_record.file = form.vars.file
-        new_record.update_record()
+        record.uploader_id = auth.user.id
+        record.file_name = form.vars.file_name
+        record.file_hash = form.vars.file_hash
+        record.file_size = form.vars.file_size
+        record.upload_datetime = datetime.datetime.now()
+        record.file = form.vars.file
+        record.update_record()
         
         # I can't figure out how to stop the FORM automatically saving the file
         # under its safe name in the default directory, so now move it
@@ -356,7 +367,7 @@ def submit_dataset():
         #  - set timeout to extend the default of 60 seconds.
         #  - no start_time, so defaults to now.
         task = scheduler.queue_task('verify_dataset', 
-                                    pvars = {'record_id': new_id, 'email': True},
+                                    pvars = {'record_id': record_id, 'email': True},
                                     timeout = 5*60,
                                     repeats=1,
                                     immediate=True)
@@ -366,7 +377,7 @@ def submit_dataset():
                           'you will get an email with the results when it finishes.')
         
         # send to the updated page
-        redirect(URL('datasets', 'submit_dataset', vars={'dataset_id': new_record.dataset_id}))
+        redirect(URL('datasets', 'submit_dataset', vars={'dataset_id': record.dataset_id}))
     
     elif form.errors:
         response.flash = 'Errors in upload'
