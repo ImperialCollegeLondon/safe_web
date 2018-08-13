@@ -92,7 +92,7 @@ def remind_about_unknowns():
         return 'No incomplete research visits found within the next week'
 
 
-def update_deputy_coordinator(send_to=('deputy.coord@safeproject.net', 'annuar@searrp.org')):
+def update_deputy_coordinator(send_to=('deputy.coord@safeproject.net', 'annuar_jain@yahoo.com')):
     
     """
     Emails the deputy coordinator attaching a text representation

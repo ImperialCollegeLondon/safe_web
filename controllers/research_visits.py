@@ -1315,7 +1315,7 @@ def research_visit_details():
                 # send email message to the proposer and CC Ryan.
                 safe_mailer(to=proposer.email,
                             cc=['deputy.coord@safeproject.net', 'account@searrp.org',
-                                'annuar@searrp.org'],
+                                'annuar_jain@yahoo.com'],
                             subject='SAFE: research visit proposal approved',
                             template='research_visit_approved.html',
                             template_dict=template_dict)
