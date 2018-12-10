@@ -237,9 +237,8 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
 
     metadata = record.dataset_metadata
 
-    # old records may not contain the external_files but if they do then
-    # it is a dictionary, defaulting to empty.
-    if 'external_files' in metadata and metadata['external_files']:
+    # external_files contains an empty list or a list of dictionaries
+    if metadata['external_files']:
         code, links, response = adopt_external_zenodo(api, token, record, deposit_id)
         external = True
     else:
@@ -402,8 +401,8 @@ def adopt_external_zenodo(api, token, record, deposit_id):
         # If we got a deposit, check the files found in the deposit match
         # with the external files specified in the record metadata.
         remote_filenames = {rfile['filename'] for rfile in remote_files}
-        external_files = set(record.dataset_metadata['external_files'].keys())
-
+        external_files = set([r['file'] for r in record.dataset_metadata['external_files']])
+        
         if not remote_filenames == external_files:
             code = 1
             response = "Files in deposit do not match external files listed in Excel file"
@@ -834,6 +833,24 @@ def dataset_description(record, include_gemini=False):
     desc += P(B('Project: '), 'This dataset was collected as part of the following '
                               'SAFE research project: ', A(B(title), _href=proj_url))
     
+    # Funding information
+    if metadata['funders']:
+        funder_info = []
+        for fnd in metadata['funders']:
+            this_funder = fnd['type']
+            if fnd['ref']:
+                this_funder = CAT(this_funder, ', ' + fnd['ref'])
+            if fnd['url']:
+                this_funder = CAT(this_funder, ', ', A(fnd['url'], _href=fnd['url']))
+            
+            funder_info.append(LI(CAT(fnd['body'], ' (', this_funder, ')')))
+        
+        desc += P(B('Funding: '), 'These data were collected as part of '
+                  'research funded by: ', UL(funder_info),
+                  P('This dataset is released under the CC-BY 4.0 licence, requiring that '
+                    'you cite the dataset in any outputs, but has the additional condition '
+                    'that you acknowledge the contribution of these funders in any outputs.'))
+    
     # Can't get the XML metadata link unless it is published, since that 
     # contains references to the zenodo record
     if include_gemini:
@@ -844,12 +861,12 @@ def dataset_description(record, include_gemini=False):
 
     # Present a description of the file or files including 'external' files
     # (data files loaded directly to Zenodo).
-    if 'external_files' in metadata and metadata['external_files']:
+    if metadata['external_files']:
         ex_files = metadata['external_files']
         desc += P(B('Files: '), 'This dataset consists of ', len(ex_files) + 1, ' files: ',
-                  ', '.join([record.file_name] + ex_files.keys()))
+                  ', '.join([record.file_name] + [f['file'] for f in ex_files]))
     else:
-        ex_files = {}
+        ex_files = []
         desc += P(B('Files: '), 'This consists of 1 file: ', record.file_name)
 
     # Group the sheets by their 'external' file - which is None for sheets
@@ -888,14 +905,14 @@ def dataset_description(record, include_gemini=False):
         desc += P('This file only contains metadata for the files below')
 
     # Report on the other files
-    for exf, exf_desc in ex_files.iteritems():
-        desc += P(B(exf)) + P('Description: ' + exf_desc)
+    for exf in ex_files:
+        desc += P(B(exf['file'])) + P('Description: ' + exf['description'])
 
-        if exf in tables_by_source:
+        if exf['file'] in tables_by_source:
             # Report table description
-            desc += P('This file contains {} data tables:'.format(len(tables_by_source[exf])))
+            desc += P('This file contains {} data tables:'.format(len(tables_by_source[exf['file']])))
             table_ol = OL()
-            for tab in tables_by_source[exf]:
+            for tab in tables_by_source[exf['file']]:
                 table_ol.append(LI(P(table_description(tab))))
 
             desc += table_ol
