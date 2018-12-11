@@ -93,6 +93,9 @@ def index():
                 ra_string = ra_string, news_carousel=news_carousel)
 
 
+def science_at_safe():
+    
+    return response.render()
 
 def todo():
     
