@@ -661,8 +661,7 @@ def project_details():
                         form.custom.end,
                         datepicker_script(html_id='proj_datepicker',
                                           autoclose='true',
-                                          startDate='"+0d"',
-                                          endDate='"2020-01-01"')) # approx end date
+                                          startDate='"+0d"'))
         
         elif mode == 'view':
             
