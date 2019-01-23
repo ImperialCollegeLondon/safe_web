@@ -537,13 +537,15 @@ def upload_metadata(links, token, record):
     }
 
     # set up the access rights
-    if metadata['access'] == 'Embargo':
+    if metadata['access'].lower() == 'embargo':
         zen_md['metadata']['access_right'] = 'embargoed'
         zen_md['metadata']['embargo_date'] = metadata['embargo_date']
-    elif metadata['access'] == 'Open':
+    elif metadata['access'].lower() == 'open':
         zen_md['metadata']['access_right'] = 'open'
-    elif metadata['access'] == 'Closed':
+    elif metadata['access'].lower() == 'closed':
         zen_md['metadata']['access_right'] = 'closed'
+    else:
+        raise ValueError('Unknown access status')
 
     # set up the dataset creators - the format has already been checked and names
     # should be present and correct. Everything else is optional, so strip None
