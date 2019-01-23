@@ -172,10 +172,10 @@ ckeditor = CKEditor(db)
 app_root = request.folder
 app_root_fs = OSFS(app_root)
 
-if not app_root_fs.exists('uploads/news_and_blogs/'):
-    blog_fs = app_root_fs.makeopendir('uploads/news_and_blogs/')
+if not app_root_fs.exists(u'uploads/news_and_blogs/'):
+    blog_fs = app_root_fs.makeopendir(u'uploads/news_and_blogs/')
 else:
-    blog_fs = app_root_fs.opendir('uploads/news_and_blogs/')
+    blog_fs = app_root_fs.opendir(u'uploads/news_and_blogs/')
 
 ckeditor.settings.uploadfs = blog_fs
 ckeditor.settings.table_upload_name = 'ckeditor_uploads'
