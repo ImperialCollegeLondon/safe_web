@@ -48,6 +48,11 @@ def view_output():
     output_id = request.args(0)
     output = db(db.outputs.id == output_id).select().first()
     
+    # check this is a valid approved output
+    if (output is None) or (output.admin_status != 'Approved'):
+        session.flash = B(CENTER('Unknown output id'), _style='color:red;')
+        redirect(URL('outputs','outputs'))
+    
     # build the view in controller and pass over to the view as a single object
     if output.thumbnail_figure not in [None, 'NA', '']:
         pic = URL('default','download', args = output.thumbnail_figure)
