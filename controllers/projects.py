@@ -1208,7 +1208,7 @@ def administer_projects():
     return dict(form=form)
 
 
-@auth.requires_login()
+@auth.requires_membership('admin')
 def merge_projects():
     """
     Controller to merge an old project with a new umbrella project.
