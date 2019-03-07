@@ -1,7 +1,7 @@
 import os
 import datetime
 import cStringIO
-from collections import OrderedDict
+from collections import Counter
 import simplejson
 from openpyxl import styles, utils, Workbook, writer
 import html2text
@@ -556,30 +556,45 @@ class SummaryTracker:
 
     def __init__(self, start, end):
 
-        # Initialise ordered dictionary to set the output order
-        self.dates = date_range(start, end)
-        counts = [("Beds requested at SAFE", {d: 0 for d in self.dates}),
-                  ("Beds requested at Maliau", {d: 0 for d in self.dates}),
-                  ("RAs requested at SAFE", {d: 0 for d in self.dates}),
-                  ("RAs requested at Maliau", {d: 0 for d in self.dates})]
-        self.summary = OrderedDict(counts)
+        # Initialise the various tracked components
+        dates = date_range(start, end)
+        self.summary = {}
+        
+        for d in dates:
+            self.summary[d] = {'include': False,
+                               'include_safe': False,
+                               'safe': {'beds':  0,
+                                        'diets': [],
+                                        'ras': 0},
+                               'include_maliau': False,                                
+                               'maliau': {'beds':  0,
+                                          'diets': [],
+                                          'ras': 0}}
 
-        # add all the transfer types
-        for t in current.transfer_set:
-            self.summary[t] = {d: 0 for d in self.dates}
+            # add all the transfer types
+            self.summary[d]['include_transfers'] = False
+            self.summary[d]['transfers'] = {}
+            for t in current.transfer_set:
+                self.summary[d]['transfers'][t] = 0
 
-    def update(self, k, start, end):
+    def update(self, block, item, start, end, val=None):
 
         """
-        Increment the counter for a given key, checking that the
+        Update the detail for a given key, checking that the
         date provided is included in the tracker date span. This
         can happen when research visits are updated to use new
         arrival and departure dates, leaving old bookings.
         """
         new_dates = date_range(start, end)
+        
         for d in new_dates:
-            if d in self.dates:
-                self.summary[k][d] += 1
+            if d in self.summary.keys():
+                self.summary[d]['include'] = True
+                self.summary[d]['include_' + block] = True
+                if item == 'diets':
+                    self.summary[d][block]['diets'].append(val)
+                else:
+                    self.summary[d][block][item] += 1
 
 
 def all_rv_summary_excel():
@@ -601,7 +616,8 @@ def all_rv_summary_excel():
     # set up the coordinates of the data block
     curr_row = start_row = 20
     data_start_col = 4
-
+    food_start_row = 3
+    
     # GET THE ONGOING RVs
     today = datetime.date.today()
     rv_query = (db.research_visit.departure_date >= today)
@@ -664,6 +680,20 @@ def all_rv_summary_excel():
                 'cheaper if your visit includes Malaysian staff or students')
     ws['A3'].font = warn
 
+    # Add a food summary worksheet - this info doesn't fit neatly into the horizontal layout
+    food = wb.create_sheet('Food summary')
+    food['A1'] = 'Summary of dietary restrictions for booked beds'
+    food['A1'].font = head
+    
+    food_heads = ['Month', 'Date', 'Day', 
+                  'SAFE beds', 'SAFE dietary restrictions',
+                  'Maliau beds', 'Maliau dietary restrictions']
+                  
+    for idx, food_col in enumerate(food_heads):
+        f = food.cell(row=food_start_row - 1, column=idx + 1)
+        f.value = food_col
+        f.font = subhead
+    
     # Populate the sheet with the date information
     # months in merged cells with shading on alternate months
     for start, end in monthyear_range:
@@ -674,22 +704,39 @@ def all_rv_summary_excel():
                        end_row=5, end_column=end_col)
         c = ws.cell(row=5, column=start_col)
         c.value = start.strftime('%B %Y')
+
+
+        food.merge_cells(start_row=start_col - data_start_col + food_start_row, start_column=1,
+                         end_row=end_col - data_start_col + food_start_row, end_column=1)
+        f = food.cell(row=start_col - data_start_col + food_start_row, column=1)
+        f.value = start.strftime('%B %Y')
+        f.alignment = styles.Alignment(vertical='top')
+
         if (start.month % 2) == 1:
             c.fill = weekend
-
+            f.fill = weekend
+        
     # day of month and week day, colouring weekends and setting column width
     for i, d, w in zip(dates_column, day, weekday):
         c1 = ws.cell(row=6, column=i)
         c1.value = d
         c1.alignment = center
+        
+        f1 = food.cell(row=i + food_start_row - data_start_col, column=2)
+        f1.value = d
 
         c2 = ws.cell(row=7, column=i)
         c2.value = w
         c2.alignment = center
+        
+        f2 = food.cell(row=i + food_start_row - data_start_col, column=3)
+        f2.value = w
 
         if w == 'S':
             c1.fill = weekend
             c2.fill = weekend
+            f1.fill = weekend
+            f2.fill = weekend
 
         ws.column_dimensions[utils.get_column_letter(i)].width = 3
 
@@ -741,8 +788,9 @@ def all_rv_summary_excel():
 
         # SAFE bed bookings
         safe_query = ((db.bed_reservations_safe.research_visit_id == v.id) &
-                      (db.bed_reservations_safe.research_visit_member_id ==
-                       db.research_visit_member.id))
+                      (db.bed_reservations_safe.research_visit_member_id == db.research_visit_member.id) &
+                      (db.research_visit_member.user_id == db.health_and_safety.user_id))
+        
         safe_data = db(safe_query).select(orderby=db.bed_reservations_safe.arrival_date)
 
         for r in safe_data:
@@ -755,22 +803,34 @@ def all_rv_summary_excel():
                     r.bed_reservations_safe.arrival_date).days * costs_dict['safe_costs']['food']['cost']
 
             # put the list of info to be written together
+            content = '{} (Dietary restrictions: {})\n'.format(
+                                name,
+                                r.health_and_safety.dietary_requirements)
+            
             dat = [curr_row, r.bed_reservations_safe.arrival_date,
                    r.bed_reservations_safe.departure_date,
                    r.bed_reservations_safe.research_visit_id,
-                   'SAFE booking', name, v.admin_status, cost]
+                   'SAFE booking', content, v.admin_status, cost]
 
             # write it, update the summary tracker and move down a row
             write_event(*dat)
-            summary.update('Beds requested at SAFE',
+            
+            summary.update('safe','beds',
                            r.bed_reservations_safe.arrival_date,
                            r.bed_reservations_safe.departure_date - datetime.timedelta(days=1))
+            
+            summary.update('safe', 'diets',
+                           r.bed_reservations_safe.arrival_date,
+                           r.bed_reservations_safe.departure_date - datetime.timedelta(days=1),
+                           r.health_and_safety.dietary_requirements)
+            
             curr_row += 1
 
         # MALIAU bed bookings
         maliau_query = ((db.bed_reservations_maliau.research_visit_id == v.id) &
-                        (db.bed_reservations_maliau.research_visit_member_id ==
-                         db.research_visit_member.id))
+                        (db.bed_reservations_maliau.research_visit_member_id == db.research_visit_member.id) &
+                        (db.research_visit_member.user_id == db.health_and_safety.user_id))
+        
         maliau_data = db(maliau_query).select(orderby=db.bed_reservations_maliau.arrival_date)
 
         for r in maliau_data:
@@ -788,6 +848,7 @@ def all_rv_summary_excel():
                 cost += days * costs_dict['maliau_accom']['annex']['standard']
             else:
                 cost += days * costs_dict['maliau_accom']['hostel']['standard']
+                
             # food
             if r.bed_reservations_maliau.breakfast is True:
                 cost += costs_dict['maliau_food']['breakfast']['standard'] * days
@@ -797,20 +858,33 @@ def all_rv_summary_excel():
                 cost += costs_dict['maliau_food']['dinner']['standard'] * days
 
             # content
-            food_labels = ['B' if r.bed_reservations_maliau.breakfast else ''] + \
-                          ['L' if r.bed_reservations_maliau.lunch else ''] + \
-                          ['D' if r.bed_reservations_maliau.dinner else '']
-            content = name + ' (' + r.bed_reservations_maliau.type + ',' + \
-                      ''.join(food_labels) + ')'
+            catering = ''.join(['B' if r.bed_reservations_maliau.breakfast else ''] + 
+                               ['L' if r.bed_reservations_maliau.lunch else ''] + 
+                               ['D' if r.bed_reservations_maliau.dinner else ''])
+            if catering != "":
+                catering = ' with catered ' + catering
+            
+            content = '{} in {} {} (Dietary restrictions: {})\n'.format(
+                                name,
+                                r.bed_reservations_maliau.type,
+                                catering,
+                                r.health_and_safety.dietary_requirements)
+            
             dat = [curr_row, r.bed_reservations_maliau.arrival_date,
                    r.bed_reservations_maliau.departure_date,
                    r.bed_reservations_maliau.research_visit_id,
                    'Maliau booking', content, v.admin_status, cost]
 
             write_event(*dat)
-            summary.update('Beds requested at Maliau',
+            
+            summary.update('maliau', 'beds',
                            r.bed_reservations_maliau.arrival_date,
                            r.bed_reservations_maliau.departure_date - datetime.timedelta(days=1))
+
+            summary.update('maliau', 'diets',
+                           r.bed_reservations_maliau.arrival_date,
+                           r.bed_reservations_maliau.departure_date - datetime.timedelta(days=1),
+                           r.health_and_safety.dietary_requirements)
 
             curr_row += 1
 
@@ -839,7 +913,7 @@ def all_rv_summary_excel():
 
             write_event(*dat)
             # update the transfers summary, keying by the transfer type
-            summary.update(r.transfers.transfer,
+            summary.update('transfers', r.transfers.transfer,
                            r.transfers.transfer_date,
                            r.transfers.transfer_date)
             curr_row += 1
@@ -864,35 +938,61 @@ def all_rv_summary_excel():
             write_event(*dat)
 
             if r.site_time in ['All day at SAFE', 'Morning only at SAFE', 'Afternoon only at SAFE']:
-                summary.update('RAs requested at SAFE', r.start_date, r.finish_date)
+                summary.update('safe', 'ras', r.start_date, r.finish_date)
             else:
-                summary.update('RAs requested at Maliau', r.start_date, r.finish_date)
+                summary.update('maliau', 'ras', r.start_date, r.finish_date)
 
             curr_row += 1
 
     # Insert the summary information
     summary_row = 8
 
-    # loop over the (ordered) keys
-    for k in summary.summary.keys():
+    # loop over the summary keys
+    summary_keys = [('safe', 'beds', 'Beds requested at SAFE'), 
+                    ('safe', 'ras', 'RAs requested at SAFE'), 
+                    ('maliau', 'beds', 'Beds requested at Maliau'), 
+                    ('maliau', 'ras', 'RAs requested at Maliau')]
+                    
+    for t in current.transfer_set:
+        summary_keys.append(('transfers', t, t))
+    
+    for blck, itm, lab in summary_keys:
 
         c = ws.cell(row=summary_row, column=2)
-        c.value = k
+        c.value = lab
 
         for d, c in zip(dates, dates_column):
             c = ws.cell(row=summary_row, column=c)
-            c.value = summary.summary[k][d]
-            if summary.summary[k][d] == 0:
+            c.value = summary.summary[d][blck][itm]
+            if c.value == 0:
                 c.font = zero_summary
             else:
                 c.font = non_zero_summary
 
         summary_row += 1
 
+    # food summary
+    food_keys = [('safe',  4), 
+                 ('maliau',  6)]
+    
+    for blck, col in food_keys:
+
+        for i, d in enumerate(dates):
+            dat = summary.summary[d][blck]
+            c = food.cell(row=food_start_row + i, column=col)
+            c.value = dat['beds']
+            
+            if dat['diets']:
+                diets = ['{} x {}'.format(v, k) 
+                         for k, v in Counter(dat['diets']).iteritems()]
+                
+                c = food.cell(row=food_start_row + i, column=col + 1)
+                c.value = ', '.join(diets)
+
     # freeze the rows
     c = ws.cell(row=start_row, column=data_start_col)
     ws.freeze_panes = c
-
+        
     # return as a string
     try:
         return str(writer.excel.save_virtual_workbook(wb))
@@ -940,27 +1040,36 @@ def all_rv_summary_text():
 
         # SAFE bed bookings
         safe_query = ((db.bed_reservations_safe.research_visit_id == v.id) &
-                      (db.bed_reservations_safe.research_visit_member_id ==
-                       db.research_visit_member.id))
+                      (db.bed_reservations_safe.research_visit_member_id == db.research_visit_member.id) &
+                      (db.research_visit_member.user_id == db.health_and_safety.user_id))
         safe_data = db(safe_query).select(orderby=db.bed_reservations_safe.arrival_date)
 
         for r in safe_data:
 
             # check for unknown users
             name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
-            details.write('     SAFE Booking: ' +
-                          r.bed_reservations_safe.arrival_date.isoformat() +
-                          ' -- ' +
-                          r.bed_reservations_safe.departure_date.isoformat() +
-                          ' for ' + name + '\n')
-            summary.update('Beds requested at SAFE',
+            
+            details.write('     SAFE Booking: {} -- {} for {} (Dietary restrictions: {})\n'.format(
+                                r.bed_reservations_safe.arrival_date.isoformat(),
+                                r.bed_reservations_safe.departure_date.isoformat(),
+                                name,
+                                r.health_and_safety.dietary_requirements))
+            
+            summary.update('safe', 'beds',
                            r.bed_reservations_safe.arrival_date,
                            r.bed_reservations_safe.departure_date - datetime.timedelta(days=1))
 
+            summary.update('safe', 'diets',
+                           r.bed_reservations_safe.arrival_date,
+                           r.bed_reservations_safe.departure_date - datetime.timedelta(days=1),
+                           r.health_and_safety.dietary_requirements)
+
+
         # MALIAU bed bookings
         maliau_query = ((db.bed_reservations_maliau.research_visit_id == v.id) &
-                        (db.bed_reservations_maliau.research_visit_member_id ==
-                         db.research_visit_member.id))
+                        (db.bed_reservations_maliau.research_visit_member_id == db.research_visit_member.id) &
+                        (db.research_visit_member.user_id == db.health_and_safety.user_id))
+        
         maliau_data = db(maliau_query).select(orderby=db.bed_reservations_maliau.arrival_date)
 
         for r in maliau_data:
@@ -968,19 +1077,28 @@ def all_rv_summary_text():
             name = uname(r.research_visit_member.user_id, r.research_visit_member.id)
 
             # content
-            food_labels = ['B' if r.bed_reservations_maliau.breakfast else ''] + \
-                          ['L' if r.bed_reservations_maliau.lunch else ''] + \
-                          ['D' if r.bed_reservations_maliau.dinner else '']
-            content = name + ' (' + r.bed_reservations_maliau.type + ',' + \
-                      ''.join(food_labels) + ')'
-
-            details.write('     Maliau Booking: ' +
-                          r.bed_reservations_maliau.arrival_date.isoformat() + ' -- ' +
-                          r.bed_reservations_maliau.departure_date.isoformat() +
-                          ' for ' + content + '\n')
-            summary.update('Beds requested at Maliau',
+            catering = ''.join(['B' if r.bed_reservations_maliau.breakfast else ''] + 
+                               ['L' if r.bed_reservations_maliau.lunch else ''] + 
+                               ['D' if r.bed_reservations_maliau.dinner else ''])
+            if catering != "":
+                catering = ' with catered ' + catering
+            
+            details.write('     Maliau Booking: {} -- {} for {} in {} {} (Diet: {})\n'.format(
+                                r.bed_reservations_maliau.arrival_date.isoformat(),
+                                r.bed_reservations_maliau.departure_date.isoformat(),
+                                name,
+                                r.bed_reservations_maliau.type,
+                                catering,
+                                r.health_and_safety.dietary_requirements))
+                        
+            summary.update('maliau', 'beds',
                            r.bed_reservations_maliau.arrival_date,
                            r.bed_reservations_maliau.departure_date - datetime.timedelta(days=1))
+
+            summary.update('maliau','diets',
+                           r.bed_reservations_maliau.arrival_date,
+                           r.bed_reservations_maliau.departure_date - datetime.timedelta(days=1),
+                           r.health_and_safety.dietary_requirements)
 
         # TRANSFERS
         transfer_query = ((db.transfers.research_visit_id == v.id) &
@@ -993,7 +1111,7 @@ def all_rv_summary_text():
             details.write('     Transfer: ' + r.transfers.transfer_date.isoformat() + ' from ' +
                          r.transfers.transfer + ' for ' + name + '\n')
             # update the transfers summary, keying by the transfer type
-            summary.update(r.transfers.transfer,
+            summary.update('transfers', r.transfers.transfer,
                            r.transfers.transfer_date,
                            r.transfers.transfer_date)
 
@@ -1007,9 +1125,9 @@ def all_rv_summary_text():
                           ' (' + r.site_time + ', ' + r.work_type + ')\n')
 
             if r.site_time in ['All day at SAFE', 'Morning only at SAFE', 'Afternoon only at SAFE']:
-                summary.update('RAs requested at SAFE', r.start_date, r.finish_date)
+                summary.update('safe', 'ras', r.start_date, r.finish_date)
             else:
-                summary.update('RAs requested at Maliau', r.start_date, r.finish_date)
+                summary.update('maliau','ras', r.start_date, r.finish_date)
 
     # now add the summary to the output and then transfer the details at the bottom
     output.write('Daily resource request totals for current projects\n'
@@ -1017,13 +1135,41 @@ def all_rv_summary_text():
 
     dates = date_range(today, end_all)
     for d in dates:
-        # collect non zero counts as string and omit days where nothing happens
-        counts = ['       ' + str(summary.summary[k][d]) + " " + k
-                  for k in summary.summary.keys()
-                  if summary.summary[k][d] > 0]
-        if len(counts) > 0:
-            output.write(d.strftime('%a %d %b %Y') + '\n' + '\n'.join(counts) + '\n')
-
+        
+        # extract and format the contents of the SummaryTracker
+        if summary.summary[d]['include']:
+            output.write(d.strftime('%a %d %b %Y') + '\n')
+            
+        if summary.summary[d]['include_safe']:
+            output.write('    SAFE\n')
+            
+            if summary.summary[d]['safe']['beds'] > 0:
+                output.write('      - Beds requested: ' +  str(summary.summary[d]['safe']['beds'])  + '\n')
+                diets = ['{} x {}'.format(v, k) 
+                         for k, v in Counter(summary.summary[d]['safe']['diets']).iteritems()]
+                output.write('      - Dietary requirements: ' + ', '.join(diets) + '\n')
+                
+            if summary.summary[d]['safe']['ras'] > 0:
+                output.write('      - RAs requested: ' +  str(summary.summary[d]['safe']['ras'])  + '\n')
+            
+        if summary.summary[d]['include_maliau']:
+            output.write('    Maliau\n')
+            
+            if summary.summary[d]['maliau']['beds'] > 0:
+                output.write('      - Beds requested: ' +  str(summary.summary[d]['maliau']['beds'])  + '\n')
+                diets = ['{} x {}'.format(v, k) 
+                         for k, v in Counter(summary.summary[d]['maliau']['diets']).iteritems()]
+                output.write('      - Dietary restrictions: ' + ', '.join(diets) + '\n')
+                
+            if summary.summary[d]['maliau']['ras'] > 0:
+                output.write('      - RAs requested: ' +  str(summary.summary[d]['maliau']['ras'])  + '\n')
+        
+        if summary.summary[d]['include_transfers']:
+            output.write('    Transfers\n')
+            for k, v in summary.summary[d]['transfers'].iteritems():
+                if v > 0:
+                    output.write('      - ' + k + ': ' + str(v) + '\n')
+            
     # now add the details at the end
     output.write('\n\nProject by project details\n'
                  '==========================\n\n')

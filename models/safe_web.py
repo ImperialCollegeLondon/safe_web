@@ -495,10 +495,12 @@ db.define_table('health_and_safety',
                 Field('insurance_emergency_phone', 'string'),
                 Field('insurance_policy_number', 'string'),
                 Field('medical_conditions', 'text'),
+                Field('dietary_requirements', 'string'),
                 Field('date_last_edited', 'date'),
                 # Field('sbc_access_licence', 'string'),
                 # Field('local_collaborator', 'reference auth_user')
                 )
+
 
 # -----------------------------------------------------------------------------
 # SPECIES PROFILES
