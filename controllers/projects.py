@@ -1231,10 +1231,10 @@ def merge_projects():
         src = form.vars.merge_source_project
         dst = form.vars.merge_destination_project
 
-        # 1) get the source project record, which contains sets of references
-        # to other tables
-        qry = (db.project_id.project_details_id == src)
-        source_merge = db(qry).select().first()
+        # 1) get the source and destination records, which contains sets
+        #    of references to output, dataset and project members tables
+        source_merge = db.project_id[src]
+        dest_merge = db.project_id[dst]
 
         # copy the outputs and datasets to the destination.
         outputs = source_merge['project_outputs'].select()
@@ -1250,9 +1250,31 @@ def merge_projects():
                                        dataset_id=row.output_id,
                                        user_id=auth.user.id,
                                        date_added=datetime.date.today())
-
+        
+        # add personnel to the destination if they aren't already in the destination
+        src_members = source_merge['project_members'].select()
+        dst_members = dest_merge['project_members'].select()
+        dst_members = [r.user_id for r in dst_members]
+        
+        for row in src_members:
+            if row.user_id not in dst_members:
+                db.project_members.insert(project_id=dst,
+                                          user_id=auth.user.id,
+                                          project_role='Merged Project Collaborator')
+        
         # set the source project as merged
         db.project_id[src].update_record(merged_to=dst)
+        
+        # update the project admin_history
+        src_details = db.project_details[source_merge.project_details_id]
+        admin_str = '[{}] {} {}\\n ** Merged to project {}\\n'
+        new_history = admin_str.format(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'),
+                                       auth.user.first_name,
+                                       auth.user.last_name,
+                                       dst) + src_details.admin_history
+
+        src_details.update_record(admin_history = new_history)
+        
 
     return dict(form=form)
 
@@ -1268,3 +1290,11 @@ def validate_merge(form):
 
     if src_record.merged_to is not None:
         form.errors.merge_source_project = "Source project has already been merged"
+        
+    # Not shouled the destination - we only want a single 
+    # core umbrella, not multiple layers of merging
+    dst_record = db.project_id[form.vars.merge_destination_project]
+
+    if dst_record.merged_to is not None:
+        form.errors.merge_source_project = "Destination project has been merged to {}".format(dst_record.merged_to )
+    

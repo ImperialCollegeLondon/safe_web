@@ -16,7 +16,8 @@ n_transfers_available = 4
 
 project_roles = ['Lead Researcher', 'Supervisor', 'Co-supervisor', 'PhD Student',
                  'MSc Student', 'Undergraduate', 'PI', 'Co-I', 'Post Doc',
-                 'Field Assistant', 'Malaysian Collaborator', 'Coordinator']
+                 'Field Assistant', 'Malaysian Collaborator', 'Coordinator',
+                 'Merged Project Collaborator']
 
 output_formats = ["Book Chapter", "Journal Paper", "Field Guide", "Poster", "Presentation",
                   "Masters Thesis", "PhD Thesis", "Video", "Report", "Other", 'Website']
