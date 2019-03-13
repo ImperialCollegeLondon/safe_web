@@ -73,6 +73,8 @@ This website will be briefly offline from 14:30 GMT today (Monday 5th March 2018
 <!-- Code to  generate a header image with random banner image -->
 {{import os}}
 {{import random}}
+{{from safe_web_global_functions import frm_email_link, FRM}}
+
 {{banner_dir = os.path.join(request.folder, 'static','images','banners')}}
 {{banners = [fn for fn in os.listdir(banner_dir)
               if any(fn.endswith(ext) for ext in  ['jpg', 'bmp', 'png', 'gif'])]}}

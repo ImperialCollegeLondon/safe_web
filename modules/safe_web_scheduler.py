@@ -1,5 +1,5 @@
 import datetime
-from safe_web_global_functions import safe_mailer, all_rv_summary_text
+from safe_web_global_functions import safe_mailer, all_rv_summary_text, frm_email_list
 
 """
 The web2py HTML helpers are provided by gluon. This also provides the 'current' object, which
@@ -92,7 +92,7 @@ def remind_about_unknowns():
         return 'No incomplete research visits found within the next week'
 
 
-def update_deputy_coordinator(send_to=('deputy.coord@safeproject.net', 'annuar_jain@yahoo.com')):
+def update_deputy_coordinator():
     
     """
     Emails the deputy coordinator attaching a text representation
@@ -100,7 +100,9 @@ def update_deputy_coordinator(send_to=('deputy.coord@safeproject.net', 'annuar_j
     """
 
     db = current.db
-
+    
+    send_to = ['deputy.coord@safeproject.net'] + frm_email_list()
+    
     # get the file contents
     try:
         schedule = all_rv_summary_text()

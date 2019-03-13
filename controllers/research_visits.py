@@ -5,7 +5,7 @@ import simplejson
 
 from safe_web_global_functions import (admin_decision_form, safe_mailer, datepicker_script,
                                        all_rv_summary_text, all_rv_summary_excel,
-                                       single_rv_summary_excel, uname)
+                                       single_rv_summary_excel, uname, frm_email_list)
 
 
 # -----------------------------------------------------------------------------
@@ -1312,10 +1312,11 @@ def research_visit_details():
             # pick an decision
             if admin.vars.decision == 'Approved':
 
-                # send email message to the proposer and CC Ryan.
+                # send email message to the proposer, deputy, searrp accounts and FRM
+                frm = frm_email_list()
+                    
                 safe_mailer(to=proposer.email,
-                            cc=['deputy.coord@safeproject.net', 'account@searrp.org',
-                                'annuar_jain@yahoo.com'],
+                            cc=['deputy.coord@safeproject.net', 'account@searrp.org'] + frm,
                             subject='SAFE: research visit proposal approved',
                             template='research_visit_approved.html',
                             template_dict=template_dict)
@@ -1333,10 +1334,10 @@ def research_visit_details():
                     maliau_email_dict = {'count': len(maliau_select),
                                          'maliau_table': maliau_table,
                                          'proposer_name': proposer_name}
-
+                    
                     safe_mailer(to='roserlie5@gmail.com',
-                                cc=[proposer.email, 'inid69@yahoo.com', 'annuar@searrp.org',
-                                    'jarizul.gjule@gmail.com', 'deputy.coord@safeproject.net'],
+                                cc=[proposer.email, 'inid69@yahoo.com', 'jarizul.gjule@gmail.com', 
+                                    'deputy.coord@safeproject.net'] + frm,
                                 reply_to=proposer.email,
                                 subject='Request for accommodation from the SAFE Project',
                                 template='maliau_beds_email.html',
