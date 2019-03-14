@@ -1,5 +1,5 @@
 import datetime
-from safe_web_global_functions import safe_mailer, all_rv_summary_text, frm_email_list
+from safe_web_global_functions import safe_mailer, all_rv_summary_text, get_frm
 
 """
 The web2py HTML helpers are provided by gluon. This also provides the 'current' object, which
@@ -101,7 +101,10 @@ def update_deputy_coordinator():
 
     db = current.db
     
-    send_to = ['deputy.coord@safeproject.net'] + frm_email_list()
+    frm = get_frm()
+    frm = [eml for eml in [frm.alternative_email, frm.email] if eml is not None]
+    
+    send_to = ['deputy.coord@safeproject.net'] + frm
     
     # get the file contents
     try:

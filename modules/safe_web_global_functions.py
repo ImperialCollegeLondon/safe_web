@@ -17,11 +17,6 @@ and the 'myconf' AppConfig object so that they can accessed by this module
 
 from gluon import *
 
-# global object containing the Field Research Manager details
-FRM = current.db((current.db.contacts.contacts_role == 'Field Research Manager') &
-                 (current.db.auth_user.id == current.db.contacts.user_id)
-                 ).select(current.db.auth_user.ALL).first()
-
 """
 Formatting functions for SQLFORM grids, taking values from 
 form rows and wrapping them, either using their represent value
@@ -64,21 +59,17 @@ def link_button(c, f, arg, text="View", icon="glyphicon glyphicon-zoom-in"):
                                    _href=URL(c, f, args=[row[arg]]),
                                    _style='padding: 3px 5px 3px 5px;'))
 
-def frm_email_link():
+def get_frm():
     """
-    Function to provide an email link to whoever is the current Field Research Manager
-    """
-        
-    return A("Field Research Manager", _href="mailto:{}".format(FRM.email))
-
-
-def frm_email_list():
-    """
-    Function to provide a list of emails for the current Field Research Manager
+    Function to provide the auth_user row for the current Field Research Manager
     """
     
-    return [eml for eml in [FRM.alternative_email, FRM.email] if eml is not None]
-
+    # global object containing the Field Research Manager details
+    frm = current.db((current.db.contacts.contacts_role == 'Field Research Manager') &
+                     (current.db.auth_user.id == current.db.contacts.user_id)
+                     ).select(current.db.auth_user.ALL).first()
+    
+    return frm
 
 
 def datepicker_script(html_id, **settings):

@@ -5,6 +5,7 @@ from gluon.contrib import simplejson
 from gluon.serializers import json
 import os
 from gpxpy import gpx
+from safe_web_global_functions import get_frm
 
 ## -----------------------------------------------------------------------------
 ## A collection of controllers handling mostly static information pages
@@ -28,15 +29,15 @@ def logistics():
     f = os.path.join(request.folder, 'private','content/en/info/costs.json')
     costs = simplejson.load(open(f))
     
-    return dict(costs=costs)
+    return dict(costs=costs, frm=get_frm())
 
 def data_policy():
     
     return response.render()
 
 def health_and_safety():
-    
-    return response.render()
+        
+    return dict(frm=get_frm())
 
 def steps_to_follow():
     

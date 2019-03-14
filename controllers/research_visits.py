@@ -5,7 +5,7 @@ import simplejson
 
 from safe_web_global_functions import (admin_decision_form, safe_mailer, datepicker_script,
                                        all_rv_summary_text, all_rv_summary_excel,
-                                       single_rv_summary_excel, uname, frm_email_list)
+                                       single_rv_summary_excel, uname, get_frm)
 
 
 # -----------------------------------------------------------------------------
@@ -1313,7 +1313,8 @@ def research_visit_details():
             if admin.vars.decision == 'Approved':
 
                 # send email message to the proposer, deputy, searrp accounts and FRM
-                frm = frm_email_list()
+                frm = get_frm()
+                frm = [eml for eml in [frm.alternative_email, frm.email] if eml is not None]
                     
                 safe_mailer(to=proposer.email,
                             cc=['deputy.coord@safeproject.net', 'account@searrp.org'] + frm,
@@ -2121,7 +2122,7 @@ def safe_transfers_schedule():
 
     # helpfully the JSON serialiser makes JS compatible inputs, which
     # just needs to be protected from HTML mangling
-    return dict(events=XML(json(events)))
+    return dict(events=XML(json(events)), frm=get_frm())
 
 
 # -----------------------------------------------------------------------------
