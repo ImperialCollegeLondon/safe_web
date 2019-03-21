@@ -1,5 +1,6 @@
 import datetime
-from safe_web_global_functions import safe_mailer, all_rv_summary_text, get_frm
+from safe_web_global_functions import (safe_mailer, all_rv_summary_text, 
+                                       get_frm, health_and_safety_report)
 
 """
 The web2py HTML helpers are provided by gluon. This also provides the 'current' object, which
@@ -21,6 +22,8 @@ Weekly:
 Daily:
 -  Look for research visits with Unknowns that are within a week of the
    research visit start date and email them a reminder to update
+-  Look for research visits within two weeks and email visitors with
+   an outdated or missing health and safety form.
 
 As needed:
 - Verify the formatting of an uploaded dataset.
@@ -108,9 +111,11 @@ def update_deputy_coordinator():
     
     # get the file contents
     try:
-        schedule = all_rv_summary_text()
-        attach = {'SAFE_visits_{}.txt'.format(datetime.date.today().isoformat()): schedule}
-    
+        now = datetime.date.today().isoformat()
+        attach = {'SAFE_visits_{}.txt'.format(now): all_rv_summary_text(),
+                  'Visitor_H_and_S_info_{}.pdf'.format(now): health_and_safety_report()}
+        
+        
         safe_mailer(subject='Weekly research visit summary',
                     to=send_to,
                     template='weekly_rv_summary.html',
@@ -123,3 +128,67 @@ def update_deputy_coordinator():
         return 'Weekly research visit summary emailed'
     except BaseException:
         raise RuntimeError('Failed to email weekly research visit summary')
+
+
+def outdated_health_and_safety():
+    
+    """
+    Daily emails to upcoming research visitors who haven't created their health
+    and safety at all or haven't visited that link in more than 6 months
+    """
+
+    db = current.db
+
+    # Get some timestamps
+    now = datetime.datetime.now()
+    old_hs = (now - datetime.timedelta(days=180)).date()
+    
+    # Find people with bed reservations at SAFE or Maliau who have old or missing H&S
+    # There may be a way of combining these two but it seems likely to be slower
+    safe_off = db((db.bed_reservations_safe.arrival_date - now <=  14) &
+                  (db.bed_reservations_safe.departure_date >= now) &
+                  (db.bed_reservations_safe.research_visit_member_id == db.research_visit_member.id) &
+                  (db.research_visit_member.user_id == db.auth_user.id) &
+                  ((db.health_and_safety.id == None) |
+                   (db.health_and_safety.date_last_edited < old_hs))
+                  ).select(db.auth_user.ALL, 
+                           db.health_and_safety.ALL, 
+                           left=db.health_and_safety.on(db.auth_user.id == db.health_and_safety.user_id),
+                           distinct=True,
+                           orderby=(db.auth_user.last_name, db.auth_user.first_name))
+
+    mali_off = db((db.bed_reservations_maliau.arrival_date - now <=  14) &
+                  (db.bed_reservations_maliau.departure_date >= now) &
+                  (db.bed_reservations_maliau.research_visit_member_id == db.research_visit_member.id) &
+                  (db.research_visit_member.user_id == db.auth_user.id) &
+                  ((db.health_and_safety.id == None) |
+                   (db.health_and_safety.date_last_edited < old_hs))
+                  ).select(db.auth_user.ALL, 
+                           db.health_and_safety.ALL, 
+                           left=db.health_and_safety.on(db.auth_user.id == db.health_and_safety.user_id),
+                           distinct=True,
+                           orderby=(db.auth_user.last_name, db.auth_user.first_name))
+    
+    offenders = safe_off + mali_off
+    
+    # now email each offender
+    for offence in offenders:
+        
+        # dictionary to fill out the template
+        template_dict = {'name': offence.auth_user.first_name}
+        
+        # email this offender
+        safe_mailer(subject='SAFE Research Visit health and safety information',
+                    to=offence.auth_user.email,
+                    template='research_visit_health_and_safety.html',
+                    template_dict=template_dict)
+        
+        # commit changes to the db - necessary for things running from models
+        db.commit()
+    
+    if len(offenders) > 0:
+        offender_names = ', '.join(['{first_name} {last_name}'.format(**rw.auth_user) 
+                                    for rw in offenders])
+        return 'Emailed {} researchers with outdated or missing H&S info: {}'.format(len(offenders), offender_names)
+    else: 
+        return 'All H&S up to date'

@@ -70,6 +70,8 @@ def check_task_queue():
 
     task_dict = [{'name':'remind_about_unknowns', 'period': 60*60*24,
                   'start_time': datetime.datetime.now()},
+                 {'name':'outdated_health_and_safety', 'period': 60*60*24,
+                  'start_time': datetime.datetime.now()},
                  {'name':'update_deputy_coordinator', 'period': 60*60*24*7,
                   'start_time': setStart(1, datetime.time(01,00,00))}]
 

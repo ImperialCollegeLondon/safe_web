@@ -5,6 +5,7 @@ from collections import Counter
 import simplejson
 from openpyxl import styles, utils, Workbook, writer
 import html2text
+import gluon.contrib.fpdf as FPDF
 
 """
 This module holds a set of functions that are shared between controllers
@@ -1192,3 +1193,143 @@ def all_rv_summary_text():
         return output.getvalue().replace('\n', '\r\n')
     finally:
         output.close()
+
+
+def health_and_safety_report():
+    
+    """
+    Function to generate a report containing H&S information for
+    upcoming visitors.
+    """
+
+    # get some time stamps
+    now = datetime.datetime.now()
+    old_hs = (now - datetime.timedelta(days=180)).date()
+    
+    # get a list of upcoming visitors to SAFE and Maliau and their H&S, if any, using a left
+    # join to ensure that all visitors are included, with None in H&S if missing
+    db = current.db
+    
+    # Find people with bed reservations at SAFE or Maliau. There may be a way of combining 
+    # these two but it seems likely to be slower
+    safe_vis = db((db.bed_reservations_safe.arrival_date - now <=  14) &
+                  (db.bed_reservations_safe.departure_date >= now) &
+                  (db.bed_reservations_safe.research_visit_member_id == db.research_visit_member.id) &
+                  (db.research_visit_member.user_id == db.auth_user.id)
+                  ).select(db.auth_user.ALL, 
+                           db.health_and_safety.ALL, 
+                           left=db.health_and_safety.on(db.auth_user.id == db.health_and_safety.user_id),
+                           distinct=True,
+                           orderby=(db.auth_user.last_name, db.auth_user.first_name))
+
+    mali_vis = db((db.bed_reservations_maliau.arrival_date - now <=  14) &
+                  (db.bed_reservations_maliau.departure_date >= now) &
+                  (db.bed_reservations_maliau.research_visit_member_id == db.research_visit_member.id) &
+                  (db.research_visit_member.user_id == db.auth_user.id)
+                  ).select(db.auth_user.ALL, 
+                           db.health_and_safety.ALL, 
+                           left=db.health_and_safety.on(db.auth_user.id == db.health_and_safety.user_id),
+                           distinct=True,
+                           orderby=(db.auth_user.last_name, db.auth_user.first_name))
+    
+    rv = safe_vis + mali_vis
+    
+    # set of fields to report
+    hs_fields = ['date_last_edited', 'passport_number', 'emergency_contact_name',
+    			 'emergency_contact_address', 'emergency_contact_phone',
+    			 'emergency_contact_email', 'insurance_company',
+    			 'insurance_emergency_phone', 'insurance_policy_number',
+    			 'medical_conditions', 'dietary_requirements']
+
+    # Subclass FPDF to set the header
+    class PDF(FPDF.FPDF):
+        def header(self):
+            self.set_font('Arial', 'B', 15)
+            self.set_text_color(r=255, g=12, b=12)
+            self.multi_cell(w=0, h=10, txt='SAFE Project Health and Safety information \n' +
+    			 	       'Confidential. Report created: ' + now.date().isoformat(), border=1, align='C')
+            self.ln(5)
+
+    # Create the pdf with links from the cover page of names to individual pages
+    pdf = PDF()
+    # pdf.set_text_color(r=0, g=0, b=0)
+    # Add the medical summary page
+    pdf.add_page(orientation='P', format='A4')
+    pdf.set_font('Arial', 'B', 15)
+    pdf.cell(w=0, h=10, txt='Medical summary', border=1, align='C', ln=1)
+    pdf.set_font('Arial', '', 12)
+    
+    for visitor in rv:
+        
+        if visitor.health_and_safety.id is not None:
+            medic = visitor.health_and_safety.medical_conditions
+            if (medic is not None) and (medic.strip() != '') and (medic.lower() not in ['n/a', 'na', 'none']):
+                pdf.cell(h=10, w=70, txt='{last_name}, {first_name}'.format(**visitor.auth_user))
+                pdf.cell(h=10, w=0, txt=visitor.health_and_safety.medical_conditions, ln=1)
+
+
+    # Add the dietary requirements summary page
+    pdf.add_page(orientation='P', format='A4')
+    pdf.set_font('Arial', 'B', 15)
+    pdf.cell(w=0, h=10, txt='Dietary requirements summary', border=1, align='C', ln=1)
+    pdf.set_font('Arial', '', 12)
+    
+    for visitor in rv:
+        
+        if visitor.health_and_safety.id is not None:
+            diet = visitor.health_and_safety.dietary_requirements
+            if (diet is not None) and (diet.strip() != '') and (diet.lower() not in ['n/a', 'na', 'none']):
+                pdf.cell(h=10, w=70, txt='{last_name}, {first_name}'.format(**visitor.auth_user))
+                pdf.cell(h=10, w=0, txt=visitor.health_and_safety.medical_conditions, ln=1)
+
+    links={}
+    
+    # write the index of the full pages and status
+    pdf.add_page(orientation='P', format='A4')    
+    pdf.set_font('Arial', 'B', 15)
+    pdf.cell(w=0, h=10, txt='Person index and info status', border=1, align='C', ln=1)
+    pdf.set_font('Arial', 'B', 12)
+
+    pdf.cell(h=10, w=70, txt='Name (click to go to full details)')
+    pdf.cell(h=10, w=0, txt='H&S information status', ln=1)
+    pdf.set_font('Arial', '', 12)
+    
+    for visitor in rv:
+    
+        links[visitor.auth_user.id] = pdf.add_link()
+
+        if visitor.health_and_safety.id is None:
+            visitor.auth_user.info = "None found"
+        elif visitor.health_and_safety.date_last_edited < old_hs:
+            visitor.auth_user.info = "Outdated (> 6 months)"
+        else:
+            visitor.auth_user.info = "Up to date (< 6 months)"
+    
+        pdf.cell(h=10, w=70, 
+    			 txt='{last_name}, {first_name}'.format(**visitor.auth_user),
+                 link = links[visitor.auth_user.id])
+			 
+        pdf.cell(h=10, w=0, txt=visitor.auth_user.info, ln=1)
+    
+
+    
+	# Add visitor pages
+    for visitor in rv:
+        pdf.add_page(orientation='P', format='A4')
+        pdf.set_font('Arial', 'B', 15)
+        pdf.write(h=10, txt='{last_name}, {first_name}: {info}\n'.format(**visitor.auth_user))
+   
+        pdf.set_link(links[visitor.auth_user.id])
+
+        for fld in hs_fields:
+            pdf.set_font('Arial', 'B', 12)
+            pdf.cell(h=10, w=70, txt = fld)
+            pdf.set_font('Arial', '', 12)
+            pdf.multi_cell(h=10, w=0, txt = str(visitor.health_and_safety[fld]))
+        
+    # this property is needed to place links but isn't defined in the code
+    pdf.orientation_changes = []
+    pdf.close()
+    
+    # output to an IO
+    return pdf.output(dest='S')

@@ -41,7 +41,7 @@ def health_and_safety():
 
 def steps_to_follow():
     
-    return response.render()
+    return dict(frm=get_frm())
 
 def concept():
     

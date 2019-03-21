@@ -46,7 +46,8 @@ def health_and_safety():
         is_coordinator_for_user = any([auth.user.id == r.user_id for r in project_coords])
         
         if not auth.has_membership('admin') and not is_coordinator_for_user:
-            session.flash = CENTER(B('You do not have access rights to the H&S record for this user', _style='color:red;'))
+            session.flash = CENTER(B('You do not have access rights to the H&S '
+                                     'record for this user', _style='color:red;'))
             redirect(URL('default','index'))
         
         if user_record.h_and_s_id is None:
@@ -67,7 +68,9 @@ def health_and_safety():
                    readonly = readonly,
                    record=hs_record, 
                    showid=False,
-                   labels={'user_id': 'Name'})
+                   labels={'user_id': 'Name'},
+                   submit_button='Submit changes / confirm current'
+                   )
     
     # now intercept and parse the various inputs
     if form.process(onvalidation=validate_health_and_safety).accepted:
@@ -82,7 +85,6 @@ def health_and_safety():
         response.flash = CENTER(B('Errors in form, please check and resubmit'), _style='color: red')
     else:
         pass
-    
     
     return dict(form=form)
 
