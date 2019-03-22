@@ -103,32 +103,32 @@ if auth.is_logged_in():
 ## -- Note that this basically just obfuscates the link, so the controllers
 ##    for these links also need admin decorators to restrict access
 ## ----------------------------------------------------------------------------
-
-n_dict = {'grp': db.group_request.admin_status,
-          'vis': db.research_visit.admin_status,
-          'prj': db.project_details.admin_status,
-          'out': db.outputs.admin_status,
-          'vol': db.help_offered.admin_status,
-          'blg': db.blog_posts.admin_status,
-          'hlp': db.help_request.admin_status,
-          'usr': db.auth_user.registration_key
-          }
-
-n = {}
-badge_class = {}
-for key, field in n_dict.iteritems():
-    # auth_user uses 'pending' as part of built in mechanisms, others are status values
-    n[key] = db(field.belongs(['Pending', 'pending', 'Submitted', 'In Review'])).count()
-    badge_class[key] = 'label badge-danger' if n[key] == 0 else 'label label-danger'
-
-# datasets don't quite work the same - need to tell admin about passed datasets that have
-# not been submitted or where submit failed
-n['dat'] = db((db.datasets.dataset_check_outcome == 'PASS') &
-              ((db.datasets.zenodo_submission_status == None) or
-               (db.datasets.zenodo_submission_status != 'ZEN_PASS'))).count()
-badge_class['dat'] = 'label badge-danger' if n['dat'] == 0 else 'label label-danger'
-
 if (auth.user_id != None) and (auth.has_membership(role='admin')):
+
+    n_dict = {'grp': db.group_request.admin_status,
+              'vis': db.research_visit.admin_status,
+              'prj': db.project_details.admin_status,
+              'out': db.outputs.admin_status,
+              'vol': db.help_offered.admin_status,
+              'blg': db.blog_posts.admin_status,
+              'hlp': db.help_request.admin_status,
+              'usr': db.auth_user.registration_key
+              }
+
+    n = {}
+    badge_class = {}
+    for key, field in n_dict.iteritems():
+        # auth_user uses 'pending' as part of built in mechanisms, others are status values
+        n[key] = db(field.belongs(['Pending', 'pending', 'Submitted', 'In Review'])).count()
+        badge_class[key] = 'label badge-danger' if n[key] == 0 else 'label label-danger'
+
+    # datasets don't quite work the same - need to tell admin about passed datasets that have
+    # not been submitted or where submit failed. Need to load the conditional model    
+    n['dat'] = db((db.datasets.dataset_check_outcome == 'PASS') &
+                  ((db.datasets.zenodo_submission_status == None) or
+                   (db.datasets.zenodo_submission_status != 'ZEN_PASS'))).count()
+    badge_class['dat'] = 'label badge-danger' if n['dat'] == 0 else 'label label-danger'
+
     response.menu += [('Admin', False, None, [
         (T('Manage users'), True, URL('people', 'manage_users'), []),
         (T('Manage contacts'), True, URL('people', 'manage_contacts'), []),
