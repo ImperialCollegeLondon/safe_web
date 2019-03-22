@@ -2,7 +2,7 @@ import dateutil.parser
 import requests
 from collections import Counter
 from gluon.contrib import simplejson
-from gluon.serializers import json
+from gluon.serializers import json, loads_json
 import os
 from gpxpy import gpx
 from safe_web_global_functions import get_frm
@@ -139,19 +139,22 @@ def gazetteer():
     
     # get the (selected) rows and turn them into geojson, ordering them
     # so that the bottom ones get added to the leaflet map first
-    rws = db(qry).select(orderby=db.gazetteer.display_order)
+    rws = db(qry).select(db.gazetteer.ALL, 
+                         db.gazetteer.wkt_wgs84.st_asgeojson().with_alias('geojson'), 
+                         orderby=db.gazetteer.display_order)
     
     # Need to put together the tooltip for the gazetteer
     # using a subset of the available columns
-    loc = ['<B>' + rw['location'] + '</B></BR>' for rw in rws]
-    info = [[key + ': ' + str(rw[key]) for key in ['type','plot_size','parent','fractal_order','transect_order']
-             if rw[key] is not None] for rw in rws]
+    loc = ['<B>' + rw.gazetteer['location'] + '</B></BR>' for rw in rws]
+    info = [[key + ': ' + str(rw.gazetteer[key]) 
+             for key in ['type','plot_size','parent','fractal_order','transect_order']
+             if rw.gazetteer[key] is not None] for rw in rws]
     
     # combine, removing trailing break
     tooltips = [l + '</BR>'.join(i) for l, i in zip(loc, info)]
     
     rws = [{"type": "Feature", "tooltip": tl, 
-            "geometry": {"type": r.geom_type,"coordinates": r.geom_coords}}
+            "geometry": loads_json(r.geojson)}
             for r, tl in zip(rws, tooltips)]
     
     # provide GPX and GeoJSON downloaders and use the magic 
@@ -246,13 +249,20 @@ class ExporterGeoJSON(object):
             
             # pop out the geometry components and id
             id_number = [ft.pop('id') for ft in ft_as_dicts]
-            geom_type = [ft.pop('geom_type') for ft in ft_as_dicts]
-            geom_coords = [ft.pop('geom_coords') for ft in ft_as_dicts]
+            
+            # convert WKT to geoson - this feels clunky but st_asgeojson 
+            # returns an expression for a select within PostgreSQL, so in 
+            # order to invoke it on the arbitary set of rows passed here, 
+            # we need to use the row id to select it from the db
+            geojson = [db(db.gazetteer.id == rw.id).select(
+                            db.gazetteer.wkt.st_asgeojson().with_alias('geojson')).first().geojson
+                       for rw in self.rows]
+            
+            geojson = [loads_json(rw) for rw in geojson]
             
             # assemble the features list
-            features = [{'type': "Feature", 'id': idn, 'properties': prop,
-                         'geometry': {'type': tp, 'coordinates': crds}} for 
-                         (idn, prop, tp, crds) in zip(id_number, ft_as_dicts, geom_type, geom_coords)]
+            features = [{'type': "Feature", 'id': idn, 'properties': prop, 'geometry': gj} 
+                        for (idn, prop, gj) in zip(id_number, ft_as_dicts, geojson)]
             
             # embed that in the Feature collection
             feature_collection = {"type": "FeatureCollection",
@@ -263,6 +273,33 @@ class ExporterGeoJSON(object):
             return simplejson.dumps(feature_collection)
         else:
             return ''
+
+@auth.requires_membership('admin')
+def update_gazetteer():
+    
+    """
+    This controller simply reloads the contents of the gazetteer table from
+    the file provided in static and the updates the UTM50N geometry field.
+    Note that this relies on an extended version of the GIS functionality in
+    the Web2py pydal package:
+        https://github.com/web2py/pydal/pull/567
+    """
+
+    # Drop the current contents
+    # TODO - this loses the ID name association 
+    db.gazetteer.truncate()
+    db.gazetteer_alias.truncate()
+    
+    # Refill the tables from the static resource
+    gazetteer_csv = os.path.join(request.folder, 'static', 'files', 'gis', 'gazetteer.csv')
+    db.gazetteer.import_from_csv_file(open(gazetteer_csv, 'r'), null='null')
+    
+    gazetteer_alias_csv = os.path.join(request.folder, 'static', 'files', 'gis', 'gazetteer_alias.csv')
+    db.gazetteer_alias.import_from_csv_file(open(gazetteer_alias_csv, 'r'), null='null')
+    
+    # Recalculate the UTM50N geometries - using the extended pydal GIS
+    db(db.gazetteer).update(wkt_utm50n = db.gazetteer.wkt_wgs84.st_transform(32650))
+
 # def calendars():
 #
 #     return response.render()

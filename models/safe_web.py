@@ -362,8 +362,8 @@ db.define_table('gazetteer',
                 Field('bbox_xmax', 'float'),
                 Field('bbox_ymin', 'float'),
                 Field('bbox_ymax', 'float'),
-                Field('geom_type', 'string', requires=IS_IN_SET(geom_types)),
-                Field('geom_coords', 'json'),
+                Field('wkt_wgs84', 'geometry()'),
+                Field('wkt_utm50n', 'geometry(public, 32650, 2)'),
                 Field('source', 'text'))
 
 # Load the gazetteer types directly from the database. Typically this is bulk updated
