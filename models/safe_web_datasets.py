@@ -46,9 +46,12 @@ db.define_table('datasets',
                 Field('dataset_check_error', 'text', default=''),
                 Field('dataset_check_report', 'text', default=''),
                 Field('dataset_title', 'text', default='Title not yet loaded'),
+                Field('dataset_access', 'string'),
+                Field('dataset_description', 'text'),
+                Field('dataset_keywords', 'list:string'),
                 Field('dataset_metadata', 'json'),
                 Field('dataset_taxon_index', 'json'),
-                Field('dataset_locations', 'json'),
+                Field('dataset_location_index', 'json'),
                 # fields to handle zenodo publication - most data is stored in
                 # the metadata field as JSON, but for quick recall, a few are store
                 # directly.
@@ -88,10 +91,14 @@ db.define_table('dataset_taxa',
                 Field('taxon_rank', 'string'),
                 Field('gbif_status', 'string'))
 
-                
+                                
 db.define_table('dataset_locations',
                 Field('dataset_version_id', 'reference datasets'),
-                Field('location_name', 'string'))
+                Field('name', 'string'),
+                Field('new_location', 'boolean'),
+                Field('type', 'string'),
+                Field('wkt_wgs84', 'geometry()'),
+                Field('wkt_utm50n', 'geometry(public, 32650, 2)'))
 
 
 db.define_table('dataset_worksheets',

@@ -4,6 +4,7 @@
 from collections import Counter
 import random
 from safe_web_global_functions import thumbnail
+import datetime
 
 ## -----------------------------------------------------------------------------
 ## Default page controllers
@@ -415,18 +416,235 @@ def get_locations_bbox():
     return {'locations': locations, 'aliases': aliases}
 
 
-@service.xml
-def test():
+def dataset_query_to_json(qry):
     """
-    Exploring using services to server XML. I don't think this is the
-    way to go, but this doc on semantic representation of tables
-    is enlightening about what should probably happen:
-    http://www.web2py.com/semantic/static/semantic.pdf
+    Takes a Query including rows in db.datasets and returns 
+    a standardised set of attributes as json.
     """
-    test = {'MD_Keywords': [{'keyword': {'CharacterString': 'Some data'}},
-                                {'keyword': {'CharacterString': 'To test'}},
-                                {'keyword': {'CharacterString': 'The system'}}]}
+    
+    qry &=  (db.datasets.zenodo_submission_status == 'ZEN_PASS')
+        
+    rows = db(qry).select(db.datasets.id, 
+                          db.datasets.zenodo_concept_doi, 
+                          db.datasets.zenodo_version_doi,
+                          db.datasets.zenodo_version_doi,
+                          distinct=True)
+        
+    return {'count': len(rows), 'entries': rows}
+    
+    
+@service.json
+def dataset_taxon_search(taxon_gbif_id=None, taxon_name=None, taxon_rank=None):
+    
+    """
+    Service to return dataset indices 
+    
+    """
+    # /dataset_taxon_search?taxon_name='Formicidae'
+    qry = (db.dataset_taxa.id > 0)
+    
+    if taxon_gbif_id is not None:
+        qry &= (db.dataset_taxa.gbif_id == taxon_gbif_id)
 
-    return test
+    if taxon_name is not None:
+        qry &= (db.dataset_taxa.taxon_name == taxon_name)
 
+    if taxon_rank is not None:
+        qry &= (db.dataset_taxa.taxon_rank == taxon_rank)
+    
+    dataset_ids = db(qry).select(db.dataset_taxa.dataset_version_id, distinct=True)
+    dataset_ids = [row.dataset_version_id for row in dataset_ids]
+    
+    qry = db.datasets.id.belongs(dataset_ids)
+    
+    return dataset_query_to_json(qry)
+
+
+@service.json
+def dataset_date_search(date=None, date_predicate='intersects'):
+    
+    """
+    Service to return dataset indices 
+    """
+    
+    #/dataset_date_search?date=2014-06-12
+    
+    # parse the data query: can be a single iso date or a comma separated pair.
+    try:
+        date = date.split(',')
+        date = [datetime.datetime.strptime(dt, '%Y-%m-%d') for dt in date]
+    except ValueError:
+        raise HTTP(404, "Could not parse date")
+    
+    # Check the number of dates and enforce order
+    if len(date) > 2:
+        raise HTTP(404, "Date query provides more than two dates")
+    elif len(date) == 2:
+        date.sort()
+    else:
+        # make singular dates a 'range' to use same predicate mechanisms
+        date += date
+    
+    # Only return published datasets
+    qry = (db.datasets.zenodo_submission_status == 'ZEN_PASS')
+    
+    # check the dates against the temporal extents of the datasets
+    if date_predicate == 'intersects':
+        qry &= ((db.datasets.temporal_extent_start <= date[1]) &
+                (db.datasets.temporal_extent_end >= date[0]))
+    elif date_predicate == 'contains':
+        qry &= ((db.datasets.temporal_extent_start >= date[0]) &
+                (db.datasets.temporal_extent_end <= date[1]))
+    elif date_predicate == 'within':
+        qry &= ((db.datasets.temporal_extent_start <= date[0]) &
+                (db.datasets.temporal_extent_end >= date[1]))
+    else:
+        raise HTTP(404, "Unknown date predicate")
+
+    return dataset_query_to_json(qry)
+
+
+@service.json
+def dataset_bbox_search(geometry=None, location=None, spatial_predicate='intersects', spatial_distance=0):
+    
+    # /dataset_spatial_search?geometry=Polygon((110 0, 110 10,120 10,120 0,110 0))
+    # /dataset_spatial_search?geometry=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))
+    # /dataset_spatial_search?geometry=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))&geometry_predicate=contains
+    # /dataset_spatial_search?geometry=Point(116.5 4.75)&geometry_predicate=within
+    
+    # TODO - distance here is in decimal degrees, but need st_transform to work in projected coordinate system
+    print location
+    print geometry
+    
+    print request
+    
+    if (location is not None) and (geometry is not None):
+        
+        raise HTTP(404, "Provide a location name or a WKT geometry, not both")
+        
+    elif location is None and geometry is  None:
+        
+        raise HTTP(404, "Provide either a location name or a WKT geometry")
+    
+    elif location is not None:
+        
+        gazetteer_location = db(db.gazetteer.location == location).select().first()
+        if gazetteer_location is not None:
+            geometry = gazetteer_location.wkt_wgs84
+        else:
+            raise HTTP(404, "Unknown location")
+    
+    # Validate the geometry - it isn't clear that there is a validator
+    elif geometry is not None:
+        try:
+            geo_wkb = db.executesql("select st_geomfromtext('{}');".format(geometry))
+        except db._adapter.driver.ProgrammingError:
+            raise HTTP(404, "Invalid WKT Geometry")
+
+    # different predicates
+    if spatial_predicate == 'intersects':
+        qry &= db.datasets.geographic_extent.st_intersects(geometry)
+    elif spatial_predicate == 'contains':
+        qry &= db.datasets.geographic_extent.st_contains(geometry)
+    elif spatial_predicate == 'within':
+        qry &= db.datasets.geographic_extent.st_within(geometry)
+    elif spatial_predicate == 'distance':
+        qry &= db.datasets.geographic_extent.st_distance(geometry) <= spatial_distance
+    else:
+        raise HTTP(404, "Unknown spatial predicate")
+        
+    return dataset_query_to_json(qry)
+
+
+@service.json
+def dataset_locations_search(geometry=None, location=None, spatial_predicate='intersects', spatial_distance=0):
+    
+    # /dataset_spatial_search?geometry=Polygon((110 0, 110 10,120 10,120 0,110 0))
+    # /dataset_spatial_search?geometry=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))
+    # /dataset_spatial_search?geometry=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))&geometry_predicate=contains
+    # /dataset_spatial_search?geometry=Point(116.5 4.75)&geometry_predicate=within
+    
+    # TODO - distance here is in decimal degrees, but need st_transform to work in projected coordinate system
+    
+    if (location is not None) and (geometry is not None):
+        
+        raise HTTP(404, "Provide a location name or a WKT geometry, not both")
+        
+    elif location is None and geometry is  None:
+        
+        raise HTTP(404, "Provide either a location name or a WKT geometry")
+    
+    elif location is not None:
+        
+        gazetteer_location = db(db.gazetteer.location == location).select().first()
+        if gazetteer_location is not None:
+            geometry = gazetteer_location.wkt_utm50n
+        else:
+            raise HTTP(404, "Unknown location")
+    
+    # Validate the geometry - there isn't currently a validator
+    elif geometry is not None:
+        try:
+            geo_wkb = db.executesql("select st_geomfromtext('{}');".format(geometry))
+        except db._adapter.driver.ProgrammingError:
+            raise HTTP(404, "Invalid WKT Geometry")
+
+    # different predicates
+    if spatial_predicate == 'intersects':
+        qry = db.datasets.geographic_extent.st_intersects(geometry)
+    elif spatial_predicate == 'contains':
+        qry = db.datasets.geographic_extent.st_contains(geometry)
+    elif spatial_predicate == 'within':
+        qry = db.datasets.geographic_extent.st_within(geometry)
+    elif spatial_predicate == 'distance':
+        
+        # Create two IN statements looking for gazetteer or new locations
+        # within the spatial distance of the target geometry
+        gaz_belong = db(db.gazetteer.wkt_utm50n.st_distance(geometry) <= spatial_distance)._select(db.gazetteer.location, distinct=True)
+
+        new_belong = db((db.dataset_locations.new_location == 'T') &
+                        (db.dataset_locations.wkt_utm50n.st_distance(geometry) <= spatial_distance))._select(db.dataset_locations.name, distinct=True)
+
+        # Find dataset rows where any of those locations occur in the location index
+        qry = ((db.datasets.id == db.dataset_locations.dataset_version_id) &
+               ((db.dataset_locations.name.belongs(gaz_belong)) |
+                (db.dataset_locations.name.belongs(new_belong))))
+    else:
+        raise HTTP(404, "Unknown spatial predicate")
+        
+    return dataset_query_to_json(qry)
+
+
+@service.json
+def dataset_field_text_search(field_text=None):
+    
+    """
+    Looks for text in field titles and descriptions
+    """
+    
+    qry = ((db.datasets.id == db.dataset_fields.dataset_version_id) & 
+           ((db.dataset_fields.field_name.contains(field_text)) | 
+            (db.dataset_fields.description.contains(field_text))))
+
+    return dataset_query_to_json(qry)
+
+
+@service.json
+def dataset_free_text_search(free_text=None):
+    
+    """
+    Looks for text in field titles and descriptions
+    """
+    
+    qry = ((db.datasets.id == db.dataset_fields.dataset_version_id) & 
+           (db.datasets.id == db.dataset_worksheets.dataset_version_id) & 
+           ((db.dataset_fields.field_name.contains(free_text)) | 
+            (db.dataset_fields.description.contains(free_text)) |
+            (db.dataset_worksheets.description.contains(free_text)) | 
+            (db.datasets.dataset_title.contains(free_text)) |
+            (db.datasets.dataset_description.contains(free_text)) |
+            (db.datasets.dataset_keywords.contains(free_text))
+            ))
+
+    return dataset_query_to_json(qry)
 
