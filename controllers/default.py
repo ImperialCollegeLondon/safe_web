@@ -426,8 +426,7 @@ def dataset_query_to_json(qry):
         
     rows = db(qry).select(db.datasets.id, 
                           db.datasets.zenodo_concept_doi, 
-                          db.datasets.zenodo_version_doi,
-                          db.datasets.zenodo_version_doi,
+                          db.datasets.zenodo_record_doi,
                           distinct=True)
         
     return {'count': len(rows), 'entries': rows}

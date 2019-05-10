@@ -2,29 +2,29 @@
 
 {{=H2('Administer datasets')}}
 
-<p>This page shows the status of the most recent version of all the datasets submitted
-    to the website and provides some management tools.</p>
+<p>This page shows the status of submitted datasets and provides some management tools.</p>
 
-<p>When a new dataset or new version is uploaded, the metadata formatting should be checked
+<ul>
+<li>When a new dataset is uploaded, the metadata formatting should be checked
     automatically but if it has not yet been run for a dataset, then the 'Check' button will
-    start the check immediately.
-</p>
-<p>When a dataset has passed checking, it can be published to Zenodo. When a dataset only
-    consists of the Excel datafile and metadata, the 'Publish' button will send the metadata
-    and data to Zenodo. When a dataset has other associated files, then this button will show
-    'Adopt' instead of 'Publish'. The other files will first need to be uploaded to a draft
-    Zenodo deposit. When you click on the Adopt button, you will be prompted for the ID of that
-    deposit and then the metadata and data in the submitted Excel file will be linked to the
-    external deposit, which will then be published.
-</p>
+    start the check immediately.</li>
 
-<p>If you want to resubmit a corrected version of a file that another user has submitted
-    but which has failed checks, then the 'Resubmit' button will take you to the submission
-    page for the dataset.
-</p>
 
-<p>Click <a href={{=URL(vars={'keywords': 'datasets.check_outcome+%3D+%22PASS%22+and+datasets.zenodo_submission_status+%21%3D+%22Published%22'})}}>here</a> to
-    focus in on datasets that have passed verification but which haven't been published.</p>
+<li>When a dataset has passed checking, it can be published to Zenodo. 
+	<ul>
+		<li>When a dataset only consists of the Excel datafile and metadata, the 'Publish' button will send the metadata
+    and data to Zenodo. </li>
+		<li>When a dataset has other associated files, then this button will show
+    'Adopt' instead of 'Publish'. See <a href='https://safe-dataset-checker.readthedocs.io/en/latest/data_format/other_formats/#submitting-data-in-other-file-formats'>here</a> for further instructions.</li>
+	</ul>
+	</li>
+
+<li>If you want to submit a corrected version of a file that another user has submitted
+    but which has failed checks, then download the file, fix it and submit it <a>here</a></li>
+
+<li>Click <a href={{=URL(vars={'keywords': 'submitted_datasets.check_outcome+%3D+%22PASS%22+and+datasets.zenodo_submission_status+%21%3D+%22Published%22'})}}>here</a> to
+    focus in on datasets that have passed verification but which haven't been published.</li>
+</ul>
 
 
 <br>

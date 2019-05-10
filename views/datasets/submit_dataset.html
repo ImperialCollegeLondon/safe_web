@@ -2,22 +2,37 @@
 
 {{=H2('SAFE dataset submission')}}
 
-<p>It is a requirement of working at SAFE that you provide us with a copy of your data. We will validate your dataset and then publish it on Zenodo, which will provide a permanent home for your data and assign it a permanent DOI.  This page allows you to submit a dataset and follow the progress through to publication.</p>
+<p>It is a requirement of working at SAFE that you provide us with a copy of your data. We will validate your dataset and then publish it on Zenodo, which will :
+	<ul>
+	<li>provide a permanent home for your data,</li>
+	<li>assign it a permanent DOI, and</li>
+	<li>establish a permanent citation for your dataset.</li>
+	</ul>
 
-<p>This submission process only accepts datasets stored in Microsoft Excel files - please contact us about other kinds of data. You will need to format your file to provide some simple metadata and detailed instructions on the file format can be found <a href='https://safe-dataset-checker.readthedocs.io'>here</a>. We realise it takes time and effort to get the data formatted correctly but the information you add is vital to make sure that we can archive your data properly and make it easy for future researchers to find it and benefit from it.</p>
+<h4>Submission process</h4>
 
-<p>Remember that the information you provide will become part of the permanent record on the published dataset - you should make the data and description as clear and informative as possible. Note that the metadata description of your dataset will be visible in Zenodo as soon as it is published, but you can choose to embargo your data for up to two years. The data itself will only be accessible after the embargo period has expired.</p>
+<ol>
+	<li>Prepare your data for submission, following the instructions found here: 
+		<a href='https://safe-dataset-checker.readthedocs.io'>https://safe-dataset-checker.readthedocs.io</a>.</li>
+	<li>Note in particular:</li>
+		<ul>
+			<li><strong>Authorship</strong> on published datasets should be treated in the same way as you would consider authorship on papers: you should include not only the people responsible for physically collecting the data but also other researchers who facilitated the work, such as project supervisors and local collaborators.</li>
+			<li> Similarly, you must acknowledge any <strong>funding</strong> that supported your research.
+			<li>The information you provide will become part of the permanent record on the published dataset - you should make the data and description as <strong>clear and informative </strong>as possible.</li>
+			<li>The datasets may be <strong>embargoed</strong> for up to two years, but metadata describing your dataset will be visible in Zenodo as soon as it is published.</li>
+		</ul>
+	<li>The file format will be checked automatically and you will be emailed with the result of the check.</li>
+	<li>If the file has failed format checking, then follow the link in the email to see the  check report. Once you've fixed any problems, come back and upload a new version. If a reported problem is unclear or doesn't seem like it should be a problem then <a href='mailto:admin@safeproject.net'>email us</a> to get clarification.</li>
+	<li>If the file has passed format checking, then an administrator will look at the data before publishing it to Zenodo.</li>
+	
+</ol>
+	
 
-<h4>Authorship and Funding </h4>
+	
+<p>We realise it takes time and effort to get the data formatted correctly but the information you add is vital to make sure that we can archive your data properly and make it easy for future researchers to find it and benefit from it.</p>
 
-You will need to provide a list of authors for submitted datasets, which will form part of the permanent citation for the published dataset. Authorship on published datasets should be treated in the same way as you would consider authorship on papers: you should include not only the people responsible for physically collecting the data but also other researchers who facilitated the work, such as project supervisors and local collaborators. Similarly, you must acknowledge any funding that supported your research.
+{{=form}}
+
 
 {{=resubmit}}
 
-
-{{=submit_info}}
-
-<br>
-{{=form}}
-<br>
-{{=vsn_hist}}

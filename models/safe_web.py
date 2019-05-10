@@ -300,8 +300,8 @@ db.define_table('gazetteer',
 # Load the gazetteer types directly from the database. Typically this is bulk updated
 # as sites are added, so synchronizing the list of types here is fragile. Instead, 
 # set the requirement using the available data once the table has been declared.
-gaz_types = [r.type for r in db().select(db.gazetteer.type, distinct=True)]
-db.gazetteer.type.requires = IS_IN_SET(gaz_types)
+#gaz_types = [r.type for r in db().select(db.gazetteer.type, distinct=True)]
+#db.gazetteer.type.requires = IS_IN_SET(gaz_types)
 
 # Aliases location names - cannot use a value already in the gazeetteer locations
 db.define_table('gazetteer_alias',

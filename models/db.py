@@ -30,7 +30,8 @@ myconf = AppConfig(reload=True)
 # ----------------------------------------------------------------------------
 
 # PG setup
-db = DAL(myconf.take('db.uri'), pool_size=myconf.take('db.pool_size', cast=int), lazy_tables=False)
+db = DAL(myconf.take('db.uri'), pool_size=myconf.take('db.pool_size', cast=int), 
+         lazy_tables=False)
 
 # by default give a view/generic.extension to all actions from localhost
 # none otherwise. a pattern can be 'controller/function.extension'
@@ -179,4 +180,4 @@ else:
 
 ckeditor.settings.uploadfs = blog_fs
 ckeditor.settings.table_upload_name = 'ckeditor_uploads'
-ckeditor.define_tables()
+ckeditor.define_tables(fake_migrate=True)

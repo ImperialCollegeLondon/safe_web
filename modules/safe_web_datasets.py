@@ -8,6 +8,7 @@ from networkx import Graph, bfs_successors, get_node_attributes
 import requests
 from safe_web_global_functions import safe_mailer
 from itertools import groupby
+from shapely import geometry
 
 # The web2py HTML helpers are provided by gluon. This also provides the 'current' object, which
 # provides the web2py 'request' API (note the single letter difference from the requests package!).
@@ -17,7 +18,7 @@ from itertools import groupby
 from gluon import *
 
 """
-This module providese functions to handle datasets within the SAFE website. 
+This module provides functions to handle datasets within the SAFE website. 
 These are called from the datasets controller but are also needed from other locations, 
 such as the scheduler, so are defined here in their own module.
 """
@@ -67,7 +68,7 @@ def verify_dataset(record_id, email=False):
         raise RuntimeError('Site config does provide not the host name')
     
     # get the record
-    record = current.db.datasets[record_id]
+    record = current.db.submitted_datasets[record_id]
     
     # track errors to avoid hideous nested try statements
     error = False
@@ -81,20 +82,18 @@ def verify_dataset(record_id, email=False):
         # otherwise, create a return dictionary for all remaining failure 
         # modes (no report, but file, uploader and URL should fine) and
         # set the default outcome
-        ret_dict = {'dataset_id': int(record.dataset_id), 
-                    'report': '',
+        ret_dict = {'report': '',
                     'filename': record.file_name,
                     'name': record.uploader_id.first_name,
-                    'dataset_url': URL('datasets', 'submit_dataset', 
-                                       vars={'dataset_id': record.dataset_id},
+                    'dataset_url': URL('datasets', 'submitted_dataset_status', 
+                                       vars={'id': record.id},
                                        scheme=True, host=host)}
         outcome = 'ERROR'
     
     # Initialise the dataset checker:
     if not error:
         # - get paths to dataset file. Failure to find is handled by safe_dataset_checker methods.
-        fname = os.path.join(current.request.folder, 'uploads', 'datasets',
-                             str(record.dataset_id), record.file)
+        fname = os.path.join(current.request.folder, 'uploads', 'submitted_datasets', record.file)
         # get the Dataset object from the file checker
         try:
             dataset = safe_dataset_checker.Dataset(fname, verbose=False, gbif_database=gbif_db)
@@ -106,7 +105,7 @@ def verify_dataset(record_id, email=False):
             record.update_record(dataset_check_outcome='ERROR',
                                  dataset_check_error=repr(e))
             ret_msg = 'Verifying dataset {}: error initialising dataset checker'
-            ret_msg = ret_msg.format(record.dataset_id)
+            ret_msg = ret_msg.format(record.id)
             error = True
     
     # main processing of the dataset
@@ -114,6 +113,7 @@ def verify_dataset(record_id, email=False):
         try:
             # load the metadata sheets
             dataset.load_summary(validate_doi=True, project_id=record.project_id)
+            
             dataset.load_taxa()
             # use a local locations file - there is some issue with using the
             # service from within the code
@@ -130,15 +130,15 @@ def verify_dataset(record_id, email=False):
             
         except Exception as e:
             ret_msg = 'Verifying dataset {}: error running dataset checking'
-            ret_msg = ret_msg.format(record.dataset_id)
+            ret_msg = ret_msg.format(record.id)
             dataset_check_error = repr(e)
         else:
             if dataset.passed:
                 outcome = 'PASS'
-                ret_msg = 'Verifying dataset {}: dataset checking PASSED'.format(record.dataset_id)
+                ret_msg = 'Verifying dataset {}: dataset checking PASSED'.format(record.id)
             else:
                 outcome = 'FAIL'
-                ret_msg = 'Verifying dataset {}: dataset checking FAILED'.format(record.dataset_id)
+                ret_msg = 'Verifying dataset {}: dataset checking FAILED'.format(record.id)
             
             dataset_check_error = ''
         
@@ -159,14 +159,19 @@ def verify_dataset(record_id, email=False):
             report_text = PRE(report_text.replace(fname, record.file_name))
             # Update the ret_dict to insert the report text
             ret_dict['report'] = report_text
-            
+        
+        
+        # get the dataset_metadata and update to store the actual filename
+        dataset_metadata = dataset.export_metadata_dict()
+        dataset_metadata['filename'] = record.file_name
+        
         record.update_record(dataset_check_outcome=outcome,
                              dataset_check_report=report_text,
                              dataset_check_error=dataset_check_error,
                              dataset_title=dataset.title,
-                             dataset_metadata=dataset.export_metadata_dict(),
-                             dataset_taxon_index=dataset.taxon_index,
-                             dataset_locations=dataset.locations)
+                             dataset_metadata={'metadata': dataset_metadata,
+                                               'taxa': dataset.taxon_index,
+                                               'locations': dataset.location_index})
     
     # notify the user
     if email:
@@ -189,10 +194,10 @@ def verify_dataset(record_id, email=False):
 def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
     
     """
-    Function to submit a dataset record to Zenodo and to update the
-    dataset record with the result of that attempt. This handles the
-    logic of selecting which method to use: create excel, update excel
-    or adopt external.
+    Function that attempts to publish a dataset record to Zenodo and 
+    to populate the published_datasets table with result of that attempt. 
+    This handles the logic of selecting which method to use: create excel, 
+    update excel or adopt external.
     
     Args:
         record_id: The id of the dataset table record to be submitted
@@ -203,8 +208,11 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
         A string describing the outcome.
     """
     
+    # get the current db 
+    db = current.db
+    
     # check the record exists and hasn't already been submitted
-    record = current.db.datasets[record_id]
+    record = db.submitted_datasets[record_id]
 
     if record is None:
         return 'Publishing dataset: unknown record ID {}'.format(record_id)
@@ -235,14 +243,14 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
     # 3) a brand new dataset with external files and
     # 4) an update to an existing dataset with online files.
 
-    metadata = record.dataset_metadata
+    metadata = record.dataset_metadata['metadata']
 
     # external_files contains an empty list or a list of dictionaries
     if metadata['external_files']:
         code, links, response = adopt_external_zenodo(api, token, record, deposit_id)
         external = True
     else:
-        if record.zenodo_parent_id is None:
+        if record.concept_id is None:
             code, links, response = create_excel_zenodo(api, token, record)
         else:
             code, links, response = update_excel_zenodo(api, token, record)
@@ -261,16 +269,106 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
                              zenodo_error=response)
         return "Failed to publish record"
     else:
-        # Update the record with the publication details
-        record.update_record(zenodo_submission_status='ZEN_PASS',
-                             zenodo_submission_date=datetime.datetime.now(),
-                             zenodo_metadata=response,
-                             zenodo_record_id=response['record_id'],
-                             zenodo_version_doi=response['doi_url'],
-                             zenodo_version_badge=response['links']['badge'],
-                             zenodo_concept_doi=response['links']['conceptdoi'],
-                             zenodo_concept_badge=response['links']['conceptbadge'])
+                
+        # Set the most recent flag for existing published versions to False
+        if record.concept_id is not None:
+            db(db.published_datasets.zenodo_concept_id == record.concept_id
+               ).update(most_recent = False)
+        
+        # remove the dataset metadata from the zenodo response, since the
+        # contents is information we have already, so we can store the rest
+        del response['metadata']
+        
+        # Now create a published datasets entry 
+        published_record = db.published_datasets.insert(
+                                     uploader_id=record.uploader_id,
+                                     upload_datetime=record.upload_datetime,
+                                     submission_id=record.id,
+                                     dataset_title=metadata['title'],
+                                     dataset_access=metadata['access'],
+                                     dataset_embargo=metadata['embargo_date'],
+                                     dataset_description=metadata['description'],
+                                     dataset_metadata=record.dataset_metadata,
+                                     temporal_extent_start=metadata['temporal_extent'][0],
+                                     temporal_extent_end=metadata['temporal_extent'][1],
+                                     geographic_extent= geometry.box(metadata['longitudinal_extent'][0],
+                                                                     metadata['latitudinal_extent'][0],
+                                                                     metadata['longitudinal_extent'][1],
+                                                                     metadata['latitudinal_extent'][1]).wkt,
+                                     publication_date=datetime.datetime.now(),
+                                     most_recent=True,
+                                     zenodo_record_id=response['record_id'],
+                                     zenodo_record_doi=response['doi_url'],
+                                     zenodo_record_badge=response['links']['badge'],
+                                     zenodo_concept_id=response['conceptrecid'],
+                                     zenodo_concept_doi=response['links']['conceptdoi'],
+                                     zenodo_concept_badge=response['links']['conceptbadge'],
+                                     zenodo_metadata=response)            
+        
+        # add an associated project link to the dataset concept 
+        # if one does not already exist
+        project_link = db((db.project_datasets.project_id == record.project_id) &
+                          (db.project_datasets.concept_id == response['conceptrecid'])
+                          ).select()
 
+        if not project_link:
+            db.project_datasets.insert(project_id=record.project_id,
+                                       concept_id=response['conceptrecid'],
+                                       user_id=record.uploader_id,
+                                       date_added=datetime.date.today())
+        
+        # populate index tables
+        # A) Taxa
+        taxa = record.dataset_metadata['taxa']
+        taxa = [dict(zip(['dataset_id', 'gbif_id', 'gbif_parent_id', 'taxon_name', 'taxon_rank', 'gbif_status'], 
+                         [published_record] + tx[:5])) for tx in taxa]
+        
+        db.dataset_taxa.bulk_insert(taxa)
+        
+        # B) Files, using the Zenodo response
+        files = response['files']
+        for each_file in files:
+            each_file['dataset_id'] = published_record
+            each_file['download_link'] = each_file['links']['download']
+            each_file['file_zenodo_id'] = each_file.pop('id')
+        
+        db.dataset_files.bulk_insert(files)
+        
+        # C) Locations
+        locations = record.dataset_metadata['locations']
+        locations = [dict(zip(['dataset_id', 'name','new_location','type','wkt_wgs84'], 
+                              [published_record] + loc)) for loc in locations]
+        
+        db.dataset_locations.bulk_insert(locations)
+        
+        # D) Dataworksheets and fields
+        for data in metadata['dataworksheets']:
+        
+            worksheet_id = db.dataset_worksheets.insert(dataset_id=published_record, **data)
+            
+            for fld in data['fields']:
+                fld['dataset_id'] = published_record
+                fld['worksheet_id'] = worksheet_id
+            
+            db.dataset_worksheets.bulk_insert(data['fields'])
+        
+        # E) Authors
+        for auth in metadata['authors']:
+            db.dataset_authors.insert(dataset_id=published_record, **auth)
+        
+        # F) Funders
+        if metadata['funders'] is not None:
+            for fndr in metadata['funders']:
+                db.dataset_funders.insert(dataset_id=published_record, **fndr)
+        
+        # G) Permits
+        if metadata['permits'] is not None:
+            for perm in metadata['permits']:
+                db.dataset_permits.insert(dataset_id=published_record, **perm)
+        
+        # remove the dataset from the submitted_datasets table
+        record.delete_record()
+        
         return "Published dataset to {}".format(response['doi_url'])
 
 
@@ -293,13 +391,13 @@ def create_excel_zenodo(api, token, record):
     """
 
     # create the new deposit
-    code, response = create_deposit(api, token)
+    code, response, zenodo_id = create_deposit(api, token)
 
     # upload the record metadata
     if code == 0:
         # store previous response containing the links dictionary
         links = response
-        code, response = upload_metadata(links, token, record)
+        code, response = upload_metadata(links, token, record, zenodo_id)
     else:
         links = None
 
@@ -335,14 +433,19 @@ def update_excel_zenodo(api, token, record):
         iii) A response object from Zenodo - which will contain either a
             failure message or the publication details.
     """
-    # get a new draft of the existing record
-    code, response = create_deposit_draft(api, token, record.zenodo_parent_id)
+    # get a new draft of the existing record from the zenodo id of the
+    # most recent published record (can't create a draft from a concept id)
+    most_recent = current.db((current.db.published_datasets.zenodo_concept_id == record.concept_id) &
+                             (current.db.published_datasets.most_recent == True)
+                             ).select().first()
+    
+    code, response, zenodo_id = create_deposit_draft(api, token, most_recent.zenodo_record_id)
 
     # upload the record metadata
     if code == 0:
         # store previous response containing the links dictionary
         links = response
-        code, response = upload_metadata(links, token, record)
+        code, response = upload_metadata(links, token, record, zenodo_id)
     else:
         links = None
 
@@ -396,12 +499,12 @@ def adopt_external_zenodo(api, token, record, deposit_id):
         # and the list of remote files
         remote_files = response['files']
         links = response['links']
-        code, response = upload_metadata(links, token, record)
+        code, response = upload_metadata(links, token, record, deposit_id)
 
         # If we got a deposit, check the files found in the deposit match
         # with the external files specified in the record metadata.
         remote_filenames = {rfile['filename'] for rfile in remote_files}
-        external_files = set([r['file'] for r in record.dataset_metadata['external_files']])
+        external_files = set([r['file'] for r in record.dataset_metadata['metadata']['external_files']])
         
         if not remote_filenames == external_files:
             code = 1
@@ -462,9 +565,9 @@ def create_deposit(api, token):
 
     # trap errors in creating the resource - successful creation of new deposits returns 201
     if dep.status_code != 201:
-        return 1, dep.json()
+        return 1, dep.json(), None
     else:
-        return 0, dep.json()['links']
+        return 0, dep.json()['links'], dep.json()['id']
 
 
 def create_deposit_draft(api, token, deposit_id):
@@ -480,13 +583,13 @@ def create_deposit_draft(api, token, deposit_id):
     """
 
     # get the draft api
-    api = api + '/deposit/depositions/{}/actions/newversion'.format(deposit_id)
-    new_draft = requests.post(api, params=token, json={},
+    new_draft = requests.post(api + '/deposit/depositions/{}/actions/newversion'.format(deposit_id), 
+                              params=token, json={},
                               headers={"Content-Type": "application/json"})
 
     # trap errors in creating the new version
     if new_draft.status_code != 201:
-        return 1, new_draft.json()
+        return 1, new_draft.json(), None
 
     # now get the newly created version
     api = new_draft.json()['links']['latest_draft']
@@ -496,12 +599,12 @@ def create_deposit_draft(api, token, deposit_id):
     # trap errors in creating the resource - successful creation of new version
     #  drafts returns 200
     if dep.status_code != 200:
-        return 1, dep.json()
+        return 1, dep.json(), None
     else:
-        return 0, dep.json()['links']
+        return 0, dep.json()['links'], dep.json()['id']
 
 
-def upload_metadata(links, token, record):
+def upload_metadata(links, token, record, zenodo_id):
     """
     Function to turn a dataset row record into a Zenodo metadata JSON and upload
     it to a deposit.
@@ -510,6 +613,8 @@ def upload_metadata(links, token, record):
         links: The links dictionary from a created deposit
         token: The access token to be used
         record: The database record containing the metadata to be uploaded.
+        zenodo_id: The ID of the zenodo draft being created, to be used as a
+            key for the GEMINI XML link.
 
     Returns:
         An integer indicating success (0) or failure (1) and either the
@@ -517,7 +622,7 @@ def upload_metadata(links, token, record):
     """
 
     # extract the metadata from the record
-    metadata = record.dataset_metadata
+    metadata = record.dataset_metadata['metadata']
 
     # basic contents
     zen_md = {
@@ -546,7 +651,7 @@ def upload_metadata(links, token, record):
         zen_md['metadata']['access_right'] = 'closed'
     else:
         raise ValueError('Unknown access status')
-
+    
     # set up the dataset creators - the format has already been checked and names
     # should be present and correct. Everything else is optional, so strip None
     # values and pass the rest to Zenodo
@@ -554,7 +659,7 @@ def upload_metadata(links, token, record):
         {ky: auth[ky] for ky in auth if auth[ky] is not None and ky != 'email'}
         for auth in metadata['authors']]
 
-    zen_md['metadata']['description'] = str(dataset_description(record, include_gemini=True))
+    zen_md['metadata']['description'] = str(dataset_description(record, gemini_id=zenodo_id))
 
     # attach the metadata to the deposit resource
     mtd = requests.put(links['self'], params=token, data=simplejson.dumps(zen_md),
@@ -582,8 +687,7 @@ def upload_file(links, token, record):
     """
 
     # upload the new file
-    fname = os.path.join(current.request.folder, 'uploads', 'datasets',
-                         str(record.dataset_id), record.file)
+    fname = os.path.join(current.request.folder, 'uploads', 'submitted_datasets', record.file)
     fls = requests.post(links['files'], params=token, files={'file': open(fname, 'rb')})
 
     # trap errors in uploading file
@@ -796,12 +900,12 @@ def taxon_index_to_text(taxon_index):
     return XML(html)
 
 
-def dataset_description(record, include_gemini=False):
+def dataset_description(record, gemini_id=None):
     """
-    Function to turn a dataset metadata record into html to send
-    to Zenodo and to populate the dataset view. Zenodo has a limited
-    set of permitted HTML tags, so this is quite simple HTML, but having
-    the exact same information and layout makes sense.
+    Function to turn a dataset metadata JSON into html to send to Zenodo, 
+    to populate the dataset view and to provide for submitted datasets. 
+    Zenodo has a limited set of permitted HTML tags, so this is quite simple 
+    HTML, but having the exact same information and layout makes sense.
     
     Available tags:
     a, p, br, blockquote, strong, b, u, i, em, ul, ol, li, sub, sup, div, strike.
@@ -810,15 +914,16 @@ def dataset_description(record, include_gemini=False):
     uploaded programatically. A bug in their web interface strips links.
     
     Args:
-        record: The db record for the dataset (a row from db.datasets)
-        include_gemini: Should the description include a link to the GEMINI XML 
+        record: The db record for the dataset (a row from db.submitted_datasets or db.published_datasets)
+        gemini_id: Should the description include a link to the GEMINI XML 
             service? This isn't available on the site datasets page until a dataset
             is published as it contains links to Zenodo, but should also be included 
             in the description uploaded to Zenodo.
     """
     
-    # shortcut to metadata
-    metadata = record.dataset_metadata
+    # shortcut to metadata and taxon_index
+    metadata = record.dataset_metadata['metadata']
+    taxon_index = record.dataset_metadata['taxa']
     
     # - get a project link back to the safe website
     db = current.db
@@ -853,10 +958,15 @@ def dataset_description(record, include_gemini=False):
                     'you cite the dataset in any outputs, but has the additional condition '
                     'that you acknowledge the contribution of these funders in any outputs.'))
     
+    # Permits
+    if metadata['permits']:        
+        desc += P(B('Permits: '), 'These data were collected under permit from the following authorities:',
+                  UL([LI('{authority} ({type} licence {number})'.format(**pmt)) for pmt in metadata['permits']]))
+    
     # Can't get the XML metadata link unless it is published, since that 
     # contains references to the zenodo record
-    if include_gemini:
-        md_url = URL('datasets', 'xml_metadata', vars={'id': record.id}, scheme=True, host=True)
+    if gemini_id is not None:
+        md_url = URL('datasets', 'xml_metadata', vars={'id': gemini_id}, scheme=True, host=True)
         desc += P(B('XML metadata: '),
                   'GEMINI compliant metadata for this dataset is available ',
                   A('here', _href=md_url))
@@ -866,10 +976,10 @@ def dataset_description(record, include_gemini=False):
     if metadata['external_files']:
         ex_files = metadata['external_files']
         desc += P(B('Files: '), 'This dataset consists of ', len(ex_files) + 1, ' files: ',
-                  ', '.join([record.file_name] + [f['file'] for f in ex_files]))
+                  ', '.join([metadata['filename']] + [f['file'] for f in ex_files]))
     else:
         ex_files = []
-        desc += P(B('Files: '), 'This consists of 1 file: ', record.file_name)
+        desc += P(B('Files: '), 'This consists of 1 file: ', metadata['filename'])
 
     # Group the sheets by their 'external' file - which is None for sheets
     # in the submitted workbook - and collect them into a dictionary by source file
@@ -891,7 +1001,7 @@ def dataset_description(record, include_gemini=False):
     # descriptions that might have an entry for each file.
 
     # Report the worksheet first
-    desc += P(B(record.file_name))
+    desc += P(B(metadata['filename']))
 
     if None in tables_by_source:
         # Report internal tables
@@ -929,14 +1039,14 @@ def dataset_description(record, include_gemini=False):
     if metadata['longitudinal_extent'] is not None:
         desc += P(B('Longitudinal extent: '),
                   '{0[0]:.4f} to {0[1]:.4f}'.format(metadata['longitudinal_extent']))
-    if record.dataset_taxon_index is not None and record.dataset_taxon_index != []:
+    if taxon_index:
         desc += CAT(P(B('Taxonomic coverage: '), BR(),
                       ' All taxon names are validated against the GBIF backbone taxonomy. If a '
                       'dataset uses a synonym, the accepted usage is shown followed by the dataset '
                       'usage in brackets. Taxa that cannot be validated, including new species and '
                       'other unknown taxa, morphospecies, functional groups and taxonomic levels '
                       'not used in the GBIF backbone are shown in square brackets.',
-                      DIV(taxon_index_to_text(record.dataset_taxon_index))))
+                      DIV(taxon_index_to_text(taxon_index))))
     
     return desc
 
@@ -985,12 +1095,12 @@ def table_description(tab):
 def generate_inspire_xml(record):
     
     """
-    Produces an INSPIRE/GEMINI formatted XML record from a dataset
-    record, using a template XML file stored in the static files
+    Produces an INSPIRE/GEMINI formatted XML record from a published 
+    dataset record, using a template XML file stored in the static files
     """
     
     # get the dataset and zenodo metadata
-    dataset_md = record.dataset_metadata
+    dataset_md = record.dataset_metadata['metadata']
     zenodo_md = record.zenodo_metadata
     
     # parse the XML template and get the namespace map
@@ -1007,7 +1117,7 @@ def generate_inspire_xml(record):
     
     # date stamp (not clear what this is - taken as publication date)
     root.find('./gmd:dateStamp/gco:DateTime',
-              nsmap).text = record.zenodo_submission_date.isoformat()
+              nsmap).text = record.publication_date.isoformat()
     
     # Now zoom to the data identication section
     data_id = root.find('.//gmd:MD_DataIdentification', nsmap)
@@ -1017,14 +1127,14 @@ def generate_inspire_xml(record):
     citation.find('gmd:title/gco:CharacterString',
                   nsmap).text = dataset_md['title']
     citation.find('gmd:date/gmd:CI_Date/gmd:date/gco:Date',
-                  nsmap).text = record.zenodo_submission_date.date().isoformat()
+                  nsmap).text = record.publication_date.date().isoformat()
 
     # two identifiers - the safe project website and the DOI.
-    safe_url = URL('datasets', 'view_dataset', vars={'id': record.id}, scheme=True, host=True)
+    safe_url = URL('datasets', 'view_dataset', vars={'id': record.zenodo_record_id}, scheme=True, host=True)
     citation.find('gmd:identifier/gmd:MD_Identifier/gmd:code/gco:CharacterString',
                   nsmap).text = safe_url
     citation.find('gmd:identifier/gmd:RS_Identifier/gmd:code/gco:CharacterString',
-                  nsmap).text = record.zenodo_version_doi
+                  nsmap).text = record.zenodo_record_doi
     
     # The citation string
     authors = [au['name'] for au in dataset_md['authors']]
@@ -1033,9 +1143,9 @@ def generate_inspire_xml(record):
         author_string = author_string.replace(', ' + authors[-1], ' & ' + authors[-1])
 
     cite_string = '{} ({}) {} [Dataset] {}'.format(author_string,
-                                                   record.zenodo_submission_date.year,
+                                                   record.publication_date.year,
                                                    record.dataset_title,
-                                                   record.zenodo_version_doi)
+                                                   record.zenodo_record_doi)
     
     citation.find('gmd:otherCitationDetails/gco:CharacterString', nsmap).text = cite_string
     
@@ -1127,7 +1237,7 @@ def generate_inspire_xml(record):
                   'gmd:CI_OnlineResource/gmd:linkage/gmd:URL'),
                  nsmap).text = zenodo_md['files'][0]['links']['download']
     distrib.find(('gmd:transferOptions[2]/gmd:MD_DigitalTransferOptions/gmd:onLine/'
-                  'gmd:CI_OnlineResource/gmd:linkage/gmd:URL'), nsmap).text += str(record.id)
+                  'gmd:CI_OnlineResource/gmd:linkage/gmd:URL'), nsmap).text += str(record.zenodo_record_id)
     
     # LINEAGE STATEMENT
     lineage = ("This dataset was collected as part of a research project based at The"

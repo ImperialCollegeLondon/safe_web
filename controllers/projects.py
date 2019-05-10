@@ -177,7 +177,8 @@ def project_view():
         
         project_rows = project_query.select(db.project_details.project_id, 
                                             db.project_details.version, 
-                                            db.project_details.title)
+                                            db.project_details.title,
+                                            distinct=True)
         
         if len(project_rows) > 0:
             
@@ -196,23 +197,22 @@ def project_view():
         
         # dataset links
         qry = ((db.project_datasets.project_id == project_record.id) &
-               (db.project_datasets.dataset_id == db.datasets.dataset_id) &
-               (db.datasets.dataset_check_outcome == 'PASS') &
-               (db.datasets.zenodo_submission_status == 'ZEN_PASS'))
+               (db.project_datasets.concept_id == db.published_datasets.zenodo_concept_id) &
+               (db.published_datasets.most_recent == True))
 
-        datasets = db(qry).select(db.datasets.id, db.datasets.dataset_id, db.datasets.version,
-                                  db.datasets.dataset_title, db.datasets.zenodo_version_badge,
-                                  db.datasets.zenodo_version_doi,
-                                  orderby=[db.datasets.dataset_id, ~ db.datasets.version])
+        datasets = db(qry).select(db.published_datasets.id, 
+                                  db.published_datasets.dataset_title, 
+                                  db.published_datasets.zenodo_concept_badge,
+                                  db.published_datasets.zenodo_concept_id,
+                                  db.published_datasets.zenodo_concept_doi)
 
         if len(datasets) > 0:
-            datasets_table = TABLE(TR(TH('Dataset ID'), TH('Version'), TH('Dataset title'), TH()),
-                                  *[TR(TD(r.dataset_id), TD(r.version),
-                                       TD(A(r.dataset_title,
+            datasets_table = TABLE(TR(TH('Dataset title'), TH()),
+                                  *[TR(TD(A(r.dataset_title,
                                             _href=URL('datasets','view_dataset',
-                                                      vars={'id': r.id}))),
-                                       TD(A(IMG(_src=r.zenodo_version_badge),
-                                            _href=r.zenodo_version_doi)))
+                                                      vars={'id': r.zenodo_concept_id}))),
+                                       TD(A(IMG(_src=r.zenodo_concept_badge),
+                                            _href=r.zenodo_concept_doi)))
                                        for r in datasets],
                                   _class='table table-striped', _style='width:100%')
 
@@ -241,7 +241,7 @@ def project_view():
         # b) Does this project include merged projects
         qry = ((db.project_id.merged_to == project_id) &
                (db.project_id.project_details_id == db.project_details.id))
-        merged_from = db(qry).select()
+        merged_from = db(qry).select(distinct=True)
 
         if len(merged_from):
             lnks = [A(r.project_details.title,
