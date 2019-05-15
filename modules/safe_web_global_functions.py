@@ -139,8 +139,8 @@ def datepicker_script(html_id, **settings):
         holiday_titles=session.public_holidays['titles']
     )
 
-    return CAT(STYLE(XML('.holiday {background: #FE9781;}')), SCRIPT(javascript))
-
+    # return CAT(STYLE(XML('.holiday {background: #FE9781;}')), SCRIPT(javascript))
+    return CAT(STYLE('.holiday {background: #FE9781;}'), SCRIPT(javascript))
 
 def admin_decision_form(selector_options):
 
