@@ -677,6 +677,35 @@ Not likely to happen often, but I've had to move the database from the original 
 
 13. Update the postgres backup script to use the new host and update the .pgpass file to add the new credentials.
 
+## Remote access to the DB
+
+Steps to enable remote access to the database:
+
+1. First, you need to update the security group for the EC2 instance to allow connections to Postgresql via port 5432.
+2. Second, you need to configure Postgresql to actually listen for traffic on that port. Being paraniod, you can also restrict what IP incoming address to listen to as well (although it didn't work for me):
+
+        sudo  vi /etc/postgresql/10/main/postgresql.conf 
+		
+    and then update to read:
+
+        # this didn't work
+        # listen_addresses = 'localhost,129.31.0.0/16'
+        listen_addresses = '*'
+
+3. Now Postgresql is listening for connections, but you need to set it so a user can authenticate.
+
+        sudo  vi /etc/postgresql/10/main/pg_hba.conf
+
+    Add the line:
+
+        host    safe_web2py     safe_admin      129.31.0.0/16           md5
+
+4. Now restart the PostgreSQL server
+ 
+    sudo service postgresql restart
+        
+
+
 ## Restoring in production (aka Disaster recovery)
 
 Has the server instance running https://safeproject.net just died/frozen/exploded/started hosting goatse? Right, roll up your sleeves and follow the guide below:

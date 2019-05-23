@@ -317,6 +317,10 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
                                        user_id=record.uploader_id,
                                        date_added=datetime.date.today())
         
+        # update to include the UTM 50N bbox geometry
+        db(db.published_datasets.id == published_record).update(
+            geographic_extent_utm50n=db.published_datasets.geographic_extent.st_transform(32650))
+        
         # populate index tables
         # A) Taxa
         taxa = record.dataset_metadata['taxa']
@@ -339,7 +343,11 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
         locations = [dict(zip(['dataset_id', 'name','new_location','type','wkt_wgs84'], 
                               [published_record] + loc)) for loc in locations]
         
-        db.dataset_locations.bulk_insert(locations)
+        new_locs = db.dataset_locations.bulk_insert(locations)
+        
+        # update the UTM 50 N geometry where possible
+        db(db.dataset_locations.id.belongs(new_locs)).update(
+            wkt_utm50n=db.dataset_locations.wkt_wgs84.st_transform(32650))
         
         # D) Dataworksheets and fields
         for data in metadata['dataworksheets']:
@@ -350,7 +358,7 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
                 fld['dataset_id'] = published_record
                 fld['worksheet_id'] = worksheet_id
             
-            db.dataset_worksheets.bulk_insert(data['fields'])
+            db.dataset_fields.bulk_insert(data['fields'])
         
         # E) Authors
         for auth in metadata['authors']:
@@ -365,6 +373,11 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
         if metadata['permits'] is not None:
             for perm in metadata['permits']:
                 db.dataset_permits.insert(dataset_id=published_record, **perm)
+        
+        # K) Keywords
+        if metadata['keywords'] is not None:        
+            for kywd in metadata['keywords']:
+                db.dataset_keywords.insert(dataset_id=published_record, keyword=kywd)
         
         # remove the dataset from the submitted_datasets table
         record.delete_record()
@@ -1250,3 +1263,340 @@ def generate_inspire_xml(record):
     
     # return the string contents
     return etree.tostring(tree)
+
+
+# API search functions
+
+def dataset_query_to_json(qry, most_recent=False, ids=None):
+    """
+    Shared function to take a Query including rows in db.published datasets
+    and return a standardised set of attributes and a count.
+    """
+    
+    db = current.db
+    
+    if most_recent:
+        qry &= (db.published_datasets.most_recent == True)
+        
+    if ids is not None:
+        qry &= (db.published_datasets.zenodo_record_id.belongs(ids))
+
+    rows = db(qry).select(db.published_datasets.zenodo_concept_id, 
+                          db.published_datasets.zenodo_record_id,
+                          db.published_datasets.dataset_title,
+                          distinct=True)
+        
+    return {'count': len(rows), 'entries': rows}
+    
+
+def dataset_taxon_search(gbif_id=None, name=None, rank=None):
+    
+    """Search for datasets by taxon information
+    
+    Examples:
+        /taxa?name=Formicidae
+        /taxa?gbif_id=4342
+        /taxa?rank=Family
+    
+    Args:
+        gbif_id (int): A GBIF taxon id.
+        name (str): A scientific name
+        rank (str): A taxonomic rank. Note that GBIF only provides 
+            kingdom, phylum, order, class, family, genus and species.
+    """
+    
+    db = current.db
+    qry = (db.published_datasets.id == db.dataset_taxa.dataset_id)
+    
+    if gbif_id is not None:
+        qry &= (db.dataset_taxa.gbif_id == gbif_id)
+
+    if name is not None:
+        qry &= (db.dataset_taxa.taxon_name == name)
+
+    if rank is not None:
+        qry &= (db.dataset_taxa.taxon_rank == rank.lower())
+        
+    return qry
+
+
+def dataset_author_search(name=None):
+    
+    """Search for datasets by author name
+    
+    Examples:
+        /authors?name=Wilk
+    
+    Args:
+        name (str): An author name or part of a name
+    """
+
+    db = current.db
+    qry = (db.published_datasets.id == db.dataset_authors.dataset_id)
+    
+    if name is not None:
+        qry &= (db.dataset_authors.name.contains(name.lower()))
+    
+    return qry
+
+
+def dataset_locations_search(name=None):
+
+    """Search for datasets with data at a named location
+    
+    Examples:
+        /location?name=A_1
+    
+    Args:
+        name (str): A location name
+    """
+
+    db = current.db
+    qry = (db.published_datasets.id == db.dataset_locations.dataset_id)
+    
+    if name is not None:
+        qry &= (db.dataset_locations.name.contains(name.lower()))
+    
+    return qry
+
+
+def dataset_date_search(date=None, match_type='intersect'):
+    
+    """Search for datasets by temporal extent
+    
+    Examples:
+        /dates?date=2014-06-12
+        /dates?date=2014-06-12,2015-06-12
+        /dates?date=2014-06-12,2015-06-12&match_type=contains
+        /dates?date=2014-06-12,2015-06-12&match_type=within
+    
+    Args:
+        date (str): A string containing one or two (comma separated) dates in ISO format (2019-06-12)
+        match_type (str): One of 'intersect', 'contain' and 'within' to match the provided dates to
+            the temporal extents of datasets. The 'contain' option returns datasets that span a date 
+            range and 'within' returns datasets that fall within that date range.
+    """
+    
+    db = current.db
+    
+    # parse the data query: can be a single iso date or a comma separated pair.
+    try:
+        date_vals = date.split(',')
+        date_vals = [datetime.datetime.strptime(dt, '%Y-%m-%d').date() for dt in date_vals]
+    except ValueError:
+        return {'error': 400, 'message': 'Could not parse dates: {}'.format(date)}
+    
+    # Check the number of dates and enforce order
+    if len(date_vals) > 2:
+        return {'error': 400, 'message': 'date contains more than two values: {}'.format(date)}
+    elif len(date_vals) == 2:
+        date_vals.sort()
+    else:
+        # make singular dates a 'range' to use same predicate mechanisms
+        date_vals += date_vals
+    
+    # check the dates against the temporal extents of the datasets    
+    if match_type == 'intersect':
+        qry = (~ ((db.published_datasets.temporal_extent_start >= date_vals[1]) | 
+                  (db.published_datasets.temporal_extent_end <= date_vals[0])))
+    elif match_type == 'contain':
+        qry = ((db.published_datasets.temporal_extent_start >= date_vals[0]) &
+                (db.published_datasets.temporal_extent_end <= date_vals[1]))
+    elif match_type == 'within':
+        qry = ((db.published_datasets.temporal_extent_start <= date_vals[0]) &
+                (db.published_datasets.temporal_extent_end >= date_vals[1]))
+    else:
+        return {'error': 400, 'message': 'Unknown date match type: {}'.format(match_type)}
+
+    return qry
+    
+
+def dataset_field_search(text=None, ftype=None):
+        
+    """Search for datasets by data field information
+    
+    Examples:
+        /fields?text=temperature
+        /fields?ftype=numeric
+        /fields?text=temperature&ftype=numeric
+    
+    Args:
+        text (str): A string to look for within the field name and description.
+        ftype (str): A field type to match.
+    """
+
+    db = current.db
+    qry = (db.published_datasets.id == db.dataset_fields.dataset_id)
+    
+    if text is not None:
+        qry &= ((db.dataset_fields.field_name.contains(text)) | 
+                (db.dataset_fields.description.contains(text)))
+    
+    if ftype is not None:
+        qry &= (db.dataset_fields.field_type.ilike(ftype))
+        
+    return qry
+
+
+def dataset_text_search(text=None):
+    
+    """Search for datasets by free text search
+    
+    Examples:
+        /text?text=humus
+    
+    Args:
+        text (str): A string to look within dataset, worksheet and field 
+        descriptions and titles and in dataset keywords.
+    """
+    
+    db = current.db
+    
+    qry = ((db.published_datasets.id == db.dataset_fields.dataset_id) & 
+           (db.published_datasets.id == db.dataset_worksheets.dataset_id) & 
+           (db.published_datasets.id == db.dataset_keywords.dataset_id) & 
+           ((db.dataset_fields.field_name.contains(text)) | 
+            (db.dataset_fields.description.contains(text)) |
+            (db.dataset_worksheets.title.contains(text)) | 
+            (db.dataset_worksheets.description.contains(text)) | 
+            (db.published_datasets.dataset_title.contains(text)) |
+            (db.published_datasets.dataset_description.contains(text)) |
+            (db.dataset_keywords.keyword.contains(text))
+            ))
+
+    return qry
+
+
+def dataset_parse_spatial(wkt=None, location=None):
+    
+    """
+    Shared function to parse query geometry options - either a location or a WKT - and get 
+    # the query geometry as a UTM 50N geometry.
+    """
+    db = current.db
+    
+    if (location is not None) and (wkt is not None):
+        return {'error': 400, 'message': 'Provide a location name or a WKT geometry, not both'}
+    elif location is None and wkt is  None:
+        return {'error': 400, 'message': 'Provide either a location name or a WKT geometry'}
+    elif location is not None:
+        gazetteer_location = gazetteer_location = db(db.gazetteer.location == location).select(
+                                                     db.gazetteer.wkt_utm50n.st_aswkb().with_alias('wkb')).first()
+        if gazetteer_location is not None:
+            query_geom = gazetteer_location.wkb
+        else:
+            return {'error': 400, 'message': "Unknown location"}
+    elif wkt is not None:
+        # Validate the geometry - there isn't currently a validator, so use the DB (?shapely)
+        # i) Does the WKT parse correctly to a WKB string, assuming WGS84 for now
+        try:
+            query_geom = db.executesql("select st_geomfromtext('{}', 4326);".format(wkt))[0][0]
+        except (db._adapter.driver.ProgrammingError, db._adapter.driver.InternalError):
+            return {'error': 400, 'message': "Could not parse WKT geometry"}
+
+        # ii) Do the coordinates seem like lat long?
+        is_lat_long = db.executesql("SELECT ST_XMin(g) >= -180 AND ST_XMax(g) <= 180 AND "
+                                    "   ST_YMin(g) >= -90 AND ST_YMax(g) <= 90 "
+                                    "   FROM (SELECT st_geomfromwkb(decode('{0}', 'hex')) "
+                                              "AS g) AS sel ;".format(query_geom))[0][0]
+        if not is_lat_long:
+            return {'error': 400, 'message': "WKT geometry coordinates not as lat/long"}
+
+        # iii) Convert to UTM50N
+        query_geom = db.executesql("SELECT st_transform(st_geomfromwkb(decode('{0}', 'hex')), 32650);".format(query_geom))[0][0]
+
+    return query_geom
+
+
+def dataset_spatial_search(wkt=None, location=None, distance=0):
+    
+    """Spatial search for sampling locations.
+    
+    This endpoint can search for datasets using either a user-provided geometry or the geometry
+    of a named location from the SAFE gazetteer. The sampling locations provided in each dataset 
+    are tested to see if they intersect the search geometry and a buffer distance can also be 
+    provided to search around the query geometry.
+    
+    Note that this endpoint will not retrieve datasets that have not provided sampling locations
+    or use new locations that are missing coordinate information. The bounding box endpoint
+    uses the dataset geographic extent, which is provided for all datasets.
+    
+    Examples:
+        /spatial?location=A_1    
+        /spatial?location=A_1&distance=50    
+        /spatial?wkt=Point(116.5 4.75)
+        /spatial?wkt=Point(116.5 4.75)&distance=50000
+        /spatial?wkt=Polygon((110 0, 110 10,120 10,120 0,110 0))
+    
+    Args:
+        wkt (str): A well-known text geometry. This is assumed to use latitude and longitude
+            coordinates in WGS84 (EPSG:4326).
+        location (str): A location name used to select a query geometry from the SAFE gazetteer.
+        distance (float): A search distance in metres. All geometries are converted to the
+            UTM 50N projection to provide appopriate distance searching.
+    """
+
+    db = current.db
+    
+    # validate the query geometry options and report back if there is an error
+    query_geom = dataset_parse_spatial(wkt, location)
+    if isinstance(query_geom, dict):
+        return query_geom
+
+    qry = ((db.published_datasets.id == db.dataset_locations.dataset_id) &
+           (db.dataset_locations.name == db.gazetteer.location) &
+           ((db.gazetteer.wkt_utm50n.st_distance(query_geom) <= distance) |
+            (db.dataset_locations.wkt_utm50n.st_distance(query_geom) <= distance)))
+        
+    return qry
+
+
+def dataset_spatial_bbox_search(wkt=None, location=None, match_type='intersect', distance=None):
+    
+    
+    """Spatial search for dataset bounding boxes
+    
+    The endpoint can search for datasets using either a user-provided geometry or a location
+    name from the SAFE gazetteer. This endpoint uses only the dataset bounding box, which is
+    provided for all datasets, rather than sampling location information which may not be 
+    recorded for some datasets.
+    
+    Examples:
+        /locations?wkt=Polygon((110 0, 110 10,120 10,120 0,110 0))
+        /locations?wkt=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))
+        /locations?wkt=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))&geometry_predicate=contains
+        /locations?wkt=Point(116.5 4.75)&geometry_predicate=within
+    
+    Args:
+        wkt (str): A well-known text geometry. This is assumed to use latitude and longitude
+            coordinates in WGS84 (EPSG:4326).
+        location (str): A location name used to select a query geometry from the SAFE gazetteer.
+        match_type (str): One of 'intersect', 'contain' and 'within' to match the provided geometry
+            to the geographic extents of datasets. The 'contain' option returns datasets that 
+            completely cover the query geometry and 'within' returns datasets that fall entirely
+            within the query geometry.
+        
+    """
+
+    db = current.db
+    
+    # validate the query geometry options and report back if there is an error
+    query_geom = dataset_parse_spatial(wkt, location)
+    if isinstance(query_geom, dict):
+        return query_geom
+
+    # validate the match type
+    if match_type not in ['intersect','contain','within', 'distance']:
+        return {'error': 400, 'message': "Unknown spatial match type: {}".format(match_type)} 
+
+    # Query the geographic extents with the appropriate predicate
+    if match_type == 'intersect':
+        qry = (db.published_datasets.geographic_extent_utm50n.st_intersects(query_geom))
+    elif match_type == 'contain':
+        qry = (db.published_datasets.geographic_extent_utm50n.st_contains(query_geom))
+    elif match_type == 'within':
+        qry = (db.published_datasets.geographic_extent_utm50n.st_within(query_geom))
+    elif match_type == 'distance':
+        qry = (db.published_datasets.geographic_extent_utm50n.st_distance(query_geom) <= distance)
+        
+    return qry
