@@ -1562,10 +1562,10 @@ def dataset_spatial_bbox_search(wkt=None, location=None, match_type='intersect',
     recorded for some datasets.
     
     Examples:
-        /locations?wkt=Polygon((110 0, 110 10,120 10,120 0,110 0))
-        /locations?wkt=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))
-        /locations?wkt=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))&geometry_predicate=contains
-        /locations?wkt=Point(116.5 4.75)&geometry_predicate=within
+        /bbox?wkt=Polygon((110 0, 110 10,120 10,120 0,110 0))
+        /bbox?wkt=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))
+        /bbox?wkt=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))&match_type=contain
+        /bbox?wkt=Point(116.5 4.75)&match_type=within
     
     Args:
         wkt (str): A well-known text geometry. This is assumed to use latitude and longitude
