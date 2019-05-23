@@ -280,9 +280,8 @@ def update_gazetteer():
     """
     This controller simply reloads the contents of the gazetteer table from
     the file provided in static and the updates the UTM50N geometry field.
-    Note that this relies on an extended version of the GIS functionality in
-    the Web2py pydal package:
-        https://github.com/web2py/pydal/pull/567
+    Note that this relies on web2py 2.18.5+, which includes a version of PyDAL
+    that supports st_transform.
     """
 
     # Drop the current contents

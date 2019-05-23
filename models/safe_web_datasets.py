@@ -73,6 +73,7 @@ db.define_table('published_datasets',
                 Field('zenodo_concept_doi', 'string'),
                 Field('zenodo_concept_badge', 'string'),
                 Field('geographic_extent', 'geometry()'),
+                Field('geographic_extent_utm50n', 'geometry(public, 32650, 2)'),
                 Field('temporal_extent_start', 'date'),
                 Field('temporal_extent_end', 'date'))
 
@@ -137,12 +138,15 @@ db.define_table('datasets',
 # SAFE DATASET INDEX TABLE DEFINITIONS
 # - these tables hold information about published datasets.
 # - information is available for each published version 
-#   (so datasets.id, not dataset_id.id)
 # - In some ways it would be neater for these tables to use the 
 #   zenodo record id as the key back to the published datasets 
 #   table, but web2py can only achieve that using the IS_IN_DB 
-#.  validator rather than a DB level foreign key
+#   validator rather than a DB level foreign key
 # -----------------------------------------------------------------------------
+
+db.define_table('dataset_keywords',
+                Field('dataset_id', 'reference published_datasets'),
+                Field('keyword', 'string'))
 
 db.define_table('dataset_taxa',
                 Field('dataset_id', 'reference published_datasets'),
