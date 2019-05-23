@@ -2,7 +2,11 @@
 {{extend 'layout.html'}}
 
 
-<h2>The SAFE Database query API</h2>
+<h2>The SAFE Database API</h2>
+
+<div class="alert alert-info" role="alert">
+This is the first version of the API, released 2019-05-23. It may contain bugs and/or you may want additional endpoints or query options. In either case, contact <a href="mailto:d.orme@imperial.ac.uk">David Orme</a>.
+</div>
 
 <p>We maintain a database of research data collected at the SAFE Project. Datasets submitted to SAFE are 
 	validated and then published through our community page at the <a href='https://zenodo.org/communities/safe'>
@@ -47,7 +51,7 @@
 
 <h4><code>most_recent</code></h4>
 
-<p>Adding this flag to the query string will restict the API to returning only the most recent version of a dataset.</p>
+<p>Adding this flag to the query string will restrict the API to returning only the most recent version of a dataset.</p>
 
 <pre>{{=URL('api', args='taxa', vars={'name': 'Formicidae', 'most_recent': ''}, host=True, scheme=True)}}</pre>
 
