@@ -107,62 +107,38 @@ if auth.is_logged_in():
 ## ----------------------------------------------------------------------------
 if (auth.user_id != None) and (auth.has_membership(role='admin')):
 
-    n_dict = {'grp': db.group_request.admin_status,
-              'vis': db.research_visit.admin_status,
-              'prj': db.project_details.admin_status,
-              'out': db.outputs.admin_status,
-              'vol': db.help_offered.admin_status,
-              'blg': db.blog_posts.admin_status,
-              'hlp': db.help_request.admin_status,
-              'usr': db.auth_user.registration_key
-              }
-
-    n = {}
-    badge_class = {}
-    for key, field in n_dict.iteritems():
-        # auth_user uses 'pending' as part of built in mechanisms, others are status values
-        n[key] = db(field.belongs(['Pending', 'pending', 'Submitted', 'In Review'])).count()
-        badge_class[key] = 'label badge-danger' if n[key] == 0 else 'label label-danger'
-
-    # datasets don't quite work the same - need to tell admin about passed datasets that have
-    # not been submitted or where submit failed. Need to load the conditional model    
-    n['dat'] = db((db.datasets.dataset_check_outcome == 'PASS') &
-                  ((db.datasets.zenodo_submission_status == None) or
-                   (db.datasets.zenodo_submission_status != 'ZEN_PASS'))).count()
-    badge_class['dat'] = 'label badge-danger' if n['dat'] == 0 else 'label label-danger'
-
+    def approvals(field, title, c, f):
+        """Approval indicator
+        Creates a menu item tuple with a count of objects awaiting approval in 
+        a particular database table
+        """
+        
+        n = db(field.lower().belongs(['pending', 'submitted', 'in review', 'pass', 'fail', 'error'])).count()
+        badge_class = 'label label-primary' if n == 0 else 'label label-danger'
+        
+        return (CAT(SPAN(n, _class=badge_class), XML('&nbsp;') * 2, T(title)), True, URL(c, f), [])
+        
     response.menu += [('Admin', False, None, [
         (T('Manage users'), True, URL('people', 'manage_users'), []),
         (T('Manage contacts'), True, URL('people', 'manage_contacts'), []),
         (T('Manage news'), True, URL('news', 'manage_news'), []),
         (T('Manage blogs'), True, URL('blogs', 'manage_blogs'), []),
         (T('Merge projects'), True, URL('projects', 'merge_projects'), []),
-        (T('Health and safety info'), True, URL('health_safety', 'admin_view_health_and_safety'),
-         []),
+        (T('Health and safety info'), True, URL('health_safety', 'admin_view_health_and_safety'),[]),
+        (T('Download H&S Report'), True, URL('health_safety', 'download_hs_report'),[]),
         (T('Public holidays'), True, URL('info', 'public_holidays'), []),
-        (
-        T('Create research visit'), True, URL('research_visits', 'create_late_research_visit'), []),
+        (T('Create research visit'), True, URL('research_visits', 'create_late_research_visit'), []),
         LI(_class="divider"),
         (B('Approvals'), False, None, None),
-        (CAT(SPAN(n['usr'], _class=badge_class['usr']),
-             T('  New users')), True, URL('people', 'administer_new_users'), []),
-        (CAT(SPAN(n['grp'], _class=badge_class['grp']),
-             T('  New group requests')), True, URL('groups', 'administer_group_requests'), []),
-        (CAT(SPAN(n['prj'], _class=badge_class['prj']),
-             T('  Project proposals')), True, URL('projects', 'administer_projects'), []),
-        (CAT(SPAN(n['out'], _class=badge_class['out']),
-             T('  New outputs')), True, URL('outputs', 'administer_outputs'), []),
-        (CAT(SPAN(n['dat'], _class=badge_class['dat']),
-             T('  New datasets')), True, URL('datasets', 'administer_datasets'), []),
-        (CAT(SPAN(n['vis'], _class=badge_class['vis']),
-             T('  Research visits')), True,
-         URL('research_visits', 'administer_research_visits'), []),
-        (CAT(SPAN(n['blg'], _class=badge_class['blg']),
-             T('  Blog posts')), True, URL('blogs', 'administer_blogs'), []),
-        (CAT(SPAN(n['vol'], _class=badge_class['vol']),
-             T('  Volunteers')), True, URL('marketplace', 'administer_volunteers'), []),
-        (CAT(SPAN(n['hlp'], _class=badge_class['hlp']),
-             T('  Help requests')), True, URL('marketplace', 'administer_help_requests'), []),
+        approvals(db.auth_user.registration_key, 'New users', 'people', 'administer_new_users'),
+        approvals(db.group_request.admin_status, 'New group requests', 'groups', 'administer_group_requests'),
+        approvals(db.project_details.admin_status, 'Project proposals', 'projects', 'administer_projects'),
+        approvals(db.outputs.admin_status, 'New outputs', 'outputs', 'administer_outputs'),
+        approvals(db.submitted_datasets.dataset_check_outcome, 'New datasets', 'datasets', 'administer_datasets'),
+        approvals(db.research_visit.admin_status, 'Research visits', 'research_visits', 'administer_research_visits'),
+        approvals(db.blog_posts.admin_status, 'Blog posts', 'blogs', 'administer_blogs'),
+        approvals(db.help_offered.admin_status, 'Volunteers', 'marketplace', 'administer_volunteers'),
+        approvals(db.help_request.admin_status, 'Help requests', 'marketplace', 'administer_help_requests'),
         LI(_class="divider"),
         (T('Impersonate another user'), True, URL('user', 'impersonate')),
         (T('Email failures'), True, URL('scheduler', 'email_failures')),
