@@ -1,4 +1,5 @@
 import datetime
+from safe_web_global_functions import health_and_safety_report
 
 ## -----------------------------------------------------------------------------
 ## HEALTH AND SAFETY
@@ -95,6 +96,23 @@ def validate_health_and_safety(form):
     Pretty minimal - currently just updates the date edited
     """
     form.vars.date_last_edited = datetime.date.today().isoformat()
+
+
+
+@auth.requires_membership('admin')
+def download_hs_report():
+    
+    """
+    Admin only download of H&S report
+    """
+
+    # Generate the report and return it
+
+    report = health_and_safety_report()
+    disposition = 'attachment;filename=SAFE_Health_and_Safety_{}.pdf'.format(datetime.date.today().isoformat())
+    raise HTTP(200, report,
+               **{'Content-Type': 'application/pdf',
+                  'Content-Disposition': disposition})
 
 
 @auth.requires_membership('admin')
