@@ -18,36 +18,10 @@ This is the first version of the API, released 2019-05-23. It may contain bugs a
 
 <pre>{{=URL('api', host=True, scheme=True)}}</pre>
 
-<p>We provide a number of search endpoints with a range of query options and these are described below. The
-	following example shows the API use and the format of the JSON data returned.</p>
-	
-<pre>{{=URL('api', args='taxa', vars={'name': 'Formicidae'}, host=True, scheme=True)}}</pre>
-	
 
-<pre>
-{
-	"count": 8,
-	"entries": [
-		{
-			"zenodo_concept_id": 1198301,
-			"zenodo_record_id": 1198302,
-			"dataset_title": "The role of competition in structuring ant community composition across a tropical forest disturbance gradient"
-		},
-		...
-		{
-			"zenodo_concept_id": 1995247,
-			"zenodo_record_id": 1995439,
-			"dataset_title": "Functional diversity of amphibian assemblages along a disturbance gradient"
-		}
-	]
-}</pre>
+<h3>Shared query parameters</h3>
 
-<p>The datasets all have a unique zenodo record id (<code>zenodo_record_id</code>), but different versions of the same dataset 
-	are all grouped together under the a concept id (<code>zenodo_concept_id</code>). </p>
-
-<h3>Global options</h3>
-
-<p>In addition to their own query options, all of the endpoints described below also accept the following global options</p>
+<p>In addition to their own quert parameters, the endpoints described below also accept the following global options:</p>
 
 <h4><code>most_recent</code></h4>
 
@@ -63,6 +37,63 @@ This is the first version of the API, released 2019-05-23. It may contain bugs a
 
 <pre>{{=URL('api', args='taxa', vars={'name': 'Formicidae', 'ids': [1198302,1995439]}, host=True, scheme=True)}}</pre>
 
-<h3>Endpoints</h3>
+<h3>Record endpoint</h3>
+
+This endpoint returns the metadata for the Zenodo record ID provided. This is exactly the same as the information set out in the Zenodo dataset description as JSON data. This endpoint ignores the shared <code>ids</code> or <code>most_recent</code> query parameters. The JSON data is complex!
+	
+<pre>{{=URL('api', args=['record','1198302'], host=True, scheme=True)}}</pre>
+
+<h3>Files endpoint</h3>
+
+The files endpoint returns the files associated with datasets. There will often only be a single Excel file, but external data files will also be listed. This endpoint does accept the shared <code>ids</code> or <code>most_recent</code> query parameters. The download link is only functional when a dataset is open access or if the listed embargo date has passed.
+
+<pre>{{=URL('api', args=['files'], vars={'most_recent':''}, host=True, scheme=True)}}</pre>
+
+<pre>
+{
+	"count": 57,
+	"entries": [
+		{
+			"checksum": "07df68c42b756330ed584711d74129c0",
+			"filename": "template_Heon.xlsx",
+			"most_recent": true,
+			"zenodo_record_id": 1304117,
+			"download_link": "https://zenodo.org/api/files/9df99ec9-8bc5-42b8-a8da-a695da875f32/template_Heon.xlsx",
+			"dataset_access": "open",
+			"zenodo_concept_id": 1198568,
+			"dataset_embargo": null,
+			"dataset_title": "Do logging roads impede small mammal movement in Borneo's tropical rainforests?",
+			"filesize": 364916
+		},
+		...
+	]
+}
+</pre>
+
+
+<h3>Dataset search endpoints</h3>
+
+<p>We provide a number of search endpoints to locate datasets, which are described below along with their 
+	query options. All return JSON data in the same format, shown below with an example call.</p>
+	
+<pre>{{=URL('api', args=['search','taxa'], vars={'name': 'Formicidae'}, host=True, scheme=True)}}</pre>
+
+<pre>
+{
+	"count": 8,
+	"entries": [
+		{
+			"zenodo_concept_id": 1198301,
+			"zenodo_record_id": 1198302,
+			"dataset_title": "The role of competition in structuring ant community composition across a tropical forest disturbance gradient"
+		},
+		...
+	]
+}
+</pre>
+
+<p>The datasets all have a unique zenodo record id (<code>zenodo_record_id</code>), but different versions of the same dataset 
+	are all grouped together under the a concept id (<code>zenodo_concept_id</code>). </p>
+
 
 {{=docs}}

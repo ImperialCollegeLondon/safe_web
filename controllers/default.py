@@ -436,6 +436,41 @@ def api():
     queries.
     """
     
+
+    # Some API endpoints use endpoint specific query string parameters,
+    # but the following two apply to most endpoints, so strip them off
+    # to allow the remaining parameters to be checked against the API 
+    # of individual endpoint functions.
+    # - 'most_recent': a flag to get only the recent versions of datasets
+    # - 'ids': a way to restrict the set of possible datasets searched.
+                
+    if 'most_recent' in request.vars:
+        most_recent = request.vars.pop('most_recent')
+
+        if most_recent == '':
+            most_recent = True
+        else:
+            val = {'error': 404, 'message': 'Do not provide a value for the most_recent query flag.'}
+            return response.json(val)
+    else:
+        most_recent = False
+    
+    if 'ids' in request.vars:
+        ids = request.vars.pop('ids')
+        
+        if isinstance(ids, str):
+            ids = [ids]
+        
+        try:
+            ids = [int(vl) for vl in ids]
+        except ValueError:
+            val = {'error': 404, 'message': 'Invalid ids value.'}
+            return response.json(val)
+    else:
+        ids = None
+        
+    # A dictionary of endpoint names and query building functions
+    # for the search endpoint
     search_func = {'taxa': dataset_taxon_search,
                    'authors': dataset_author_search,
                    'dates': dataset_date_search,
@@ -443,69 +478,73 @@ def api():
                    'fields': dataset_field_search,
                    'locations': dataset_locations_search,
                    'spatial': dataset_spatial_search,
-                   'bbox': dataset_spatial_bbox_search,
+                   'bbox': dataset_spatial_bbox_search
                   }
     
+    # Handle the API arguments
     if not len(request.args):
+        
         # return the docstrings as HTML to populate the API html description
         docs = CAT([H4(ky) + PRE(inspect.getdoc(fn)) for ky, fn in  search_func.iteritems()])        
         return dict(docs=docs)
-        
-    elif len(request.args) >1:
-        val = {'error': 404, 'message': 'Unknown endpoint {}'.format(request.env.web2py_original_uri)}
-    else:
-        # get the correct index search function
-        if not request.args[0] in search_func:
-            val = {'error': 404, 'message': 'Unknown endpoint {}'.format(request.env.web2py_original_uri)}
+    
+    elif request.args[0] == 'record' and len(request.args) == 2:
+        # /api/record/zenodo_record_id endpoint provides a machine readable
+        # version of the data contained in the dataset description
+        try:
+            record_id = int(request.args[1])
+        except ValueError:
+            val = {'error': 404, 'message': 'Non-integer record number.'}
         else:
-            # remove high level query search parameters handled after the 
-            # queries are constructed by the individual endpoint functions
-            # - 'most_recent': a flag to get only the recent versions of datasets
-            # - 'ids': a way to restrict the set of possible datasets searched.
-                        
-            if 'most_recent' in request.vars:
-                most_recent = request.vars.pop('most_recent')
-
-                if most_recent == '':
-                    most_recent = True
+            record = db(db.published_datasets.zenodo_record_id == record_id).select().first()
+        
+            if record is None:
+                val = {'error': 404, 'message': 'Unknown record number.'}
+            else:
+                val = record.dataset_metadata['metadata']
+    
+    elif request.args[0] == 'files':
+        # /api/files endpoint provides a machine readable
+        # version of the data contained in the dataset description
+        qry = (db.published_datasets.id == db.dataset_files.dataset_id)
+        val = dataset_query_to_json(qry, most_recent, ids, 
+                                    fields = [('published_datasets', 'zenodo_concept_id'), 
+                                              ('published_datasets', 'zenodo_record_id'), 
+                                              ('published_datasets', 'dataset_access'), 
+                                              ('published_datasets', 'dataset_embargo'), 
+                                              ('published_datasets', 'dataset_title'), 
+                                              ('published_datasets', 'most_recent'), 
+                                              ('dataset_files', 'checksum'),
+                                              ('dataset_files', 'filename'),
+                                              ('dataset_files', 'filesize'),
+                                              ('dataset_files', 'download_link')])
+        
+        # repackage the db output into a single dictionary per file                            
+        entries = val['entries'].as_list()
+        [r['published_datasets'].update(r.pop('dataset_files')) for r in entries]
+        val['entries'] = [r['published_datasets'] for r in entries]
+        
+    elif request.args[0] == 'search' and len(request.args) == 2 and request.args[1] in search_func:
+            
+        # validate the remaining query search parameters to the search function arguments
+        func = search_func[request.args[1]]
+        fn_args = inspect.getargspec(func).args
+        unknown_args = set(request.vars) - set(fn_args)
+        
+        if unknown_args:
+            val = {'error': 404, 'message': 'Unknown query parameters to endpoint'
+                   ' /{}: {}'.format(request.args[0],','.join(unknown_args))}
+        else:
+            try:
+                qry = func(**request.vars)
+                # does the function return a query or an error dictionary
+                if isinstance(qry, dict):
+                    val = qry
                 else:
-                    val = {'error': 404, 'message': 'Do not provide a value for the most_recent query flag.'}
-                    return response.json(val)
-            else:
-                most_recent = False
-            
-            if 'ids' in request.vars:
-                ids = request.vars.pop('ids')
-                
-                if isinstance(ids, str):
-                    ids = [ids]
-                
-                try:
-                    ids = [int(vl) for vl in ids]
-                except ValueError:
-                    val = {'error': 404, 'message': 'Invalid ids value.'}
-                    return response.json(val)
-                    
-            else:
-                ids = None
-                
-            # validate the remaining query search parameters to the search function arguments
-            func = search_func[request.args[0]]
-            fn_args = inspect.getargspec(func).args
-            unknown_args = set(request.vars) - set(fn_args)
-            
-            if unknown_args:
-                val = {'error': 404, 'message': 'Unknown query parameters to endpoint'
-                       ' /{}: {}'.format(request.args[0],','.join(unknown_args))}
-            else:
-                try:
-                    qry = func(**request.vars)
-                    # does the function return a query or an error dictionary
-                    if isinstance(qry, dict):
-                        val = qry
-                    else:
-                        val = dataset_query_to_json(qry, most_recent, ids)
-                except TypeError as e:
-                    val = {'error': 404, 'message': 'Could not parse api request: {}'.format(e)}
+                    val = dataset_query_to_json(qry, most_recent, ids)
+            except TypeError as e:
+                val = {'error': 404, 'message': 'Could not parse api request: {}'.format(e)}
+    else:
+        val = {'error': 404, 'message': 'Unknown endpoint {}'.format(request.env.web2py_original_uri)}
     
     return response.json(val)

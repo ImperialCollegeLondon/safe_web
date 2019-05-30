@@ -1267,7 +1267,10 @@ def generate_inspire_xml(record):
 
 # API search functions
 
-def dataset_query_to_json(qry, most_recent=False, ids=None):
+def dataset_query_to_json(qry, most_recent=False, ids=None,
+                          fields=[('published_datasets','zenodo_concept_id'), 
+                                  ('published_datasets','zenodo_record_id'),
+                                  ('published_datasets','dataset_title')]):
     """
     Shared function to take a Query including rows in db.published datasets
     and return a standardised set of attributes and a count.
@@ -1281,10 +1284,9 @@ def dataset_query_to_json(qry, most_recent=False, ids=None):
     if ids is not None:
         qry &= (db.published_datasets.zenodo_record_id.belongs(ids))
 
-    rows = db(qry).select(db.published_datasets.zenodo_concept_id, 
-                          db.published_datasets.zenodo_record_id,
-                          db.published_datasets.dataset_title,
-                          distinct=True)
+    # Turn fields argument into fields references and select
+    fields = [db[t][f] for t, f in fields]
+    rows = db(qry).select(*fields, distinct=True)
         
     return {'count': len(rows), 'entries': rows}
     
@@ -1294,9 +1296,9 @@ def dataset_taxon_search(gbif_id=None, name=None, rank=None):
     """Search for datasets by taxon information
     
     Examples:
-        /taxa?name=Formicidae
-        /taxa?gbif_id=4342
-        /taxa?rank=Family
+        /api/search/taxa?name=Formicidae
+        /api/search/taxa?gbif_id=4342
+        /api/search/taxa?rank=Family
     
     Args:
         gbif_id (int): A GBIF taxon id.
@@ -1325,7 +1327,7 @@ def dataset_author_search(name=None):
     """Search for datasets by author name
     
     Examples:
-        /authors?name=Wilk
+        /api/search/authors?name=Wilk
     
     Args:
         name (str): An author name or part of a name
@@ -1345,7 +1347,7 @@ def dataset_locations_search(name=None):
     """Search for datasets with data at a named location
     
     Examples:
-        /location?name=A_1
+        /api/search/location?name=A_1
     
     Args:
         name (str): A location name
@@ -1365,10 +1367,10 @@ def dataset_date_search(date=None, match_type='intersect'):
     """Search for datasets by temporal extent
     
     Examples:
-        /dates?date=2014-06-12
-        /dates?date=2014-06-12,2015-06-12
-        /dates?date=2014-06-12,2015-06-12&match_type=contains
-        /dates?date=2014-06-12,2015-06-12&match_type=within
+        /api/search/dates?date=2014-06-12
+        /api/search/dates?date=2014-06-12,2015-06-12
+        /api/search/dates?date=2014-06-12,2015-06-12&match_type=contains
+        /api/search/dates?date=2014-06-12,2015-06-12&match_type=within
     
     Args:
         date (str): A string containing one or two (comma separated) dates in ISO format (2019-06-12)
@@ -1416,9 +1418,9 @@ def dataset_field_search(text=None, ftype=None):
     """Search for datasets by data field information
     
     Examples:
-        /fields?text=temperature
-        /fields?ftype=numeric
-        /fields?text=temperature&ftype=numeric
+        /api/search/fields?text=temperature
+        /api/search/fields?ftype=numeric
+        /api/search/fields?text=temperature&ftype=numeric
     
     Args:
         text (str): A string to look for within the field name and description.
@@ -1443,7 +1445,7 @@ def dataset_text_search(text=None):
     """Search for datasets by free text search
     
     Examples:
-        /text?text=humus
+        /api/search/text?text=humus
     
     Args:
         text (str): A string to look within dataset, worksheet and field 
@@ -1522,11 +1524,11 @@ def dataset_spatial_search(wkt=None, location=None, distance=0):
     uses the dataset geographic extent, which is provided for all datasets.
     
     Examples:
-        /spatial?location=A_1    
-        /spatial?location=A_1&distance=50    
-        /spatial?wkt=Point(116.5 4.75)
-        /spatial?wkt=Point(116.5 4.75)&distance=50000
-        /spatial?wkt=Polygon((110 0, 110 10,120 10,120 0,110 0))
+        /api/search/spatial?location=A_1    
+        /api/search/spatial?location=A_1&distance=50    
+        /api/search/spatial?wkt=Point(116.5 4.75)
+        /api/search/spatial?wkt=Point(116.5 4.75)&distance=50000
+        /api/search/spatial?wkt=Polygon((110 0, 110 10,120 10,120 0,110 0))
     
     Args:
         wkt (str): A well-known text geometry. This is assumed to use latitude and longitude
@@ -1562,10 +1564,10 @@ def dataset_spatial_bbox_search(wkt=None, location=None, match_type='intersect',
     recorded for some datasets.
     
     Examples:
-        /bbox?wkt=Polygon((110 0, 110 10,120 10,120 0,110 0))
-        /bbox?wkt=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))
-        /bbox?wkt=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))&match_type=contain
-        /bbox?wkt=Point(116.5 4.75)&match_type=within
+        /api/search/bbox?wkt=Polygon((110 0, 110 10,120 10,120 0,110 0))
+        /api/search/bbox?wkt=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))
+        /api/search/bbox?wkt=Polygon((116 4.5,116 5,117 5,117 4.5,116 4.5))&match_type=contain
+        /api/search/bbox?wkt=Point(116.5 4.75)&match_type=within
     
     Args:
         wkt (str): A well-known text geometry. This is assumed to use latitude and longitude
@@ -1600,3 +1602,4 @@ def dataset_spatial_bbox_search(wkt=None, location=None, match_type='intersect',
         qry = (db.published_datasets.geographic_extent_utm50n.st_distance(query_geom) <= distance)
         
     return qry
+
