@@ -180,6 +180,9 @@ def verify_dataset(record_id, email=False):
                 'ERROR': ['Error checking dataset', 'dataset_check_error.html']}
         
         safe_mailer(to=record.uploader_id.email,
+                    cc=['data@safeproject.net'],
+                    reply_to='data@safeproject.net',
+                    cc_info=False,
                     subject=opts[outcome][0],
                     template=opts[outcome][1],
                     template_dict=ret_dict)
