@@ -27,7 +27,7 @@ This is the first version of the API, released 2019-05-23. It may contain bugs a
 
 <p>Adding this flag to the query string will restrict the API to returning only the most recent version of a dataset.</p>
 
-<pre>{{=URL('api', args='taxa', vars={'name': 'Formicidae', 'most_recent': ''}, host=True, scheme=True)}}</pre>
+<pre>{{=URL('api', args=['search','taxa'], vars={'name': 'Formicidae', 'most_recent': ''}, host=True, scheme=True)}}</pre>
 
 
 <h4><code>ids</code></h4>
@@ -35,7 +35,7 @@ This is the first version of the API, released 2019-05-23. It may contain bugs a
 <p>This option allows the user to restrict the search to particular dataset records, using <code>zenodo_record_id</code> 
 	values, allowing API calls to refine previous searches.</p>
 
-<pre>{{=URL('api', args='taxa', vars={'name': 'Formicidae', 'ids': [1198302,1995439]}, host=True, scheme=True)}}</pre>
+<pre>{{=URL('api', args=['search','taxa'], vars={'name': 'Formicidae', 'ids': [1198302,1995439]}, host=True, scheme=True)}}</pre>
 
 <h3>Record endpoint</h3>
 
