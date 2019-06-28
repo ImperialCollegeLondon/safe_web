@@ -25,6 +25,7 @@ def index():
     research_areas = proj_query.select(db.project_details.research_areas)
     n_outputs = db(db.outputs).count()
     n_researchers = db(db.auth_user).count()
+    n_datasets = db(db.published_datasets).count()
     
     ra_list = [r.research_areas for r in research_areas]
     ra_list = [item for sublist in ra_list for item in sublist]
@@ -94,7 +95,7 @@ def index():
                            '_style':"overflow:hidden",
                            '_data-ride':"carousel"})
    
-    return dict(n_proj=n_proj, n_outputs=n_outputs, n_researchers=n_researchers,
+    return dict(n_proj=n_proj, n_outputs=n_outputs, n_researchers=n_researchers, n_datasets=n_datasets,
                 ra_string = ra_string, news_carousel=news_carousel)
 
 
