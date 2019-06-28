@@ -502,7 +502,7 @@ def api():
             if record is None:
                 val = {'error': 404, 'message': 'Unknown record number.'}
             else:
-                val = record.dataset_metadata['metadata']
+                val = record.dataset_metadata
     
     elif request.args[0] == 'files':
         # /api/files endpoint provides a machine readable
