@@ -509,7 +509,8 @@ def api():
         # version of the data contained in the dataset description
         qry = (db.published_datasets.id == db.dataset_files.dataset_id)
         val = dataset_query_to_json(qry, most_recent, ids, 
-                                    fields = [('published_datasets', 'zenodo_concept_id'), 
+                                    fields = [('published_datasets', 'publication_date'), 
+                                              ('published_datasets', 'zenodo_concept_id'), 
                                               ('published_datasets', 'zenodo_record_id'), 
                                               ('published_datasets', 'dataset_access'), 
                                               ('published_datasets', 'dataset_embargo'), 
