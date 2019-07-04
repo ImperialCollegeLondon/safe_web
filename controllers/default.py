@@ -518,8 +518,7 @@ def api():
                                               ('published_datasets', 'most_recent'), 
                                               ('dataset_files', 'checksum'),
                                               ('dataset_files', 'filename'),
-                                              ('dataset_files', 'filesize'),
-                                              ('dataset_files', 'download_link')])
+                                              ('dataset_files', 'filesize')])
         
         # repackage the db output into a single dictionary per file                            
         entries = val['entries'].as_list()
