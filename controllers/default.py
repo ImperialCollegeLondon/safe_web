@@ -503,6 +503,9 @@ def api():
                 val = {'error': 404, 'message': 'Unknown record number.'}
             else:
                 val = record.dataset_metadata
+                val['publication_date'] = record.publication_date
+                val['zenodo_concept_id'] = record.zenodo_concept_id
+                val['zenodo_record_id'] = record.zenodo_record_id
     
     elif request.args[0] == 'files':
         # /api/files endpoint provides a machine readable
