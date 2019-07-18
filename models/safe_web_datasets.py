@@ -150,6 +150,7 @@ db.define_table('dataset_keywords',
 
 db.define_table('dataset_taxa',
                 Field('dataset_id', 'reference published_datasets'),
+                Field('worksheet_name', 'string'),
                 Field('gbif_id', 'integer'),
                 Field('gbif_parent_id', 'integer'),
                 Field('taxon_name', 'string'),
