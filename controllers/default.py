@@ -502,10 +502,13 @@ def api():
             if record is None:
                 val = {'error': 404, 'message': 'Unknown record number.'}
             else:
+                # Build the record metadata, including taxa and locations
                 val = record.dataset_metadata
                 val['publication_date'] = record.publication_date
                 val['zenodo_concept_id'] = record.zenodo_concept_id
                 val['zenodo_record_id'] = record.zenodo_record_id
+                val['taxa'] = record.dataset_taxa.select()
+                val['locations'] = record.dataset_locations.select()
     
     elif request.args[0] == 'files':
         # /api/files endpoint provides a machine readable

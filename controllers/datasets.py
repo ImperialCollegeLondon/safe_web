@@ -185,8 +185,8 @@ def administer_datasets():
             btn = A('Publish', _class='button btn btn-default disabled',
                     _style='padding: 3px 10px 3px 10px;width: 70px;')
         elif ((row.dataset_metadata is not None) and 
-              ('external_files' in row.dataset_metadata['metadata']) and
-              (row.dataset_metadata['metadata']['external_files'])):
+              ('external_files' in row.dataset_metadata) and
+              (row.dataset_metadata['external_files'])):
             btn = A('Adopt', _class='button btn btn-default adopt',
                     _href=None,
                     _style='padding: 3px 10px 3px 10px;width: 70px;',
