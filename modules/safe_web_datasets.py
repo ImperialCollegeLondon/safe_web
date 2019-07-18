@@ -4,7 +4,7 @@ from lxml import etree
 import simplejson
 import copy
 import safe_dataset_checker
-from networkx import Graph, bfs_successors, get_node_attributes
+from cStringIO import StringIO
 import requests
 from safe_web_global_functions import safe_mailer
 from itertools import groupby
@@ -165,6 +165,9 @@ def verify_dataset(record_id, email=False):
         dataset_metadata = dataset.export_metadata_dict()
         dataset_metadata['filename'] = record.file_name
         
+        # In the submitted datasets table, taxa, locations and metadata are
+        # all stored in dataset_metadata. When a dataset is published, taxa
+        # and locations are separated out into the dataset_* tables.
         record.update_record(dataset_check_outcome=outcome,
                              dataset_check_report=report_text,
                              dataset_check_error=dataset_check_error,
@@ -291,7 +294,7 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
                                      dataset_access=metadata['access'],
                                      dataset_embargo=metadata['embargo_date'],
                                      dataset_description=metadata['description'],
-                                     dataset_metadata=record.dataset_metadata,
+                                     dataset_metadata=record.dataset_metadata['metadata'],
                                      temporal_extent_start=metadata['temporal_extent'][0],
                                      temporal_extent_end=metadata['temporal_extent'][1],
                                      geographic_extent= geometry.box(metadata['longitudinal_extent'][0],
@@ -327,8 +330,9 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
         # populate index tables
         # A) Taxa
         taxa = record.dataset_metadata['taxa']
-        taxa = [dict(zip(['dataset_id', 'gbif_id', 'gbif_parent_id', 'taxon_name', 'taxon_rank', 'gbif_status'], 
-                         [published_record] + tx[:5])) for tx in taxa]
+        taxa = [dict(zip(['dataset_id', 'worksheet_name', 'gbif_id', 'gbif_parent_id',
+                          'taxon_name', 'taxon_rank', 'gbif_status'], 
+                         [published_record] + tx)) for tx in taxa]
         
         db.dataset_taxa.bulk_insert(taxa)
         
@@ -811,109 +815,81 @@ Description functions
 """
 
 
-def taxon_index_to_text(taxon_index):
+def taxon_index_to_text(taxa):
     
     """
-    Turns the taxon index for a record into a text representation
-    of the taxonomic hierarchy used in the dataset. Loading networkx
-    to do this is a bit of a sledgehammer, but reinventing graph from
-    edges and depth first search is annoying.
+    Turns the taxon index for a dataset into a text representation
+    of the taxonomic hierarchy used in the dataset. Takes a list
+    of dicts keyed by the fields of dataset_taxa - this could come 
+    from db.datasets_taxa for a published dataset but also from 
+    the dataset_metadata of submitted datasets.
     """
     
-    # drop synonyms, which will be represented using the two final tuple entries
-    # as_name and as_type
-    taxon_index = [tx for tx in taxon_index if tx[4] in ('doubtful', 'accepted', 'user')]
+    def indent(n):
     
-    # the taxon index uses -1 for all unvalidated names, since it isn't
-    # possible to assign sensible null values inside safe_dataset_checker
-    # These need to be made unique within this tree and the names are 
-    # formatted to make it clear they are unvalidated
-    root = -1
-    tmp_num = -2
-    for tx in taxon_index:
-        if tx[0] == -1:
-            tx[0] = tmp_num
-            tmp_num -= 1
-        if tx[1] is None:
-            tx[1] = root
-
-    # Get a graph representation of the taxon index
-    g = Graph()
-    nodes = [(tx[0], {'nm': tx[2], 'lv': tx[3], 'tp': tx[4], 'as': tx[5], 'aslv': tx[6]})
-             for tx in taxon_index]
-    g.add_nodes_from(nodes)
-    edges = [[tx[1], tx[0]] for tx in taxon_index]
-    g.add_edges_from(edges)
-
-    # get a list of successors at each node
-    bfs = dict(bfs_successors(g, root))
-    names = get_node_attributes(g, 'nm')
-
-    # order successors alphabetically
-    for k, v in bfs.iteritems():
-        succ = [[nd, names[nd]] for nd in v]
-        succ.sort(key=lambda x: x[1])
-        bfs[k] = [s[0] for s in succ]
+        return('&ensp;-&ensp;' * n)
     
-    # indent depths - fixed depths for core taxon levels
-    taxon_indents = {'kingdom': 0, 'phylum': 1, 'class': 2, 'order': 3, 
-                     'family': 4, 'genus': 5, 'species': 6, 'subspecies': 7}
-    indent_str = '&ensp;-&ensp;'
+    def format_name(tx):
     
-    # walk the tree, collecting html
-    this_node = root
-    stack = []
-    html = ''
-    
-    while True:
-    
-        if this_node in bfs:
-            # if this is an internal node, add its children on to
-            # the end of the stack
-            stack.append(bfs[this_node])
-    
-        if not stack[-1]:
-            # if the end node on the stack has been emptied then
-            # pop it off and drop back up to the next node in the stack
-            stack.pop()
+        # format the canonical name
+        if tx['taxon_rank'] in ['genus', 'species', 'subspecies']:
+            return '<i>{}</i>'.format(tx['taxon_name'])
+        elif tx['taxon_rank'] in ['morphospecies', 'functional group']:
+            return '[{}]'.format(tx['taxon_name'])
         else:
-            # otherwise, pop the first entry from the node and format and 
-            # print out the information for the node
-            this_node = stack[-1].pop(0)
-            data = g.node[this_node]
+            return tx['taxon_name']
+    
+    # Container to hold the output 
+    html = StringIO()
+    
+    # group by parent taxon
+    taxa.sort(key=lambda x: x['gbif_parent_id'])
+    grouped = {k: list(v) for k, v in groupby(taxa, lambda x: x['gbif_parent_id'])}
+
+    # start the stack with the kingdoms - these taxa will have None as a parent
+    stack = [{'current': grouped[None][0], 'next': grouped[None][1:]}]
+
+    while stack:
+    
+        # Handle the current top of the stack: format the canonical name
+        current = stack[-1]['current']
+        canon_name = format_name(current)
+
+        # Look for a non-None entry in next that shares the same worksheet name
+        next_ws_names = [tx['worksheet_name'] for tx in stack[-1]['next'] 
+                         if tx['worksheet_name'] is not None]
+        
+        if current['worksheet_name'] in next_ws_names:
+            # pop out the matching entry and find which is 'accepted'
+            name_pair = stack[-1]['next'].pop(next_ws_names.index(current['worksheet_name']))
+            if current['gbif_status'] == 'accepted':
+                as_name = format_name(name_pair)
+                as_status = name_pair['gbif_status']
+            else:
+                as_name = canon_name
+                as_status = current['gbif_status']
+                canon_name = format_name(name_pair)
             
-            # format the canonical name
-            if data['lv'] in ['genus', 'species', 'subspecies']:
-                string = '<i>{nm}</i>'.format(**data)
-            elif data['lv'] in taxon_indents:
-                string = data['nm']
-            else:
-                string = data['nm']
+            txt = '{} {} (as {}: {})<br>'.format(indent(len(stack)), canon_name, as_status, as_name)
+        else:
+            txt = '{} {} <br>'.format(indent(len(stack)), canon_name)
+        
+        html.write(txt)
+        
+        # Is this taxon a parent for other taxa - if so add that taxon to the top of
+        # the stack, otherwise start looking for a next taxon to push onto the stack.
+        # If there is none at the top, pop and look down.
+        parent_id = current['gbif_id']        
+        if parent_id in grouped:
+            stack.append({'current': grouped[parent_id][0], 'next': grouped[parent_id][1:]})
+        else:
+            while stack:
+                push = stack.pop()
+                if push['next']:
+                    stack.append({'current': push['next'][0], 'next': push['next'][1:]})
+                    break
 
-            # markup user defined taxa
-            if data['tp'] == 'user':
-                string = '[' + string + ']'
-
-                # format and add synonym/misapplications
-                if data['as'] is not None and data['aslv'] in ['genus', 'species', 'subspecies']:
-                    string += ' (as <i>{as}</i>)'.format(**data)
-                elif data['as'] is not None:
-                    string += ' (as {as})'.format(**data)
-
-            # get the indent depth
-            if data['lv'] in taxon_indents:
-                # use the standard depth for this taxonomic level
-                ind = indent_str * taxon_indents[data['lv']]
-            else:
-                # 1 step further in than the current stack length
-                ind = indent_str * (len(stack) - 1)
-
-            html += ind + string + '</br>'
-    
-        if not stack:
-            break
-    
-    return XML(html)
+    return XML(html.getvalue())
 
 
 def dataset_description(record, gemini_id=None):
@@ -937,12 +913,21 @@ def dataset_description(record, gemini_id=None):
             in the description uploaded to Zenodo.
     """
     
-    # shortcut to metadata and taxon_index
-    metadata = record.dataset_metadata['metadata']
-    taxon_index = record.dataset_metadata['taxa']
+    db = current.db
+    
+    # Get shortcut to metadata and taxon_index, handling different data structures
+    # published and submitted datasets
+    if 'taxa' in record.dataset_metadata:
+        metadata = record.dataset_metadata['metadata']
+        taxon_index = record.dataset_metadata['taxa']
+        taxon_index = [dict(zip(['worksheet_name', 'gbif_id', 'gbif_parent_id',
+                                 'taxon_name', 'taxon_rank', 'gbif_status'], 
+                                  tx)) for tx in taxon_index]        
+    else:
+        metadata = record.dataset_metadata
+        taxon_index = record.dataset_taxa.select().as_list()
     
     # - get a project link back to the safe website
-    db = current.db
     qry = db((db.project_id.id == metadata['project_id']))
     proj = qry.select(
         left=db.project_id.on(db.project_id.project_details_id == db.project_details.id))
@@ -1116,7 +1101,7 @@ def generate_inspire_xml(record):
     """
     
     # get the dataset and zenodo metadata
-    dataset_md = record.dataset_metadata['metadata']
+    dataset_md = record.dataset_metadata
     zenodo_md = record.zenodo_metadata
     
     # parse the XML template and get the namespace map
