@@ -9,6 +9,7 @@ import requests
 from safe_web_global_functions import safe_mailer
 from itertools import groupby
 from shapely import geometry
+import hashlib
 
 # The web2py HTML helpers are provided by gluon. This also provides the 'current' object, which
 # provides the web2py 'request' API (note the single letter difference from the requests package!).
@@ -1591,3 +1592,26 @@ def dataset_spatial_bbox_search(wkt=None, location=None, match_type='intersect',
         
     return qry
 
+
+def version_stamps():
+    """
+    Function to calculate version stamps for the records and the gazetteer, used to populate
+    a ram cache and provide a quick way for R package users to establish if their local
+    copies are up to date.
+    """
+    
+    # Use the max zenodo record number as the record index stamp - it will always get 
+    # incrementally larger.
+    db = current.db
+    record_index = db(db.published_datasets
+                      ).select(
+                          db.published_datasets.zenodo_record_id.max().with_alias('record')
+                          ).first().record
+    
+    # Use the file hash of the gazetteer geojson
+    geojson_file = os.path.join(current.request.folder, 'static', 'files', 'gis', 'gazetteer.geojson')
+    with open(geojson_file) as f:
+        geojson_index = hashlib.md5(f.read()).hexdigest()
+        
+    return dict(records=record_index, locations=geojson_index)
+    
