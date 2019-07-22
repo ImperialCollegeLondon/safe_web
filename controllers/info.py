@@ -250,20 +250,30 @@ class ExporterGeoJSON(object):
             # pop out the geometry components and id
             id_number = [ft.pop('id') for ft in ft_as_dicts]
             
-            # convert WKT to geoson - this feels clunky but st_asgeojson 
-            # returns an expression for a select within PostgreSQL, so in 
-            # order to invoke it on the arbitary set of rows passed here, 
-            # we need to use the row id to select it from the db
-            geojson = [db(db.gazetteer.id == rw.id).select(
-                            db.gazetteer.wkt.st_asgeojson().with_alias('geojson')).first().geojson
-                       for rw in self.rows]
-            
-            geojson = [loads_json(rw) for rw in geojson]
-            
-            # assemble the features list
-            features = [{'type': "Feature", 'id': idn, 'properties': prop, 'geometry': gj} 
-                        for (idn, prop, gj) in zip(id_number, ft_as_dicts, geojson)]
-            
+            # Get the locations - for geojson, we need an id, a geometry and a dictionary
+            # of properties. This query uses the with_alias() to strucure the results with
+            # id and geojson outside of the 'gazetteer' table dictionary, making it really
+            # simple to restucture them into a geojson Feature entry
+            locations = db(db.gazetteer.id.belongs(id_number)
+                           ).select(db.gazetteer.id.with_alias('id'),
+                                    db.gazetteer.location,
+                                    db.gazetteer.type,
+                                    db.gazetteer.parent,
+                                    db.gazetteer.region,
+                                    db.gazetteer.plot_size,
+                                    db.gazetteer.fractal_order,
+                                    db.gazetteer.transect_order,
+                                    db.gazetteer.wkt_wgs84.st_asgeojson().with_alias('geojson')
+                                    ).as_list()
+        
+            # assemble the features list - postgres returns ST_AsGeoJSON as a string, so
+            # this has to be converted back into a dictionary.
+            features = [{'type': "Feature", 
+                         'id': loc['id'], 
+                         'properties': loc['gazetteer'], 
+                         'geometry': loads_json(loc['geojson'])} 
+                        for loc in locations]
+              
             # embed that in the Feature collection
             feature_collection = {"type": "FeatureCollection",
                                   "crs": {"type": "name",
