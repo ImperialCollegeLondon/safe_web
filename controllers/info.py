@@ -6,6 +6,7 @@ from gluon.serializers import json, loads_json
 import os
 from gpxpy import gpx
 from safe_web_global_functions import get_frm
+from shapely.geometry import shape
 
 ## -----------------------------------------------------------------------------
 ## A collection of controllers handling mostly static information pages
@@ -288,27 +289,49 @@ class ExporterGeoJSON(object):
 def update_gazetteer():
     
     """
-    This controller simply reloads the contents of the gazetteer table from
-    the file provided in static and the updates the UTM50N geometry field.
+    This controller reloads the contents of the gazetteer table and the alias
+    table from the files provided in static and then updates the UTM50N geometry 
+    field. The geojson file used here is the one provided by the api/locations
+    endpoint, and so this function also clears the ram cache providing the
+    file hash of gazetteer.geojson, so that the next call to versions_index will
+    repopulate it with the new file hash
+    
     Note that this relies on web2py 2.18.5+, which includes a version of PyDAL
     that supports st_transform.
     """
 
-    # Drop the current contents
-    # TODO - this loses the ID name association 
+    # GAZETTEER - drop the current contents
     db.gazetteer.truncate()
-    db.gazetteer_alias.truncate()
     
     # Refill the tables from the static resource
-    gazetteer_csv = os.path.join(request.folder, 'static', 'files', 'gis', 'gazetteer.csv')
-    db.gazetteer.import_from_csv_file(open(gazetteer_csv, 'r'), null='null')
+    gazetteer_path = os.path.join(request.folder, 'static', 'files', 'gis', 'gazetteer.geojson')
+    with open(gazetteer_path, 'r') as f:
+        gazetteer_json = simplejson.load(f)
     
-    gazetteer_alias_csv = os.path.join(request.folder, 'static', 'files', 'gis', 'gazetteer_alias.csv')
-    db.gazetteer_alias.import_from_csv_file(open(gazetteer_alias_csv, 'r'), null='null')
+    # Get the features from within the geojson
+    features = gazetteer_json['features']
     
+    # Loop over the features, inserting the properties and using shapely to convert
+    # the geojson geometry to WKT, prepending the PostGIS extended WKT statement of
+    # the EPSG code for the geometry
+    for ft in features:
+        fields = ft['properties']
+        fields['wkt_wgs84'] = "SRID=4326;" + shape(ft['geometry']).wkt
+        db.gazetteer.insert(**fields)
+
     # Recalculate the UTM50N geometries - using the extended pydal GIS
     db(db.gazetteer).update(wkt_utm50n = db.gazetteer.wkt_wgs84.st_transform(32650))
 
+    # GAZETTEER ALIASES - drop the current contents
+    db.gazetteer_alias.truncate()
+    
+    # Repopulate from the file.
+    gazetteer_alias_csv = os.path.join(request.folder, 'static', 'files', 'gis', 'gazetteer_alias.csv')
+    db.gazetteer_alias.import_from_csv_file(open(gazetteer_alias_csv, 'r'), null='null')
+    
+    # Clear the ram cache of the outdated version.
+    cache.ram('version_stamps', None)
+    
 # def calendars():
 #
 #     return response.render()
