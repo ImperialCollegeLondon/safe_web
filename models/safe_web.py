@@ -300,14 +300,33 @@ db.define_table('gazetteer',
 # Load the gazetteer types directly from the database. Typically this is bulk updated
 # as sites are added, so synchronizing the list of types here is fragile. Instead, 
 # set the requirement using the available data once the table has been declared.
-#gaz_types = [r.type for r in db().select(db.gazetteer.type, distinct=True)]
-#db.gazetteer.type.requires = IS_IN_SET(gaz_types)
+# gaz_types = [r.type for r in db().select(db.gazetteer.type, distinct=True)]
+# db.gazetteer.type.requires = IS_IN_SET(gaz_types)
 
-# Aliases location names - cannot use a value already in the gazeetteer locations
+# Aliases location names - cannot use a value already in the gazetteer locations
+# This table identifies location names that equate to an official name in the
+# gazetteer. The field dataset_id allows a name in a specific dataset to be adopted
+# retrospectively: all NEW locations in a dataset should be checked to see if they
+# appear in this table and, if so, they can point to a gazetteer location. The
+# dataset_id allows these names only to be unique within a dataset. If dataset_id 
+# is None, then the values are general aliases
+
+# Note that the combination of dataset_id and location_alias needs to be unique.
+# Normally this would be a multi column primary key but is achieved here
+# using the callback defined below the table
+
 db.define_table('gazetteer_alias',
-                Field('location', 'string', requires=IS_IN_DB(db, 'gazetteer.locations')),
-                Field('location_alias', 'string', requires=IS_NOT_IN_DB(db, 'gazetteer.locations'),
-                      unique=True))
+                Field('dataset_id', 'integer', 
+                       requires=IS_NULL_OR(IS_IN_DB(db, 'published_datasets.id'))),
+                Field('location', 'string', 
+                       requires=IS_IN_DB(db, 'gazetteer.locations')),
+                Field('location_alias', 'string', 
+                       requires=IS_NOT_IN_DB(db, 'gazetteer.locations')))
+
+db.gazetteer_alias._before_insert.append(lambda r : 
+                                            db((db.gazetteer_alias.dataset_id == r["dataset_id"]) &
+                                               (db.gazetteer_alias.location_alias==r["location_alias"])
+                                               ).select())
 
 # -----------------------------------------------------------------------------
 # MARKET PLACE
