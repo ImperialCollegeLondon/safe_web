@@ -10,7 +10,8 @@ from gluon.serializers import json, loads_json
 from safe_web_global_functions import thumbnail
 from safe_web_datasets import (dataset_taxon_search, dataset_author_search, dataset_date_search, 
                                dataset_text_search, dataset_field_search, dataset_locations_search, 
-                               dataset_spatial_search, dataset_spatial_bbox_search, dataset_query_to_json)
+                               dataset_spatial_search, dataset_spatial_bbox_search, dataset_query_to_json,
+                               version_stamps)
 
 ## -----------------------------------------------------------------------------
 ## Default page controllers
@@ -490,6 +491,14 @@ def api():
         docs = CAT([H4(ky) + PRE(inspect.getdoc(fn)) for ky, fn in  search_func.iteritems()])        
         return dict(docs=docs)
     
+    elif request.args[0] == 'version_stamps':
+        
+        # This retrieves the current version stamps from the ram cache.
+        # Note that the expiry time means these never expire and so functions
+        # that update versions (publishing a record, reloading gazetteer) need
+        # to clear and reset.
+        val = cache.ram('version_stamps', version_stamps, time_expire=None)
+    
     elif request.args[0] == 'record' and len(request.args) == 2:
         # /api/record/zenodo_record_id endpoint provides a machine readable
         # version of the data contained in the dataset description
@@ -532,6 +541,10 @@ def api():
         [r['published_datasets'].update(r.pop('dataset_files')) for r in entries]
         val['entries'] = [r['published_datasets'] for r in entries]
         
+    elif request.args[0] == 'locations2':
+        
+        redirect(URL('static','files/gis/gazetteer.geojson'))
+
     elif request.args[0] == 'locations':
         
         # Get the locations - for geojson, we need an id, a geometry and a dictionary
