@@ -1,0 +1,32 @@
+{
+	"type": "FeatureCollection",
+	"features": [
+		{
+			"type": "Feature",
+			"properties": {
+				"location": "RP_OP_D3",
+				"type": "Riparian plot",
+				"plot_size": "25m x 25m",
+				"display_order": 7,
+				"parent": null,
+				"region": "SAFE",
+				"fractal_order": 1,
+				"transect_order": 4,
+				"centroid_x": 117.4584167,
+				"centroid_y": 4.6371167,
+				"source": "SAFE_Riparian_plots.geojson",
+				"bbox_xmin": 117.4584167,
+				"bbox_ymin": 4.6371167,
+				"bbox_xmax": 117.4584167,
+				"bbox_ymax": 4.6371167
+			},
+			"geometry": {
+				"type": "Point",
+				"coordinates": [
+					117.4584167,
+					4.6371167
+				]
+			}
+		}
+	]
+}
