@@ -5,6 +5,8 @@ from collections import Counter
 import random
 import datetime
 import inspect
+from gluon.contrib import simplejson
+from gluon.serializers import json, loads_json
 from safe_web_global_functions import thumbnail
 from safe_web_datasets import (dataset_taxon_search, dataset_author_search, dataset_date_search, 
                                dataset_text_search, dataset_field_search, dataset_locations_search, 
@@ -421,7 +423,6 @@ def get_locations_bbox():
     return {'locations': locations, 'aliases': aliases}
 
 
-
 # ------------------------------------------------------------------
 # Dataset search API
 # ------------------------------------------------------------------
@@ -531,6 +532,45 @@ def api():
         [r['published_datasets'].update(r.pop('dataset_files')) for r in entries]
         val['entries'] = [r['published_datasets'] for r in entries]
         
+    elif request.args[0] == 'locations':
+        
+        # Get the locations - for geojson, we need an id, a geometry and a dictionary
+        # of properties. This query uses the with_alias() to strucure the results with
+        # id and geojson outside of the 'gazetteer' table dictionary, making it really
+        # simple to restucture them into a geojson Feature entry
+        locations = db(db.gazetteer).select(db.gazetteer.id.with_alias('id'),
+                                            db.gazetteer.location,
+                                            db.gazetteer.type,
+                                            db.gazetteer.parent,
+                                            db.gazetteer.region,
+                                            db.gazetteer.plot_size,
+                                            db.gazetteer.fractal_order,
+                                            db.gazetteer.transect_order,
+                                            db.gazetteer.wkt_wgs84.st_asgeojson().with_alias('geojson')
+                                            ).as_list()
+    
+        # assemble the features list - postgres returns ST_AsGeoJSON as a string, so
+        # this has to be converted back into a dictionary.
+        features = [{'type': "Feature", 
+                     'id': loc['id'], 
+                     'properties': loc['gazetteer'], 
+                     'geometry': loads_json(loc['geojson'])} 
+                    for loc in locations]
+
+        # embed that in the Feature collection
+        val = {"type": "FeatureCollection",
+                              "crs": {"type": "name",
+                                      "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
+                              "features": features}
+                              
+    elif request.args[0] == 'location_aliases':
+        
+        # Get the locations - for geojson, we need an id, a geometry and a dictionary
+        # of properties. This query uses the with_alias() to strucure the results with
+        # id and geojson outside of the 'gazetteer' table dictionary, making it really
+        # simple to restucture them into a geojson Feature entry
+        val = db(db.gazetteer_alias).select(db.gazetteer_alias.ALL).as_list()
+
     elif request.args[0] == 'search' and len(request.args) == 2 and request.args[1] in search_func:
             
         # validate the remaining query search parameters to the search function arguments
