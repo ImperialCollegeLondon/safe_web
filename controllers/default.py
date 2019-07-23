@@ -11,7 +11,7 @@ from safe_web_global_functions import thumbnail
 from safe_web_datasets import (dataset_taxon_search, dataset_author_search, dataset_date_search, 
                                dataset_text_search, dataset_field_search, dataset_locations_search, 
                                dataset_spatial_search, dataset_spatial_bbox_search, dataset_query_to_json,
-                               version_stamps)
+                               get_index_hashes, get_index)
 
 ## -----------------------------------------------------------------------------
 ## Default page controllers
@@ -491,13 +491,16 @@ def api():
         docs = CAT([H4(ky) + PRE(inspect.getdoc(fn)) for ky, fn in  search_func.iteritems()])        
         return dict(docs=docs)
     
-    elif request.args[0] == 'version_stamps':
+    elif request.args[0] == 'index_hashes':
         
-        # This retrieves the current version stamps from the ram cache.
-        # Note that the expiry time means these never expire and so functions
+        # This retrieves the current version hashs from the ram cache.
+        
+        # NOTE: the expiry time of None means these never expire and so functions
         # that update versions (publishing a record, reloading gazetteer) need
-        # to clear and reset.
-        val = cache.ram('version_stamps', version_stamps, time_expire=None)
+        # to clear this variable so that it will be reset by the next call to this
+        # API.
+        
+        val = cache.ram('index_hashes', get_index_hashes, time_expire=None)
     
     elif request.args[0] == 'record' and len(request.args) == 2:
         # /api/record/zenodo_record_id endpoint provides a machine readable
@@ -521,7 +524,10 @@ def api():
                 val['locations'] = record.dataset_locations.select()
     
     elif request.args[0] == 'files':
-        # /api/files endpoint provides a machine readable
+        
+        # /api/files endpoint provides a json file containing the files associated
+        # with dataset records, allowing filtering by ID and most_recent query parameters
+                
         # version of the data contained in the dataset description
         qry = (db.published_datasets.id == db.dataset_files.dataset_id)
         val = dataset_query_to_json(qry, most_recent, ids, 
@@ -540,41 +546,38 @@ def api():
         entries = val['entries'].as_list()
         [r['published_datasets'].update(r.pop('dataset_files')) for r in entries]
         val['entries'] = [r['published_datasets'] for r in entries]
+
+    elif request.args[0] == 'index':
+
+        # This mirrors the files endpoint but always returns a complete list of all 
+        # files available across the SAFE dataset repository along with publication
+        # details and accessibility.
         
-    elif request.args[0] == 'locations2':
+        # The output from this endpoint is used as the core index for the safedata
+        # R package. The output is therefore cached in ram: i) to speed up access and
+        # ii) to provide an MD5 hash of the contents to provide a version stamp. Note
+        # the expiry date of None in the cache means that it never expires - publishing
+        # a new dataset therefore needs to clear the ram cache to reset these version
+        # stamps
+
+        val = cache.ram('index', get_index, time_expire=None)
+
+        
+    elif request.args[0] == 'gazetteer':
+        
+        # Get the gazetteer - the table is populated directly from the gazetteer geojson
+        # stored in static, and the MD5 sum of that file is used as a version stamp, so
+        # this endpoint simply redirects to that file, both for speed and to preserve the
+        # JSON file structure for MD5 comparison between local and server versions.
         
         redirect(URL('static','files/gis/gazetteer.geojson'))
 
-    elif request.args[0] == 'locations':
+    elif request.args[0] == 'location_aliases':
         
-        # Get the locations - for geojson, we need an id, a geometry and a dictionary
-        # of properties. This query uses the with_alias() to strucure the results with
-        # id and geojson outside of the 'gazetteer' table dictionary, making it really
-        # simple to restucture them into a geojson Feature entry
-        locations = db(db.gazetteer).select(db.gazetteer.id.with_alias('id'),
-                                            db.gazetteer.location,
-                                            db.gazetteer.type,
-                                            db.gazetteer.parent,
-                                            db.gazetteer.region,
-                                            db.gazetteer.plot_size,
-                                            db.gazetteer.fractal_order,
-                                            db.gazetteer.transect_order,
-                                            db.gazetteer.wkt_wgs84.st_asgeojson().with_alias('geojson')
-                                            ).as_list()
-    
-        # assemble the features list - postgres returns ST_AsGeoJSON as a string, so
-        # this has to be converted back into a dictionary.
-        features = [{'type': "Feature", 
-                     'id': loc['id'], 
-                     'properties': loc['gazetteer'], 
-                     'geometry': loads_json(loc['geojson'])} 
-                    for loc in locations]
+        # Get the location aliases - as with the gazetteer endpoint, this is simply a 
+        # redirect to the file used to populate the table. 
 
-        # embed that in the Feature collection
-        val = {"type": "FeatureCollection",
-                              "crs": {"type": "name",
-                                      "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
-                              "features": features}
+        redirect(URL('static','files/gis/location_aliases.csv'))
                               
     elif request.args[0] == 'location_aliases':
         
