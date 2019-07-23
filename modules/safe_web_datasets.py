@@ -10,6 +10,7 @@ from safe_web_global_functions import safe_mailer
 from itertools import groupby
 from shapely import geometry
 import hashlib
+from gluon.serializers import json
 
 # The web2py HTML helpers are provided by gluon. This also provides the 'current' object, which
 # provides the web2py 'request' API (note the single letter difference from the requests package!).
