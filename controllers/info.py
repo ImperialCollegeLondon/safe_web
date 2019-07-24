@@ -326,7 +326,7 @@ def update_gazetteer():
     db.gazetteer_alias.truncate()
     
     # Repopulate from the file.
-    gazetteer_alias_csv = os.path.join(request.folder, 'static', 'files', 'gis', 'gazetteer_alias.csv')
+    gazetteer_alias_csv = os.path.join(request.folder, 'static', 'files', 'gis', 'location_aliases.csv')
     db.gazetteer_alias.import_from_csv_file(open(gazetteer_alias_csv, 'r'), null='null')
     
     # Clear the ram cache of the outdated version.
