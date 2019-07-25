@@ -521,7 +521,9 @@ def api():
                 val['zenodo_concept_id'] = record.zenodo_concept_id
                 val['zenodo_record_id'] = record.zenodo_record_id
                 val['taxa'] = record.dataset_taxa.select()
-                val['locations'] = record.dataset_locations.select()
+                val['locations'] = record.dataset_locations.select(db.dataset_locations.name,
+                                                                   db.dataset_locations.new_location,
+                                                                   db.dataset_locations.wkt_wgs84)
     
     elif request.args[0] == 'files':
         
