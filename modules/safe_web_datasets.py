@@ -709,25 +709,20 @@ def upload_file(links, token, record):
     """
 
     # upload the new file
+    bucket_url = links['bucket']
     fname = os.path.join(current.request.folder, 'uploads', 'submitted_datasets', record.file)
-    fls = requests.post(links['files'], params=token, files={'file': open(fname, 'rb')})
-
+    
+    with open(fname, 'rb') as fp:
+        fls = requests.put(bucket_url + '/' + record.file_name,
+                           data=fp,
+                           params=token)
+    
     # trap errors in uploading file
     # - no success or mismatch in md5 checksums
-    if fls.status_code != 201:
+    if fls.status_code != 200:
         return 1, fls.json()
-
-    if fls.json()['checksum'] != record.file_hash:
+    elif fls.json()['checksum'] != 'md5:' + record.file_hash:
         return 1, "Mismatch in local and uploaded MD5 hashes"
-
-    # update the name to the one originally provided by the user
-    data = simplejson.dumps({'filename': record.file_name})
-    upd = requests.put(fls.json()['links']['self'], data=data,
-                       headers={"Content-Type": "application/json"}, params=token)
-
-    # trap errors in updating name
-    if upd.status_code != 200:
-        return 1, upd.json()
     else:
         return 0, 'success'
 
