@@ -190,7 +190,11 @@ def safe_mailer(subject, to, template, template_dict, cc=None,
 
     # get the html version, strip it down to text and combine
     html_msg = response.render('email_templates/' + template, template_dict)
-    txt_msg = html2text.html2text(html_msg)
+    # Need to make sure that accents are handled correctly. I think the form
+    # string inputs come in as utf-8, so are stored that way in the db
+    parser = html2text.HTML2Text()
+    parser.UNICODE_SNOB = True
+    txt_msg = parser.handle(html_msg.decode('utf-8'))
     msg = (txt_msg, html_msg)
 
     # add the info address into all emails (unless told explicitly not to)
