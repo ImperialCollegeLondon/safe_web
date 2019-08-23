@@ -161,8 +161,26 @@ def administer_datasets():
     
     table.concept_id.represent = lambda value, row: _update_or_new(row)
 
-    # hide field used in prepating the table
-    table.dataset_metadata.readable = False
+    # use the metadata to indicate access
+    
+    def _access(row):
+        
+        status = row.dataset_metadata['metadata']['access']
+        
+        if status == 'open':
+            return SPAN("O", _class='badge', _style="background-color:green;font-size: 1em;")
+        elif status == 'embargo':
+            return SPAN("E", _class='badge', _style="background-color:orange;font-size: 1em;")
+        elif status == 'restricted':
+            return SPAN("R", _class='badge', _style="background-color:red;font-size: 1em;")
+        else:
+            return SPAN("?", _class='badge', _style="background-color:black;font-size: 1em;")
+        
+
+    table.dataset_metadata.represent = lambda value, row: _access(row)
+
+    # hide field used in preparing the table
+    #table.dataset_metadata.readable = False
     table.project_id.readable = False
     #db.submitted_datasets.concept_id.readable = False
 
@@ -211,12 +229,13 @@ def administer_datasets():
                                   db.submitted_datasets.uploader_id,
                                   db.submitted_datasets.concept_id,
                                   db.submitted_datasets.dataset_title,
+                                  db.submitted_datasets.dataset_metadata,
                                   db.submitted_datasets.dataset_check_outcome,
                                   db.submitted_datasets.zenodo_submission_status,
-                                  db.submitted_datasets.file,
-                                  db.submitted_datasets.dataset_metadata],
+                                  db.submitted_datasets.file],
                         headers = {'submitted_datasets.upload_datetime': 'Upload date',
                                    'submitted_datasets.concept_id': 'Updating',
+                                   'submitted_datasets.dataset_metadata': 'Access',
                                    'submitted_datasets.dataset_check_outcome': 'Format status',
                                    'submitted_datasets.zenodo_submission_status': 'Published'},
                         orderby = [~ db.submitted_datasets.upload_datetime],
