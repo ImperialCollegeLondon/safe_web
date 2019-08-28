@@ -686,8 +686,9 @@ def upload_metadata(links, token, record, zenodo_id):
         zen_md['metadata']['embargo_date'] = metadata['embargo_date']
     elif metadata['access'].lower() == 'open':
         zen_md['metadata']['access_right'] = 'open'
-    elif metadata['access'].lower() == 'closed':
-        zen_md['metadata']['access_right'] = 'closed'
+    elif metadata['access'].lower() == 'restricted':
+        zen_md['metadata']['access_right'] = 'restricted'
+        zen_md['metadata']['access_conditions'] = metadata['access_conditions']
     else:
         raise ValueError('Unknown access status')
     
