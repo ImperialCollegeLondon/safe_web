@@ -199,7 +199,37 @@ def verify_dataset(record_id, email=False):
     return ret_msg
 
 
-def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
+def get_zenodo_api():
+    """
+    Function to provide the zenodo API endpoint and the access token
+    from the site config. The config specifies whether the testing
+    sandbox or the live site is to be used.
+    """
+    
+    try:
+        sandbox = current.myconf.take('zenodo.use_sandbox')
+    except BaseException:
+        raise RuntimeError('Site config does not provide zenodo.use_sandbox')
+    
+    if sandbox:
+        try:
+            token = {'access_token': current.myconf.take('zenodo.sandbox_access_token')}
+        except BaseException:
+            raise RuntimeError('Site config does not provide zenodo.sandbox_access_token')
+
+        api = 'https://sandbox.zenodo.org/api/'
+    else:
+        try:
+            token = {'access_token': current.myconf.take('zenodo.access_token')}
+        except BaseException:
+            raise RuntimeError('Site config does not provide zenodo.access_token')
+
+        api = 'https://zenodo.org/api/'
+    
+    return api, token
+
+
+def submit_dataset_to_zenodo(record_id, deposit_id=None):
     
     """
     Function that attempts to publish a dataset record to Zenodo and 
@@ -211,7 +241,6 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
         record_id: The id of the dataset table record to be submitted
         deposit_id: An integer giving the id of an existing Zenodo deposit to adopt
             using this dataset record.
-        sandbox: Should the sandbox API be used - retained for testing
     Returns:
         A string describing the outcome.
     """
@@ -230,21 +259,8 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None, sandbox=False):
         return 'Publishing dataset: record ID {} already published'.format(record_id)
 
     # load the correct API and token
-    if sandbox:
-        try:
-            token = {'access_token': current.myconf.take('zenodo.sandbox_access_token')}
-        except BaseException:
-            raise RuntimeError('Site config does not provide zenodo.sandbox_access_token')
-
-        api = 'https://sandbox.zenodo.org/api/'
-    else:
-        try:
-            token = {'access_token': current.myconf.take('zenodo.access_token')}
-        except BaseException:
-            raise RuntimeError('Site config does not provide zenodo.access_token')
-
-        api = 'https://zenodo.org/api/'
-
+    api, token = get_zenodo_api()
+    
     # There are then four possible options of things that could be published:
     # 1) a brand new excel-only dataset,
     # 2) an update to an existing excel-only dataset,
@@ -692,6 +708,71 @@ def upload_metadata(links, token, record, zenodo_id):
         return 1, mtd.json()
     else:
         return 0, 'success'
+
+def update_published_metadata(zenodo_record_id, new_values):
+    """
+    Function to update the metadata on a published deposit. Currently used to 
+    modify the access status of deposit.
+    
+    Args:
+        zenodo_record_id: The record id of the deposit to be updated
+        new_values: A dictionary of new values to be substituted in to
+             the existing Zenodo deposition metadata resource.
+    """
+    
+    # load the correct API and token
+    api, token = get_zenodo_api()
+    
+    code, dep = get_deposit(api, token, zenodo_record_id)
+    
+    if code != 0:
+        return 1, dep
+    
+    links = dep['links']
+    metadata = dep['metadata']
+    
+    # Unlock the published deposit for editing
+    edt = requests.post(links['edit'], params=token)
+    
+    if edt.status_code != 201:
+        return 1, edt.json()
+    
+    # Amend the metadata
+    for key, val in new_values.iteritems():
+        if val is not None:
+            metadata[key] = val
+        elif key in metadata:
+            metadata.pop(key)
+
+    # If any API calls from now fail, we need to tidy up the edit
+    # status of the record, or it will block subsequent attempts
+            
+    upd = requests.put(links['self'], params=token,
+                       headers = {"Content-Type": "application/json"}, 
+                       data=simplejson.dumps({'metadata': metadata}))
+    
+    success_so_far = 0 if upd.status_code != 200 else 1
+    ret = upd.json()
+
+    # Republish to save the changes
+    if success_so_far:
+        pub = requests.post(links['publish'], params=token)
+        success_so_far = 0 if pub.status_code != 202 else 1
+        ret = pub.json()
+        
+    # If all steps have been succesful, return a 0 code, otherwise
+    # try to discard the edits and return the most recent failure
+    # notice
+
+    if success_so_far:
+        return 0, ret
+    else:
+        dsc = requests.post(links['discard'], params=token)
+        success_so_far = 0 if dsc.status_code != 201 else 1
+        if not success_so_far:
+            ret = dsc.json()
+        
+        return 1, ret
 
 
 def upload_file(links, token, record):
