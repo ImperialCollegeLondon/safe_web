@@ -311,6 +311,7 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None):
                                      dataset_title=metadata['title'],
                                      dataset_access=metadata['access'],
                                      dataset_embargo=metadata['embargo_date'],
+                                     dataset_conditions=metadata['access_conditions'],
                                      dataset_description=metadata['description'],
                                      dataset_metadata=record.dataset_metadata['metadata'],
                                      temporal_extent_start=metadata['temporal_extent'][0],

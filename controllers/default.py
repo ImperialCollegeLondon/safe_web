@@ -541,7 +541,7 @@ def api():
                 val = dict(dataset_title=record.dataset_title,
                            dataset_access=record.dataset_access.capitalize(), 
                            dataset_embargo=record.dataset_embargo,
-                           dataset_restriction=record.dataset_restriction)
+                           dataset_conditions=record.dataset_conditions)
     
     elif request.args[0] == 'files':
         

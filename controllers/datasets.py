@@ -278,9 +278,9 @@ def change_dataset_access():
                         DIV(DIV(B('Embargo Date'), _class='col-sm-3'),
                             DIV(_id='embargo', _class='col-sm-9'),
                             _class='row', _id='embargo_display', _hidden=True),
-                        DIV(DIV(B('Restriction'), _class='col-sm-3'),
-                            DIV(_id='restriction', _class='col-sm-9'),
-                            _class='row', _id='restriction_display', _hidden=True),
+                        DIV(DIV(B('Access conditions'), _class='col-sm-3'),
+                            DIV(_id='conditions', _class='col-sm-9'),
+                            _class='row', _id='conditions_display', _hidden=True),
                         HR(),
                         DIV(DIV(B('New Status'), _class='col-sm-3'),
                             DIV(SELECT('Open', 'Embargo', 'Restricted', 
@@ -292,9 +292,9 @@ def change_dataset_access():
                         DIV(DIV(B('Set Embargo Date'), _class='col-sm-3'),
                             DIV(INPUT(_id='set_embargo', _name='set_embargo'), _class='col-sm-9'),
                             _class='row', _id='display_set_embargo', _hidden=True),
-                        DIV(DIV(B('Set Restriction Details'), _class='col-sm-3'),
-                            DIV(TEXTAREA(_id='set_restriction', _name='set_restriction'), _class='col-sm-9'),
-                            _class='row', _id='display_set_restriction', _hidden=True),
+                        DIV(DIV(B('Set Access Conditions'), _class='col-sm-3'),
+                            DIV(TEXTAREA(_id='set_conditions', _name='set_conditions'), _class='col-sm-9'),
+                            _class='row', _id='display_set_conditions', _hidden=True),
                         _class='panel-body'),
                     _class='panel panel-default'))
 
@@ -310,17 +310,17 @@ def change_dataset_access():
                           auth.user.last_name,
                           record.dataset_access,
                           record.dataset_embargo,
-                          record.dataset_restriction,
+                          record.dataset_conditions,
                           form.vars.set_status,
                           form.vars.set_embargo,
-                          form.vars.set_restriction)
+                          form.vars.set_conditions)
         
         dataset_history = new_history if record.dataset_history is None else record.dataset_history + new_history
 
         record.update_record(dataset_history=dataset_history,
                              dataset_access=form.vars.set_status,
                              dataset_embargo=form.vars.set_embargo,
-                             dataset_restriction=form.vars.set_restriction)
+                             dataset_conditions=form.vars.set_conditions)
         
         # update Zenodo
         if form.vars.set_status == 'open':
@@ -334,7 +334,7 @@ def change_dataset_access():
         elif form.vars.set_status == 'restricted':
             update = {'access_right': 'restricted',
                       'embargo_date': None,
-                      'access_conditions': form.vars.set_restriction}
+                      'access_conditions': form.vars.set_conditions}
         
         code, content = update_published_metadata(form.vars.zenodo_selector, update)
         print form.vars.zenodo_selector, update, content
@@ -364,8 +364,8 @@ def validate_change_dataset_access(form):
     
     if form.vars.set_status == 'embargo' and form.vars.set_embargo == "":
         form.errors.set_embargo = "Set new embargo date"
-    elif form.vars.set_status == 'restricted' and form.vars.set_restriction == "":
-        form.errors.set_restriction = "Provide access details for restricted datasets"
+    elif form.vars.set_status == 'restricted' and form.vars.set_conditions == "":
+        form.errors.set_conditions = "Provide access conditions for restricted datasets"
 
 
 @auth.requires_membership('admin')

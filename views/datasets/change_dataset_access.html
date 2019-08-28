@@ -48,15 +48,15 @@
 					embargo_display.hidden = true;
 				}
 				
-				// Handle setting restriction details
-				restriction_display = document.getElementById('restriction_display')
-				restriction = document.getElementById('restriction')
+				// Handle setting access conditions
+				conditions_display = document.getElementById('conditions_display')
+				conditions = document.getElementById('conditions')
 
 				if(this.response['dataset_access'] === 'Restricted'){
-					restriction_display.hidden = false;
-					restriction.innerHTML = this.response['dataset_restriction'];
+					conditions_display.hidden = false;
+					conditions.innerHTML = this.response['dataset_conditions'];
 				} else {
-					restriction_display.hidden = true;
+					conditions_display.hidden = true;
 				}
 
 				// Set the access status
@@ -73,18 +73,17 @@
 		// Function controls which status setting controls are available
 		set_status = document.getElementById('set_status').value;
 		display_set_embargo = document.getElementById('display_set_embargo');
-		display_set_restriction = document.getElementById('display_set_restriction');
+		display_set_conditions = document.getElementById('display_set_conditions');
 		
 		if(set_status === 'Open'){
 			display_set_embargo.hidden = true;
-			display_set_restriction.hidden = true;			
+			display_set_conditions.hidden = true;			
 		} else if(set_status === 'Embargo'){
 			display_set_embargo.hidden = false;
-			display_set_restriction.fadeIn('slow');
-			//display_set_restriction.hidden = true;
+			display_set_conditions.hidden = true;			
 		} else if(set_status === 'Restricted'){
 			display_set_embargo.hidden = true;
-			display_set_restriction.hidden = false;
+			display_set_conditions.hidden = false;
 		}
 	};
 
