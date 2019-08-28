@@ -525,6 +525,24 @@ def api():
                                                                    db.dataset_locations.new_location,
                                                                    db.dataset_locations.wkt_wgs84)
     
+    elif request.args[0] == 'access_status' and len(request.args) == 2:
+    
+        # Small payload API for getting dataset access details, used by change_dataset_access
+        try:
+            record_id = int(request.args[1])
+        except ValueError:
+            val = {'error': 404, 'message': 'Non-integer record number.'}
+        else:
+            record = db(db.published_datasets.zenodo_record_id == record_id).select().first()
+        
+            if record is None:
+                val = {'error': 404, 'message': 'Unknown record number.'}
+            else:
+                val = dict(dataset_title=record.dataset_title,
+                           dataset_access=record.dataset_access.capitalize(), 
+                           dataset_embargo=record.dataset_embargo,
+                           dataset_restriction=record.dataset_restriction)
+    
     elif request.args[0] == 'files':
         
         # /api/files endpoint provides a json file containing the files associated
