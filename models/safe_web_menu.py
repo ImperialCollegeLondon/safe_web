@@ -128,6 +128,7 @@ if (auth.user_id != None) and (auth.has_membership(role='admin')):
         (T('Download H&S Report'), True, URL('health_safety', 'download_hs_report'),[]),
         (T('Public holidays'), True, URL('info', 'public_holidays'), []),
         (T('Create research visit'), True, URL('research_visits', 'create_late_research_visit'), []),
+        (T('Change dataset access'), True, URL('datasets', 'change_dataset_access'), []),
         LI(_class="divider"),
         (B('Approvals'), False, None, None),
         approvals(db.auth_user.registration_key, 'New users', 'people', 'administer_new_users'),
