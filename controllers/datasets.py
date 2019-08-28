@@ -1,7 +1,9 @@
 import shutil
 import hashlib
 import datetime
-from safe_web_datasets import submit_dataset_to_zenodo, dataset_description, generate_inspire_xml
+from safe_web_global_functions import datepicker_script
+from safe_web_datasets import (submit_dataset_to_zenodo, dataset_description, 
+                               generate_inspire_xml, update_published_metadata)
 
 
 def view_datasets():
@@ -248,6 +250,122 @@ def administer_datasets():
                         csv=False)
     
     return dict(form=form)
+
+
+@auth.requires_membership('admin')
+def change_dataset_access():
+
+    # populate a select element with the current zenodo records and set the client side
+    # AJAX function used to update the form elements
+    zenodo_records = db(db.published_datasets).select(db.published_datasets.zenodo_record_id,
+                                                      orderby=db.published_datasets.zenodo_record_id)
+    zenodo_records = [str(r.zenodo_record_id) for r in zenodo_records]
+    select = SELECT(OPTION('Select record ID', _disabled=True, _selected=True), 
+                    *zenodo_records, 
+                    _id='zenodo_selector', _name='zenodo_selector', _onchange="get_access()")
+    
+    # Create the form, including hidden components that will be revealed using client side JS
+    form = FORM(DIV(DIV(DIV(DIV(B('Zenodo Record ID'), _class='col-sm-3'),
+                            DIV(select, _class='col-sm-9'),
+                            _class='row'),
+                        HR(),
+                        DIV(DIV(B('Dataset Title'), _class='col-sm-3'),
+                            DIV(_id='title', _class='col-sm-9'),
+                            _class='row'),
+                        DIV(DIV(B('Current Status'), _class='col-sm-3'),
+                            DIV(_id='status', _class='col-sm-9'),
+                            _class='row'),
+                        DIV(DIV(B('Embargo Date'), _class='col-sm-3'),
+                            DIV(_id='embargo', _class='col-sm-9'),
+                            _class='row', _id='embargo_display', _hidden=True),
+                        DIV(DIV(B('Restriction'), _class='col-sm-3'),
+                            DIV(_id='restriction', _class='col-sm-9'),
+                            _class='row', _id='restriction_display', _hidden=True),
+                        HR(),
+                        DIV(DIV(B('New Status'), _class='col-sm-3'),
+                            DIV(SELECT('Open', 'Embargo', 'Restricted', 
+                                       _id='set_status', _name='set_status'), 
+                                _class='col-sm-6'),
+                            DIV(DIV(INPUT(_type='submit')), 
+                                _class='col-sm-3 pull-right'),
+                            _class='row', _onchange='on_set_status()'),
+                        DIV(DIV(B('Set Embargo Date'), _class='col-sm-3'),
+                            DIV(INPUT(_id='set_embargo', _name='set_embargo'), _class='col-sm-9'),
+                            _class='row', _id='display_set_embargo', _hidden=True),
+                        DIV(DIV(B('Set Restriction Details'), _class='col-sm-3'),
+                            DIV(TEXTAREA(_id='set_restriction', _name='set_restriction'), _class='col-sm-9'),
+                            _class='row', _id='display_set_restriction', _hidden=True),
+                        _class='panel-body'),
+                    _class='panel panel-default'))
+
+    # Validate the form: bespoke data entry
+    if form.validate(onvalidation=validate_change_dataset_access):
+        
+        record = db(db.published_datasets.zenodo_record_id == form.vars.zenodo_selector).select().first()
+        
+        # update_record
+        new_history = "Access updated {} by {} {}:\nOld: {} {} {}\nNew: {} {} {}\n".format(
+                          datetime.date.today().isoformat(),
+                          auth.user.first_name,
+                          auth.user.last_name,
+                          record.dataset_access,
+                          record.dataset_embargo,
+                          record.dataset_restriction,
+                          form.vars.set_status,
+                          form.vars.set_embargo,
+                          form.vars.set_restriction)
+        
+        dataset_history = new_history if record.dataset_history is None else record.dataset_history + new_history
+
+        record.update_record(dataset_history=dataset_history,
+                             dataset_access=form.vars.set_status,
+                             dataset_embargo=form.vars.set_embargo,
+                             dataset_restriction=form.vars.set_restriction)
+        
+        # update Zenodo
+        if form.vars.set_status == 'open':
+            update = {'access_right': 'open',
+                      'embargo_date': None,
+                      'access_conditions': None}
+        elif form.vars.set_status == 'embargo':
+            update = {'access_right': 'embargoed',
+                      'embargo_date': form.vars.set_embargo,
+                      'access_conditions': None}
+        elif form.vars.set_status == 'restricted':
+            update = {'access_right': 'restricted',
+                      'embargo_date': None,
+                      'access_conditions': form.vars.set_restriction}
+        
+        code, content = update_published_metadata(form.vars.zenodo_selector, update)
+        print form.vars.zenodo_selector, update, content
+        
+        # If the zenodo update failed, flash a message and rollback the record update.
+        if code != 0:
+            failure_message = 'Failed to update Zenodo ({status}): {message}'.format(**content)
+            if 'errors' in content:
+                for each_error in content['errors']:
+                    failure_message += '{field}: {message};'.format(**each_error)
+            
+            response.flash = 'Failed to update Zenodo ({status}): {message}'.format(**content)
+            db.rollback()
+    
+    elif form.errors:
+        response.flash = 'Errors in upload'
+    
+    return dict(form=form)
+
+
+def validate_change_dataset_access(form):
+
+    form.vars.set_status = form.vars.set_status.lower()
+
+    if form.vars.set_status not in ['open','embargo','restricted']:
+        form.errors.set_status = "Select a new access status" 
+    
+    if form.vars.set_status == 'embargo' and form.vars.set_embargo == "":
+        form.errors.set_embargo = "Set new embargo date"
+    elif form.vars.set_status == 'restricted' and form.vars.set_restriction == "":
+        form.errors.set_restriction = "Provide access details for restricted datasets"
 
 
 @auth.requires_membership('admin')
