@@ -59,6 +59,7 @@ db.define_table('published_datasets',
                 Field('dataset_title', 'text'),
                 Field('dataset_access', 'string'),
                 Field('dataset_embargo', 'date'),
+                Field('dataset_conditions', 'text'),
                 Field('dataset_description', 'text'),
                 Field('dataset_metadata', 'json'),
                 # Fields to hold publication data - most data is stored in the metadata
@@ -75,7 +76,8 @@ db.define_table('published_datasets',
                 Field('geographic_extent', 'geometry()'),
                 Field('geographic_extent_utm50n', 'geometry(public, 32650, 2)'),
                 Field('temporal_extent_start', 'date'),
-                Field('temporal_extent_end', 'date'))
+                Field('temporal_extent_end', 'date'),
+                Field('dataset_history', 'text'))
 
 # Used to link project ids to zenodo concept_ids
 db.define_table('project_datasets',
