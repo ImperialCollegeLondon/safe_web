@@ -16,13 +16,33 @@ def view_datasets():
     to the Zenodo record, but this doesn't work for the Zenodo Sandbox
     so for the moment, using the record URL to get to the record directly.
     """
+
+
+    def _access(row):
+        
+        row.dataset_access
+        ret = SPAN("O", _class='badge', _style="background-color:green;font-size: 1em;")
+        
+        if row.dataset_access == 'embargo' and row.dataset_embargo > datetime.date.today():
+             ret = SPAN("E", _class='badge', _style="background-color:orange;font-size: 1em;",
+                        _title=row.dataset_embargo)
+        elif row.dataset_access == 'restricted':
+             ret = SPAN("R", _class='badge', _style="background-color:red;font-size: 1em;",
+                         _title=row.dataset_conditions)
+        
+        return ret
+
     
     # format fields for the display
-    #db.published_datasets.project_id.represent = lambda value, row: A(value, _href=URL('projects', 'project_view', args=[value]))
     db.published_datasets.zenodo_concept_badge.represent = lambda value, row:  A(IMG(_src=value), _href=row.zenodo_concept_doi)
-    db.published_datasets.zenodo_concept_doi.readable = False
-    db.published_datasets.zenodo_record_id.readable = False
     db.published_datasets.publication_date.represent = lambda value, row: value.date().isoformat()
+    db.published_datasets.dataset_access.represent = lambda value, row: _access(row)
+    
+    # hide fields used in table prep
+    db.published_datasets.zenodo_record_id.readable = False
+    db.published_datasets.zenodo_concept_doi.readable = False
+    db.published_datasets.dataset_embargo.readable = False
+    db.published_datasets.dataset_conditions.readable = False
     
     # button to link to custom view
     links = [dict(header = '',
@@ -34,6 +54,9 @@ def view_datasets():
                         fields = [#db.published_datasets.project_id,
                                   db.published_datasets.publication_date,
                                   db.published_datasets.dataset_title,
+                                  db.published_datasets.dataset_access,
+                                  db.published_datasets.dataset_embargo,
+                                  db.published_datasets.dataset_conditions,
                                   db.published_datasets.zenodo_record_id,
                                   db.published_datasets.zenodo_concept_badge,
                                   db.published_datasets.zenodo_concept_doi],
@@ -167,17 +190,19 @@ def administer_datasets():
     
     def _access(row):
         
-        status = row.dataset_metadata['metadata']['access']
-        
-        if status == 'open':
-            return SPAN("O", _class='badge', _style="background-color:green;font-size: 1em;")
-        elif status == 'embargo':
-            return SPAN("E", _class='badge', _style="background-color:orange;font-size: 1em;")
-        elif status == 'restricted':
-            return SPAN("R", _class='badge', _style="background-color:red;font-size: 1em;")
+        if row.dataset_metadata is None:
+            return approval_icons['PENDING']
         else:
-            return SPAN("?", _class='badge', _style="background-color:black;font-size: 1em;")
+            status = row.dataset_metadata['metadata']['access']
         
+            if status == 'open':
+                return SPAN("O", _class='badge', _style="background-color:green;font-size: 1em;")
+            elif status == 'embargo':
+                return SPAN("E", _class='badge', _style="background-color:orange;font-size: 1em;",
+                            _title=row.dataset_metadata['metadata']['embargo_date'])
+            elif status == 'restricted':
+                return SPAN("R", _class='badge', _style="background-color:red;font-size: 1em;",
+                            _title=row.dataset_metadata['metadata']['access_conditions'])
 
     table.dataset_metadata.represent = lambda value, row: _access(row)
 
@@ -788,11 +813,8 @@ def run_submit_dataset_to_zenodo():
         except ValueError:
             err += ["Record ID not an integer"]
 
-    # Is the application currently publishing to the sandbox or the main Zenodo site
-    sandbox = int(myconf.take('zenodo.use_sandbox'))
-
     if len(err) == 0:
-        res = submit_dataset_to_zenodo(record_id, deposit_id=deposit_id, sandbox=sandbox)
+        res = submit_dataset_to_zenodo(record_id, deposit_id=deposit_id)
     else:
         res = ', '.join(err)
     
