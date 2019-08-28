@@ -1,0 +1,99 @@
+{{extend 'layout.html'}}
+
+{{=H2('Change dataset access status')}}
+
+<p>This form allows administrators to change the access conditions for a particular dataset. Note that this does not change the details held in the originally submitted file, but can be used to release a dataset from embargo early or to extend the embargo on a dataset.</p>
+
+
+{{=form}}
+
+
+{{block page_js}}
+<script type="text/javascript">
+	
+    function get_access(event){	
+		// This function updates the status details of a selected record via AJAX	
+
+        const xhr = new XMLHttpRequest();
+		
+		// construct the request
+        var url = "{{=URL('default', 'api', args=['access_status'], scheme=True, host=True)}}";
+		url += '/' + document.getElementById('zenodo_selector').value;
+		
+		// setup the AJAX call and actions.
+        xhr.open('GET', url); 
+        xhr.responseType = 'json'; 
+        xhr.onload = function() {	
+            if(this.status == 200) {
+				
+				// set the title
+				document.getElementById('title').innerHTML = this.response['dataset_title'];
+				
+				// get the access, which may be overwritten, so is set at the end
+				dataset_access = this.response['dataset_access'];
+				
+				// Handle embargo date display
+				embargo_display = document.getElementById('embargo_display')
+				if(this.response['dataset_access'] === 'Embargo'){
+					embargo_display.hidden = false;
+					embargo = document.getElementById('embargo');
+					embargo.innerHTML = this.response['dataset_embargo'];
+
+					var embargo_date = new Date(this.response['dataset_embargo']);
+					var today = new Date();
+					if(today >= embargo_date){
+						dataset_access = "open (embargo expired)"
+					}
+				} else {
+					embargo_display.hidden = true;
+				}
+				
+				// Handle setting restriction details
+				restriction_display = document.getElementById('restriction_display')
+				restriction = document.getElementById('restriction')
+
+				if(this.response['dataset_access'] === 'Restricted'){
+					restriction_display.hidden = false;
+					restriction.innerHTML = this.response['dataset_restriction'];
+				} else {
+					restriction_display.hidden = true;
+				}
+
+				// Set the access status
+				document.getElementById('status').innerHTML = dataset_access;
+            }
+        };	
+        xhr.onerror = function() {	
+          console.log('error')	
+        };	
+        xhr.send();	
+    }
+	
+    function on_set_status(event){	
+		// Function controls which status setting controls are available
+		set_status = document.getElementById('set_status').value;
+		display_set_embargo = document.getElementById('display_set_embargo');
+		display_set_restriction = document.getElementById('display_set_restriction');
+		
+		if(set_status === 'Open'){
+			display_set_embargo.hidden = true;
+			display_set_restriction.hidden = true;			
+		} else if(set_status === 'Embargo'){
+			display_set_embargo.hidden = false;
+			display_set_restriction.fadeIn('slow');
+			//display_set_restriction.hidden = true;
+		} else if(set_status === 'Restricted'){
+			display_set_embargo.hidden = true;
+			display_set_restriction.hidden = false;
+		}
+	};
+
+	$.getScript('/safe_web/static/plugin_bs_datepicker/bootstrap-datepicker.js').done(function(){
+		$('#set_embargo').datepicker({});
+	})
+		
+		
+</script>
+
+
+{{end page_js}}
