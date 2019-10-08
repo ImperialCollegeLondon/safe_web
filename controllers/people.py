@@ -320,6 +320,29 @@ def manage_users():
     return dict(form=form)
 
 
+
+@auth.requires_membership('admin')
+def manage_groups():
+    
+    """
+    This controller handles:
+     - adding/removing users to particular groups (admin, weekly_details)
+    """
+    
+    # don't let the admin touch passwords and expose the contact group/role
+    form = SQLFORM.grid(query = db.auth_membership, csv=False,
+                        # fields=[db.auth_membership.ALL,
+                        #        ],
+                        maxtextlength=250,
+                        deletable=True,
+                        editable=False,
+                        create=True,
+                        details=False,
+                        formargs={'showid': False}, 
+                    )
+    
+    return dict(form=form)
+
 @auth.requires_membership('admin')
 def administer_new_users():
     

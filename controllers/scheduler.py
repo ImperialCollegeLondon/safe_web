@@ -72,7 +72,7 @@ def check_task_queue():
                   'start_time': datetime.datetime.now()},
                  {'name':'outdated_health_and_safety', 'period': 60*60*24,
                   'start_time': datetime.datetime.now()},
-                 {'name':'update_deputy_coordinator', 'period': 60*60*24*7,
+                 {'name':'send_weekly_summary', 'period': 60*60*24*7,
                   'start_time': setStart(1, datetime.time(01,00,00))}]
 
     # loop over the tasks

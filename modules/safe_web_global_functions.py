@@ -62,7 +62,9 @@ def link_button(c, f, arg, text="View", icon="glyphicon glyphicon-zoom-in"):
 
 def get_frm():
     """
-    Function to provide the auth_user row for the current Field Research Manager
+    Function to provide the auth_user row for the current Field Research Manager.
+    This is used to dynamically update the primary contact details in webpages
+    if the FRM changes.
     """
     
     # global object containing the Field Research Manager details

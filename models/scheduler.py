@@ -1,6 +1,6 @@
 from gluon.scheduler import Scheduler
 from safe_web_datasets import verify_dataset
-from safe_web_scheduler import remind_about_unknowns, update_deputy_coordinator, outdated_health_and_safety
+from safe_web_scheduler import remind_about_unknowns, send_weekly_summary, outdated_health_and_safety
 
 # The scheduler is loaded and defined in a model, so that it can register the
 # required tables with the database. The functions are defined in separate modules.
@@ -14,7 +14,7 @@ from safe_web_scheduler import remind_about_unknowns, update_deputy_coordinator,
 
 scheduler = Scheduler(db,
                       tasks=dict(remind_about_unknowns=remind_about_unknowns,
-                                 update_deputy_coordinator=update_deputy_coordinator,
+                                 send_weekly_summary=send_weekly_summary,
                                  verify_dataset=verify_dataset,
                                  outdated_health_and_safety=outdated_health_and_safety))
 

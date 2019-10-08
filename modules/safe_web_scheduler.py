@@ -95,19 +95,32 @@ def remind_about_unknowns():
         return 'No incomplete research visits found within the next week'
 
 
-def update_deputy_coordinator():
+def send_weekly_summary():
     
     """
-    Emails the deputy coordinator attaching a text representation
-    of the research visit schedule.
+    Sends out an email to selected staff attaching a text representation
+    of the upcoming research visit schedule and a health and safety 
+    summary of who is going to be on site.
     """
 
     db = current.db
     
-    frm = get_frm()
-    frm = [eml for eml in [frm.alternative_email, frm.email] if eml is not None]
+    # Recipients - anybody who is a member of the weekly_summary group
     
-    send_to = ['deputy.coord@safeproject.net'] + frm
+    others = db((db.auth_user.id == db.auth_membership.user_id) & 
+                (db.auth_group.id == db.auth_membership.group_id) &
+                (db.auth_group.role == 'weekly_summary')
+                ).select(db.auth_user.email, db.auth_user.alternative_email)
+    
+    # Build the recipient list
+    send_to = []
+    
+    for recip in others:
+        send_to.append(recip.alternative_email)
+        send_to.append(recip.email)
+    
+    # clear out blanks
+    send_to = [eml for eml in send_to if eml is not None and eml != '']
     
     # get the file contents
     try:
