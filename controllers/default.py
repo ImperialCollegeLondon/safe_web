@@ -23,13 +23,20 @@ def index():
     rendered by views/default/index.html or views/generic.html
     """
     
-    proj_query = db(db.project_id.project_details_id == db.project_details.id)
-    n_proj = proj_query.count()
-    research_areas = proj_query.select(db.project_details.research_areas)
+    # OH GOD THIS CODE IS A DISGRACE, IN MY DEFENCE IT WAS PROBABLY THE FIRST PAGE
+    # I WROTE IN WEB2PY, BUT THAT DOESN'T EXCUSE THE LACK OF COMMENTS.
+    
     n_outputs = db(db.outputs).count()
     n_researchers = db(db.auth_user).count()
-    n_datasets = db(db.published_datasets).count()
+    n_dataset_versions = db(db.published_datasets).count()
+    # Using SQL directly to return only th value needed
+    n_dataset_concepts =  db.executesql('select count(distinct zenodo_concept_id) '
+                                            'from published_datasets;')[0][0]
     
+    
+    proj_query = db(db.project_id.project_details_id == db.project_details.id)
+    n_proj = proj_query.count()
+    research_areas = proj_query.select(db.project_details.research_areas)    
     ra_list = [r.research_areas for r in research_areas]
     ra_list = [item for sublist in ra_list for item in sublist]
     ra_table = Counter(ra_list)
@@ -98,7 +105,8 @@ def index():
                            '_style':"overflow:hidden",
                            '_data-ride':"carousel"})
    
-    return dict(n_proj=n_proj, n_outputs=n_outputs, n_researchers=n_researchers, n_datasets=n_datasets,
+    return dict(n_proj=n_proj, n_outputs=n_outputs, n_researchers=n_researchers, 
+                n_dataset_concepts=n_dataset_concepts, n_dataset_versions=n_dataset_versions,
                 ra_string = ra_string, news_carousel=news_carousel)
 
 
