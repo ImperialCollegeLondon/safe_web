@@ -1292,7 +1292,7 @@ def health_and_safety_report():
                 no_requirements.append('{last_name}, {first_name}'.format(**visitor.auth_user))
     
     pdf.cell(h=10, w=0, txt='{} visitors have no recorded requirements:'.format(len(no_requirements)), ln=1)
-    pdf.cell(h=10, w=0, txt='; '.join(no_requirements)
+    pdf.cell(h=10, w=0, txt='; '.join(no_requirements))
     
     links={}
     
