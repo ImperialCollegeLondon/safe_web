@@ -120,6 +120,7 @@ if (auth.user_id != None) and (auth.has_membership(role='admin')):
         
     response.menu += [('Admin', False, None, [
         (T('Manage users'), True, URL('people', 'manage_users'), []),
+        (T('Manage groups'), True, URL('people', 'manage_groups'), []),
         (T('Manage contacts'), True, URL('people', 'manage_contacts'), []),
         (T('Manage news'), True, URL('news', 'manage_news'), []),
         (T('Manage blogs'), True, URL('blogs', 'manage_blogs'), []),
