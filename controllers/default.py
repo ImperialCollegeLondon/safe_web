@@ -141,7 +141,9 @@ def my_safe():
     # - 'url_vars' provides a list of two-tuples (variable name, value field) 
     #    to populate variables used to specify the URL
     # - 'status' provides a field to match into the status icons. 
-    # There is currently no provision for a display grid without status icons.
+    
+    # The status entry can be set to None to suppress badges (e.g. for datasets, 
+    # which are always published)
     
     membership_dict = {'projects': {'query': (db.project_members.user_id == auth.user.id) &
                                              (db.project_members.project_id == db.project_id.id) &
@@ -191,15 +193,15 @@ def my_safe():
                                     'url_vars': [],
                                     'status': db.help_offered.admin_status,
                                     'header': 'Volunteer offers'},
-                       'datasets' :{'query': (db.datasets.uploader_id == auth.user.id),
-                                    'select': [db.datasets.dataset_id, db.datasets.id, 
-                                               db.datasets.dataset_title, db.datasets.dataset_check_outcome],
+                       'datasets' :{'query': (db.published_datasets.uploader_id == auth.user.id),
+                                    'select': [db.published_datasets.zenodo_record_id,
+                                               db.published_datasets.dataset_title],
                                     'none': 'You have not uploaded any datasets',
-                                    'cntr': 'datasets', 'view': 'submit_dataset',
+                                    'cntr': 'datasets', 'view': 'view_dataset',
                                     'display': db.datasets.dataset_title,
                                     'url_args': [],
-                                    'url_vars': [('dataset_id', db.datasets.dataset_id)],
-                                    'status': db.datasets.dataset_check_outcome,
+                                    'url_vars': [('id', db.published_datasets.zenodo_record_id)],
+                                    'status': None,
                                     'header': 'Datasets'},
                        'request':  {'query': (db.help_request.user_id == auth.user.id),
                                     'select': [db.help_request.id, db.help_request.work_description, db.help_request.admin_status],
@@ -232,7 +234,7 @@ def my_safe():
                                        vars={x[0]: r[x[1]] for x in v['url_vars']}
                                       )),
                           _style='width:90%'),
-                      TD(approval_icons[r[v['status']]]))
+                      DIV() if v['status'] is None else TD(approval_icons[r[v['status']]]))
                    for r in rows]
             
             # package into a table
