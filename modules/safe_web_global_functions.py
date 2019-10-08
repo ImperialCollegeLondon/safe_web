@@ -1270,7 +1270,7 @@ def health_and_safety_report():
             medic = visitor.health_and_safety.medical_conditions
             if (medic is not None) and (medic.strip() != '') and (medic.lower() not in ['n/a', 'na', 'none']):
                 pdf.cell(h=10, w=70, txt='{last_name}, {first_name}'.format(**visitor.auth_user))
-                pdf.multicell(h=10, w=0, txt=visitor.health_and_safety.medical_conditions)
+                pdf.multi_cell(h=10, w=0, txt=visitor.health_and_safety.medical_conditions)
 
 
     # Add the dietary requirements summary page
@@ -1287,7 +1287,7 @@ def health_and_safety_report():
             diet = visitor.health_and_safety.dietary_requirements
             if (diet is not None) and (diet.strip() != '') and (diet.lower() not in ['n/a', 'na', 'none']):
                 pdf.cell(h=10, w=70, txt='{last_name}, {first_name}'.format(**visitor.auth_user))
-                pdf.multicell(h=10, w=0, txt=visitor.health_and_safety.dietary_requirements)
+                pdf.multi_cell(h=10, w=0, txt=visitor.health_and_safety.dietary_requirements)
             else:
                 no_requirements.append('{last_name}, {first_name}'.format(**visitor.auth_user))
     
