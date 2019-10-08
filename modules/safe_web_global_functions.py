@@ -1257,6 +1257,7 @@ def health_and_safety_report():
     # Create the pdf with links from the cover page of names to individual pages
     pdf = PDF()
     # pdf.set_text_color(r=0, g=0, b=0)
+    
     # Add the medical summary page
     pdf.add_page(orientation='P', format='A4')
     pdf.set_font('Arial', 'B', 15)
@@ -1269,7 +1270,7 @@ def health_and_safety_report():
             medic = visitor.health_and_safety.medical_conditions
             if (medic is not None) and (medic.strip() != '') and (medic.lower() not in ['n/a', 'na', 'none']):
                 pdf.cell(h=10, w=70, txt='{last_name}, {first_name}'.format(**visitor.auth_user))
-                pdf.cell(h=10, w=0, txt=visitor.health_and_safety.medical_conditions, ln=1)
+                pdf.multicell(h=10, w=0, txt=visitor.health_and_safety.medical_conditions)
 
 
     # Add the dietary requirements summary page
@@ -1278,14 +1279,21 @@ def health_and_safety_report():
     pdf.cell(w=0, h=10, txt='Dietary requirements summary', border=1, align='C', ln=1)
     pdf.set_font('Arial', '', 12)
     
+    no_requirements = []
+    
     for visitor in rv:
         
         if visitor.health_and_safety.id is not None:
             diet = visitor.health_and_safety.dietary_requirements
             if (diet is not None) and (diet.strip() != '') and (diet.lower() not in ['n/a', 'na', 'none']):
                 pdf.cell(h=10, w=70, txt='{last_name}, {first_name}'.format(**visitor.auth_user))
-                pdf.cell(h=10, w=0, txt=visitor.health_and_safety.medical_conditions, ln=1)
-
+                pdf.multicell(h=10, w=0, txt=visitor.health_and_safety.dietary_requirements)
+            else:
+                no_requirements.append('{last_name}, {first_name}'.format(**visitor.auth_user))
+    
+    pdf.cell(h=10, w=0, txt='{} visitors have no recorded requirements:'.format(len(no_requirements)), ln=1)
+    pdf.cell(h=10, w=0, txt='; '.join(no_requirements)
+    
     links={}
     
     # write the index of the full pages and status
