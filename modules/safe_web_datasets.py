@@ -207,7 +207,7 @@ def get_zenodo_api():
     """
     
     try:
-        sandbox = current.myconf.take('zenodo.use_sandbox')
+        sandbox = int(current.myconf.take('zenodo.use_sandbox'))
     except BaseException:
         raise RuntimeError('Site config does not provide zenodo.use_sandbox')
     
