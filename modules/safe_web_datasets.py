@@ -123,9 +123,11 @@ def verify_dataset(record_id, email=False):
                                           'files', 'locations.json')
             dataset.load_locations(locations_json=locations_json)
             
-            # check the datasets
-            for ws in dataset.dataworksheet_summaries:
-                dataset.load_data_worksheet(ws)
+            # check the dataset worksheets, after checking there are some
+            # as the metadata might only document external data files
+            if dataset.dataworksheet_summaries is not None:
+                for ws in dataset.dataworksheet_summaries:
+                    dataset.load_data_worksheet(ws)
             
             # cross check the taxa and locations
             dataset.final_checks()
