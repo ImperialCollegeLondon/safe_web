@@ -380,59 +380,6 @@ def download():
     return response.download(request, db)
 
 
-## ----------------------------------------------------------------------------
-## Expose specific data services
-## - get_locations: JSON array of location names
-## ----------------------------------------------------------------------------
-
-def call():
-    """
-    exposes services. for example:
-    http://..../[app]/default/call/jsonrpc
-    decorate with @services.jsonrpc the functions to expose
-    supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv
-    """
-    session.forget()
-    return service()
-
-@service.json
-def get_locations():
-    """
-    Simple service to return a JSON array of valid locations
-    """
-    
-    locations = db().select(db.gazetteer.location)
-    locs = [rw.location for rw in locations]
-    
-    return dict(locations=locs)
-
-
-@service.json
-def get_locations_bbox():
-    
-    """
-    Service to return a JSON array of valid locations, their bounding boxes and a 
-    list of valid aliases
-    """
-    
-    locations = db().select(db.gazetteer.location, 
-                            db.gazetteer.bbox_xmin,
-                            db.gazetteer.bbox_xmax,
-                            db.gazetteer.bbox_ymin,
-                            db.gazetteer.bbox_ymax)
-    
-    # reformat to a dictionary of bbox tuples
-    locations = {r.location: (r.bbox_xmin, r.bbox_xmax, r.bbox_ymin, r.bbox_ymax) for r in locations}
-    
-    # add aliases dictionary - aliases are unique so use them as key to locations, which
-    # might have more than one alias
-    aliases = db().select(db.gazetteer_alias.location, 
-                          db.gazetteer_alias.location_alias)
-    
-    aliases = {r.location_alias: r.location for r in aliases}
-    
-    return {'locations': locations, 'aliases': aliases}
-
 
 # ------------------------------------------------------------------
 # Dataset search API
@@ -463,8 +410,7 @@ def api():
         if most_recent == '':
             most_recent = True
         else:
-            val = {'error': 404, 'message': 'Do not provide a value for the most_recent query flag.'}
-            return response.json(val)
+            raise HTTP(400, 'Do not provide a value for the most_recent query flag.')
     else:
         most_recent = False
     
@@ -477,8 +423,8 @@ def api():
         try:
             ids = [int(vl) for vl in ids]
         except ValueError:
-            val = {'error': 404, 'message': 'Invalid ids value.'}
-            return response.json(val)
+            raise HTTP(400, 'Invalid ids value')
+            
     else:
         ids = None
         
@@ -498,7 +444,7 @@ def api():
     if not len(request.args):
         
         # return the docstrings as HTML to populate the API html description
-        docs = CAT([H4(ky) + PRE(inspect.getdoc(fn)) for ky, fn in  search_func.iteritems()])        
+        docs = CAT([H4(ky) + PRE(inspect.getdoc(fn)) for ky, fn in  search_func.iteritems()])
         return dict(docs=docs)
     
     elif request.args[0] == 'index_hashes':
@@ -518,7 +464,7 @@ def api():
         try:
             record_id = int(request.args[1])
         except ValueError:
-            val = {'error': 404, 'message': 'Non-integer record number.'}
+            raise HTTP(400, 'Non-integer record number')
         else:
             record = db(db.published_datasets.zenodo_record_id == record_id).select().first()
         
@@ -541,12 +487,12 @@ def api():
         try:
             record_id = int(request.args[1])
         except ValueError:
-            val = {'error': 404, 'message': 'Non-integer record number.'}
+            raise HTTP(400, 'Non-integer record number')
         else:
             record = db(db.published_datasets.zenodo_record_id == record_id).select().first()
         
             if record is None:
-                val = {'error': 404, 'message': 'Unknown record number.'}
+                raise HTTP(400, 'Unknown record number')
             else:
                 val = dict(dataset_title=record.dataset_title,
                            dataset_access=record.dataset_access.capitalize(), 
@@ -592,7 +538,31 @@ def api():
 
         val = cache.ram('index', get_index, time_expire=None)
 
+    elif request.args[0] == 'validator_locations':
         
+        # This provides a dictionary using valid location names as keys to their bounding
+        # boxes and a dictionary using aliases as keys to their canonical names. It is 
+        # primarily intended for use by the safedata_validator package
+        
+        locations = db().select(db.gazetteer.location, 
+                                db.gazetteer.bbox_xmin,
+                                db.gazetteer.bbox_xmax,
+                                db.gazetteer.bbox_ymin,
+                                db.gazetteer.bbox_ymax)
+    
+        # reformat to a dictionary of bbox tuples
+        locations = {r.location: (r.bbox_xmin, r.bbox_xmax, r.bbox_ymin, r.bbox_ymax) 
+                     for r in locations}
+    
+        # Add aliases dictionary - aliases are unique so use them as key to locations, which
+        # might have more than one alias
+        aliases = db().select(db.gazetteer_alias.location, 
+                              db.gazetteer_alias.alias)
+    
+        aliases = {r.alias: r.location for r in aliases}
+    
+        val = {'locations': locations, 'aliases': aliases}
+    
     elif request.args[0] == 'gazetteer':
         
         # Get the gazetteer - the table is populated directly from the gazetteer geojson
@@ -608,7 +578,7 @@ def api():
         # redirect to the file used to populate the table. 
 
         redirect(URL('static','files/gis/location_aliases.csv'))
-                              
+    
     elif request.args[0] == 'location_aliases':
         
         # Get the locations - for geojson, we need an id, a geometry and a dictionary
@@ -625,8 +595,8 @@ def api():
         unknown_args = set(request.vars) - set(fn_args)
         
         if unknown_args:
-            val = {'error': 404, 'message': 'Unknown query parameters to endpoint'
-                   ' /{}: {}'.format(request.args[0],','.join(unknown_args))}
+            raise HTTP(400, 'Unknown query parameters to endpoint'
+                       ' /{}: {}'.format(request.args[0],','.join(unknown_args)))
         else:
             try:
                 qry = func(**request.vars)
@@ -636,8 +606,8 @@ def api():
                 else:
                     val = dataset_query_to_json(qry, most_recent, ids)
             except TypeError as e:
-                val = {'error': 404, 'message': 'Could not parse api request: {}'.format(e)}
+                raise HTTP(400, 'Could not parse api request: {}'.format(e))
     else:
-        val = {'error': 404, 'message': 'Unknown endpoint {}'.format(request.env.web2py_original_uri)}
+        raise HTTP(400, 'Unknown endpoint {}'.format(request.env.web2py_original_uri))
     
     return response.json(val)

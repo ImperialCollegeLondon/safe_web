@@ -21,7 +21,7 @@ This is the first version of the API, released 2019-05-23. It may contain bugs a
 
 <h3>Shared query parameters</h3>
 
-<p>In addition to their own quert parameters, the endpoints described below also accept the following global options:</p>
+<p>In addition to their own query parameters, the endpoints described below also accept the following global options:</p>
 
 <h4><code>most_recent</code></h4>
 
@@ -70,6 +70,28 @@ The files endpoint returns the files associated with datasets. There will often 
 }
 </pre>
 
+
+<h3>Locations_bbox endpoint</h3>
+
+The locations_bbox endpoint provides JSON data used to validate location data provided in SAFE
+data format files. It returns a dictionary of containing both valid locations with their bounding boxs and a mapping of known aliases to their valid location names:
+
+<pre>{{=URL('api', args=['locations_bbox'], host=True, scheme=True)}}</pre>
+
+<pre>
+{
+	"locations": {
+		"RT_60M_C_160": [117.55032, 117.55032, 4.729569, 4.729569],
+		"F1-1-18": [117.5409668, 117.5409668, 4.6940337, 4.6940337],
+		...
+	},
+	"aliases": {
+		"507": "OP2_507",
+		"818": "F_818",
+		...
+	}
+}
+</pre>
 
 <h3>Dataset search endpoints</h3>
 
