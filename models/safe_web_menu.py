@@ -54,7 +54,7 @@ response.menu = [
         (T('Biosecurity'), True, URL('info', 'biosecurity'), []),
         (T('Gazetteer'), True, URL('info', 'gazetteer'), []),
         # (T('SAFE Calendars'), True, URL('info', 'calendars'), []),
-        (A('SAFE Data formatting', _href='https://safe-dataset-checker.readthedocs.io',
+        (A('SAFE Data formatting', _href='https://safedata-validator.readthedocs.io',
            _target='_blank'), False, None, []),
         (A('FAQs and SAFE wiki', _href='https://www.safeproject.net/dokuwiki/start',
            _target='_blank'), False, None, []),

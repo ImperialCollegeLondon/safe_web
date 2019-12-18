@@ -542,7 +542,7 @@ def api():
         
         # This provides a dictionary using valid location names as keys to their bounding
         # boxes and a dictionary using aliases as keys to their canonical names. It is 
-        # primarily intended for use by the safedata_validator package
+        # primarily intended for use by the safedata-validator package
         
         locations = db().select(db.gazetteer.location, 
                                 db.gazetteer.bbox_xmin,
