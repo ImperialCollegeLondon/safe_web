@@ -93,6 +93,34 @@ data format files. It returns a dictionary of containing both valid locations wi
 }
 </pre>
 
+<h3>Taxa endpoint</h3>
+
+The taxa endpoint provides JSON data on the taxon names currently used in SAFE datasets. The response is a list of taxon details, including a count of the number of datasets recording each taxon:
+
+<pre>{{=URL('api', args=['taxa'], host=True, scheme=True)}}</pre>
+
+<pre>
+[
+	{
+		"n_datasets": 1,
+		"gbif_id": -1,
+		"taxon_rank": "morphospecies",
+		"taxon_name": "Leptogenys sp. 68",
+		"gbif_status": "user",
+		"gbif_parent_id": 1321215
+	},
+	{
+		"n_datasets": 1,
+		"gbif_id": -1,
+		"taxon_rank": "morphospecies",
+		"taxon_name": "Plat1",
+		"gbif_status": "user",
+		"gbif_parent_id": 1040352
+	},
+	...
+]
+</pre>
+
 <h3>Dataset search endpoints</h3>
 
 <p>We provide a number of search endpoints to locate datasets, which are described below along with their 
