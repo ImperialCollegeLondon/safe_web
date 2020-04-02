@@ -592,9 +592,11 @@ def api():
         # Get all taxa across studies - retrieve gbif codes, names and status along
         # with the number of datasets the taxon appears in
         
-        taxon_fields = [db.dataset_taxa.gbif_id, db.dataset_taxa.gbif_parent_id, 
-                        db.dataset_taxa.gbif_status, db.dataset_taxa.taxon_name,
-                        db.dataset_taxa.taxon_rank]
+        taxon_fields = [db.dataset_taxa.worksheet_name, db.dataset_taxa.gbif_id, 
+                        db.dataset_taxa.id, db.dataset_taxa.taxon_rank,
+                        db.dataset_taxa.taxon_name, db.dataset_taxa.gbif_status,
+                        db.dataset_taxa.gbif_parent_id]
+        
         taxon_count = [db.dataset_taxa.taxon_name.count().with_alias('n_datasets')]
         
         val = db(db.dataset_taxa).select(*taxon_fields + taxon_count,
