@@ -179,8 +179,9 @@ Edit that using `vi` to fill in the details for the DB and SMTP.
 
 The dataset handling part of the website uses a python module that checks the metadata formatting: 
 
-    cd /home/www-data/web2py/applications/safe_web/modules/
-    curl -O https://raw.githubusercontent.com/ImperialCollegeLondon/safe_dataset_checker/master/safe_dataset_checker.py
+    pip install --upgrade safedata-validator
+
+You will also need to set up the configuration for this package if you want to use local validation resources such as a GBIF database and locations list.
 
 Note that if you update this module you'll need to restart workers and the website to reload the new code. The code for this is (see Scheduler notes below for an explanation):
 

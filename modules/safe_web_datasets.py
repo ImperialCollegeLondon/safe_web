@@ -3,7 +3,7 @@ import datetime
 from lxml import etree
 import simplejson
 import copy
-import safe_dataset_checker
+import safedata_validator
 from cStringIO import StringIO
 import requests
 from safe_web_global_functions import safe_mailer
@@ -28,11 +28,15 @@ such as the scheduler, so are defined here in their own module.
 
 def verify_dataset(record_id, email=False):
     """
-    Function to run the safe_dataset_checker on an uploaded file. There
+    Function to run safedata_validator on an uploaded file. There
     are three possible outcomes for a dataset: PASS; FAIL, if the check
     catches known formatting problems; and ERROR if check hits an exception,
     which probably means an update to the checker code to handle the new
     and exciting way of getting the file wrong.
+    
+    This assumes that the local python has safedata_validator installed and
+    correctly configured with local file resources. See the documentation
+    for that package for details.
     
     The email argument allows the function to be run by admins directly
     using the administer_datasets controller without spamming the uploader. 
@@ -53,12 +57,6 @@ def verify_dataset(record_id, email=False):
         website flash, not an Exception message, so those are stored elsewhere
         for an admin to look at.
     """
-    
-    # check the configuration includes a path to the gbif_database
-    try:
-        gbif_db = current.myconf.take('gbif.gbif_database')
-    except BaseException:
-        raise RuntimeError('Site config does not provide a path for the gbif database')
     
     # Load the host name from the configuration. When run from a controller,
     # the URL(host=TRUE) has access to the host name from requests. This isn't
@@ -94,11 +92,11 @@ def verify_dataset(record_id, email=False):
     
     # Initialise the dataset checker:
     if not error:
-        # - get paths to dataset file. Failure to find is handled by safe_dataset_checker methods.
+        # - get paths to dataset file. Failure to find is handled by safedata_validator methods.
         fname = os.path.join(current.request.folder, 'uploads', 'submitted_datasets', record.file)
         # get the Dataset object from the file checker
         try:
-            dataset = safe_dataset_checker.Dataset(fname, verbose=False, gbif_database=gbif_db)
+            dataset = safedata_validator.Dataset(fname, verbose=False)
         except Exception as e:
             # We don't want to bail here because we might want to email the uploader,
             # but we do want to record what went wrong. We store it in the dataset record, which
@@ -117,11 +115,7 @@ def verify_dataset(record_id, email=False):
             dataset.load_summary(validate_doi=True, project_id=record.project_id)
             
             dataset.load_taxa()
-            # use a local locations file - there is some issue with using the
-            # service from within the code
-            locations_json = os.path.join(current.request.folder, 'static',
-                                          'files', 'locations.json')
-            dataset.load_locations(locations_json=locations_json)
+            dataset.load_locations()
             
             # check the dataset worksheets, after checking there are some
             # as the metadata might only document external data files
