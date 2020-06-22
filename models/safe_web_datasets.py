@@ -163,7 +163,7 @@ db.define_table('dataset_files',
                 Field('dataset_id', 'reference published_datasets'),
                 Field('checksum', 'string', length=32),
                 Field('filename', 'string'),
-                Field('filesize', 'integer'),
+                Field('filesize', 'bigint'),
                 Field('file_zenodo_id', 'string', length=36),
                 Field('download_link', 'string'))
 
