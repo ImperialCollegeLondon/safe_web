@@ -1023,7 +1023,7 @@ def dataset_description(record, gemini_id=None):
         for fnd in metadata['funders']:
             this_funder = fnd['type']
             if fnd['ref']:
-                this_funder = CAT(this_funder, ', ' + fnd['ref'])
+                this_funder = CAT(this_funder, ', ' + str(fnd['ref']))
             if fnd['url']:
                 this_funder = CAT(this_funder, ', ', A(fnd['url'], _href=fnd['url']))
             
