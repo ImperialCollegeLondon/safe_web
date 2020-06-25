@@ -404,6 +404,9 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None):
         # remove the dataset from the submitted_datasets table
         record.delete_record()
         
+        # Flush the cached index of published datasets
+        current.cache.ram('index', None)
+        
         return "Published dataset to {}".format(response['doi_url'])
 
 
