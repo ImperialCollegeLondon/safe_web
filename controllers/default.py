@@ -114,6 +114,10 @@ def science_at_safe():
     
     return response.render()
 
+def science_at_safe_2020():
+    
+    return response.render()
+
 def todo():
     
     return response.render()
