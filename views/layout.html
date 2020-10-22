@@ -46,6 +46,39 @@
     (left_sidebar_enabled and 1 or 0)+(right_sidebar_enabled and 1 or 0)]
     }} -->
 
+
+  <style>
+  .covidbadge {
+    background-color:firebrick;
+    color:white;
+    padding:5px 10px;
+    border-radius:5px;
+    font-size:14pt;
+    position:absolute;
+    width:200px;
+    left:6px;
+    bottom:6px
+  }
+  
+  .banner {
+      background-color:forestgreen;
+      color:white;
+      padding:10px 20px;
+      font-size:14pt;
+      text-align: center;
+  }
+  
+  .topimage {
+    width:100%;
+    min-height:100px;
+    position:relative;
+    margin-left: auto;
+    margin-right: auto;
+    display: block; 
+    padding:0px
+  }
+  </style>
+
   </head>
   <body style='padding-top:0px;'>
     <!--[if lt IE 8]><p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p><![endif]-->
@@ -66,9 +99,12 @@
 
 <!-- Banner headline used to manually add warnings  -->
 
-<DIV style='background-color:darkred;color:white;padding:20px;font-size:14pt;'>
-<u><b>COVID-19 Statement</b></u>: All research at the SAFE Project is suspended and there is no access to SAFE research camp. Please also see the <a href='https://www.searrp.org/news/'>SEARRP Website</a> for news and updates.
+<DIV class='banner'>
+<span>
+	<b>Upcoming free event:</b> the <a style='color:white; text-decoration: underline' href='science_at_safe_2020'>Science@SAFE 2020</a> conference
+</span>
 </DIV>
+
 <!-- -->
 
 <!-- Code to  generate a header image with random banner image -->
@@ -81,11 +117,21 @@
 {{this_banner= URL('static', os.path.join('images','banners',random.choice(banners)))}}
 
 
-<div style="width:100%;min-height:100px;position:relative;margin-left: auto;margin-right: auto;display: block; background-image:url({{=this_banner}});padding:0px">
+<div class='topimage' style='background-image:url({{=this_banner}});'>
+
+<div class='covidbadge'>
+<a href='covid_19' style='color:white'>COVID-19 Statement</a>
+</div>
+
+
 {{=A(IMG(_src=URL('static','images/SAFE_acronym_150.png'), _height='85px', _style='position:absolute;right:3px;bottom:3px'),
      _href=URL('default','index'))}}
+
+
+
 <!-- {{=A(IMG(_src=URL('static','images/science_at_safe_2019_mostlyopaque.png'), _height='45px', _style='position:absolute;left:6px;top:6px'),
      _href=URL('default','science_at_safe'))}} -->
+
 </div>
 
     
