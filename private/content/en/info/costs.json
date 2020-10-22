@@ -1,37 +1,176 @@
-{"transfers": {
-	"tawau_maliau": {"name":"Tawau to Maliau", "drive_time":"4 hours", "cost":400},
-	"tawau_safe": {"name":"Tawau to SAFE", "drive_time":"2.5 hours", "cost":250},
-	"safe_maliau": {"name":"SAFE to Maliau", "drive_time":"3.5 hours", "cost":350},
-	"safe_danum": {"name":"SAFE to Danum Valley", "drive_time":"7 - 8 hours", "cost":750}},
-"transfers_maliau": {
-	"tawau_maliau": {"name":"Tawau to Maliau", "drive_time":"4 hours", "cost":650},
-	"tawau_safe": {"name":"Tawau to SAFE", "drive_time":"2.5 hours", "cost":350},
-	"safe_maliau": {"name":"SAFE to Maliau", "drive_time":"3.5 hours", "cost":350}},
-"transport":{
-	"lfe": {"name": "LFE", "drive_time":"Walking distance from camp", "cost":"---"},
-	"bcde": {"name": "B, C, D, E", "drive_time":"30 minutes", "cost":50},
-	"afvjr": {"name": "A, F, VJR","drive_time":"60 minutes", "cost":100},
-	"op": {"name": "OP1, OP2, OP3","drive_time":"90 minutes", "cost":150},
-	"lf": {"name": "LF1, LF2, LF3","drive_time":"150 minutes", "cost":250}},
-"safe_costs":{
-	"food":{"name":"SAFE cost per night (International students and researchers)", "cost":40},
-	"local_food":{"name":"SAFE cost per night (Malaysian students and researchers)", "cost":20}},
-"maliau_entry":{
-	"admin": {"name":"Administration fee" ,"standard": 40, "discount":25, "month":"---"},
-	"cons": {"name":"Conservation fee" ,"standard":  15,   "discount":50,  "month":"---"},
-	"vehicle": {"name":"Vehicle entry permit" ,"standard": 5,   "discount": 5,  "month":"---"}},
-"maliau_accom":{
-	"hostel": {"name":"Hostel (person)" ,"standard": 35,   "discount":30,  "month":"---"},
-	"resthouse": {"name":"Resthouse Standard (room)" ,"standard": 100,   "discount":80,  "month":"---"},
-	"additional": {"name":"Additional person (max 2 per room)" ,"standard": 30,   "discount":40,  "month":"---"},
-	"annex": {"name":"Scientists’ Annex (person)" ,"standard": 100, "discount":"---", "month":300},
-	"belian": {"name":"Belian camping ground (person)", "standard":15,   "discount":10,  "month":"---"},
-	"satellite": {"name":"Satellite camp (person)", "standard":30,   "discount":25,  "month":"---"}},
-"maliau_food":{	
-	"breakfast": {"name":"Breakfast","standard": 15,   "discount":18,  "month":"---"},
-	"lunch": {"name":"Lunch", "standard":  20,   "discount":37,  "month":"---"},
-	"dinner": {"name":"Dinner", "standard": 30 ,   "discount":45,  "month":"---"},
-	"full": {"name":"Full board","standard": 65,   "discount":100,  "month":"---"}},
-"ra_costs": {
-	"half": {"name":"Half day RA cost (up to 5 hours)", "Standard":70, "Night work":105,"Rope work":140},
-	"full": {"name":"Full day RA cost (5 -- 8 hours)", "Standard":125, "Night work":187,"Rope work":250}}}
+{
+	"transfers": {
+		"tawau_maliau": {
+			"name": "Tawau to Maliau",
+			"drive_time": "4 hours",
+			"cost": 400
+		},
+		"tawau_safe": {
+			"name": "Tawau to SAFE",
+			"drive_time": "2.5 hours",
+			"cost": 250
+		},
+		"safe_maliau": {
+			"name": "SAFE to Maliau",
+			"drive_time": "3.5 hours",
+			"cost": 350
+		},
+		"safe_danum": {
+			"name": "SAFE to Danum Valley",
+			"drive_time": "7 - 8 hours",
+			"cost": 750
+		}
+	},
+	"transfers_maliau": {
+		"tawau_maliau": {
+			"name": "Tawau to Maliau",
+			"drive_time": "4 hours",
+			"cost": 650
+		},
+		"tawau_safe": {
+			"name": "Tawau to SAFE",
+			"drive_time": "2.5 hours",
+			"cost": 350
+		},
+		"safe_maliau": {
+			"name": "SAFE to Maliau",
+			"drive_time": "3.5 hours",
+			"cost": 350
+		}
+	},
+	"transport": {
+		"lfe": {
+			"name": "LFE",
+			"drive_time": "Walking distance from camp",
+			"cost": "---"
+		},
+		"bcde": {
+			"name": "B, C, D, E",
+			"drive_time": "30 minutes",
+			"cost": 50
+		},
+		"afvjr": {
+			"name": "A, F, VJR",
+			"drive_time": "60 minutes",
+			"cost": 100
+		},
+		"op": {
+			"name": "OP1, OP2, OP3",
+			"drive_time": "90 minutes",
+			"cost": 150
+		},
+		"lf": {
+			"name": "LF1, LF2, LF3",
+			"drive_time": "150 minutes",
+			"cost": 250
+		}
+	},
+	"safe_costs": {
+		"food": {
+			"name": "SAFE cost per night (International students and researchers)",
+			"cost": 40
+		},
+		"local_food": {
+			"name": "SAFE cost per night (Malaysian students and researchers)",
+			"cost": 20
+		}
+	},
+	"maliau_entry": {
+		"admin": {
+			"name": "Administration fee",
+			"standard": 40,
+			"discount": 25,
+			"month": "---"
+		},
+		"cons": {
+			"name": "Conservation fee",
+			"standard": 15,
+			"discount": 50,
+			"month": "---"
+		},
+		"vehicle": {
+			"name": "Vehicle entry permit",
+			"standard": 5,
+			"discount": 5,
+			"month": "---"
+		}
+	},
+	"maliau_accom": {
+		"hostel": {
+			"name": "Hostel (person)",
+			"standard": 35,
+			"discount": 30,
+			"month": "---"
+		},
+		"resthouse": {
+			"name": "Resthouse Standard (room)",
+			"standard": 100,
+			"discount": 80,
+			"month": "---"
+		},
+		"additional": {
+			"name": "Additional person (max 2 per room)",
+			"standard": 30,
+			"discount": 40,
+			"month": "---"
+		},
+		"annex": {
+			"name": "Scientists' Annex (person)",
+			"standard": 100,
+			"discount": "---",
+			"month": 300
+		},
+		"belian": {
+			"name": "Belian camping ground (person)",
+			"standard": 15,
+			"discount": 10,
+			"month": "---"
+		},
+		"satellite": {
+			"name": "Satellite camp (person)",
+			"standard": 30,
+			"discount": 25,
+			"month": "---"
+		}
+	},
+	"maliau_food": {
+		"breakfast": {
+			"name": "Breakfast",
+			"standard": 15,
+			"discount": 18,
+			"month": "---"
+		},
+		"lunch": {
+			"name": "Lunch",
+			"standard": 20,
+			"discount": 37,
+			"month": "---"
+		},
+		"dinner": {
+			"name": "Dinner",
+			"standard": 30,
+			"discount": 45,
+			"month": "---"
+		},
+		"full": {
+			"name": "Full board",
+			"standard": 65,
+			"discount": 100,
+			"month": "---"
+		}
+	},
+	"ra_costs": {
+		"half": {
+			"name": "Half day RA cost (up to 5 hours)",
+			"Standard": 70,
+			"Night work": 105,
+			"Rope work": 140
+		},
+		"full": {
+			"name": "Full day RA cost (5 -- 8 hours)",
+			"Standard": 125,
+			"Night work": 187,
+			"Rope work": 250
+		}
+	}
+}

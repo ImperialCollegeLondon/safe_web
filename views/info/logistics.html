@@ -35,14 +35,14 @@
 
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Transfer</TH><TH>Driving time</TH><TH>One way journey cost (approx.)</TH></TR>
-{{=CAT([TR(TD(v['name']), TD(v['drive_time']), TD('RM ' + str(v['cost']))) for k, v in costs['transfers'].iteritems()])}}
+{{=CAT([TR(TD(v['name']), TD(v['drive_time']), TD('RM ' + str(v['cost']))) for k, v in costs['transfers'].items()])}}
 </TABLE>
 
 <p>It is also possible to arrange transfers using vehicles and drivers from Maliau Basin. These will need to be arranged separately and have different costs:</p>
 
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Transfer</TH><TH>Driving time</TH><TH>One way journey cost (approx.)</TH></TR>
-{{=CAT([TR(TD(v['name']), TD(v['drive_time']), TD('RM ' + str(v['cost']))) for k, v in costs['transfers_maliau'].iteritems()])}}
+{{=CAT([TR(TD(v['name']), TD(v['drive_time']), TD('RM ' + str(v['cost']))) for k, v in costs['transfers_maliau'].items()])}}
 </TABLE>
 
 
@@ -52,7 +52,7 @@
 
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Location</TH><TH>Driving time</TH><TH>One way journey cost (approx.)</TH></TR>
-{{=CAT([TR(TD(v['name']), TD(v['drive_time']), TD('RM ' + str(v['cost']))) for k, v in costs['transport'].iteritems()])}}
+{{=CAT([TR(TD(v['name']), TD(v['drive_time']), TD('RM ' + str(v['cost']))) for k, v in costs['transport'].items()])}}
 </TABLE>
 
 
@@ -70,7 +70,7 @@
 
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Category</TH><TH>Standard cost</TH></TR>
-{{=CAT([TR(TD(v['name']), TD('RM ' + str(v['cost']))) for k, v in costs['safe_costs'].iteritems()])}}
+{{=CAT([TR(TD(v['name']), TD('RM ' + str(v['cost']))) for k, v in costs['safe_costs'].items()])}}
 </TABLE>
 
 
@@ -96,13 +96,13 @@ Please read the notes below carefully. In particular, <u>the costs may not be ac
 <TR><TH>Category</TH><TH>Standard cost</TH><TH>Discounted cost</TH><TH>Monthly rate</TH></TR>
 <TR><TD colspan=4><strong>Maliau Basin entry permits</strong> (per person or vehicle for each visit)</TD></TR>
 {{=CAT([TR(TD(XML("&nbsp;&nbsp;&nbsp;" + v['name'])), TD('RM ' + str(v['standard'])), 
-           TD('RM ' + str(v['discount'])), TD('RM ' + str(v['month']))) for k, v in costs['maliau_entry'].iteritems()])}}
+           TD('RM ' + str(v['discount'])), TD('RM ' + str(v['month']))) for k, v in costs['maliau_entry'].items()])}}
 <TR><TD colspan=4><strong>Accomodation</strong> (per night)</TD></TR>
 {{=CAT([TR(TD(XML("&nbsp;&nbsp;&nbsp;" + v['name'])), TD('RM ' + str(v['standard'])), 
-           TD('RM ' + str(v['discount'])), TD('RM ' + str(v['month']))) for k, v in costs['maliau_accom'].iteritems()])}}
+           TD('RM ' + str(v['discount'])), TD('RM ' + str(v['month']))) for k, v in costs['maliau_accom'].items()])}}
 <TR><TD colspan=4><strong>Food</strong> (per person per meal)</TD></TR>
 {{=CAT([TR(TD(XML("&nbsp;&nbsp;&nbsp;" + v['name'])), TD('RM ' + str(v['standard'])), 
-           TD('RM ' + str(v['discount'])), TD('RM ' + str(v['month']))) for k, v in costs['maliau_food'].iteritems()])}}
+           TD('RM ' + str(v['discount'])), TD('RM ' + str(v['month']))) for k, v in costs['maliau_food'].items()])}}
 </TABLE>
 
 
@@ -118,7 +118,7 @@ Many researchers working at SAFE take SAFE Research Assistants to Maliau with th
 <TABLE width='100%' class="table table-striped">
 <TR><TH>Category</TH><TH>Standard cost</TH><TH>Night work</TH><TH>Canopy access</TH></TR>
 {{=CAT([TR(TD(XML("&nbsp;&nbsp;&nbsp;" + v['name'])), TD('RM ' + str(v['Standard'])), 
-           TD('RM ' + str(v['Night work'])), TD('RM ' + str(v['Rope work']))) for k, v in costs['ra_costs'].iteritems()])}}
+           TD('RM ' + str(v['Night work'])), TD('RM ' + str(v['Rope work']))) for k, v in costs['ra_costs'].items()])}}
 
 </TABLE>
 

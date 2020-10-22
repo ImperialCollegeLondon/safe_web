@@ -142,6 +142,7 @@ The application needs a few extra python modules. I didn't muck around with virt
     sudo pip install xlrd
     sudo pip install html2text
     sudo pip install lxml
+    sudo pip install appdirs
 
 ### Initial deployment 
 

@@ -9,4 +9,5 @@ fileutils==0.2.2
 fs==2.4.11
 lxml==4.5.2
 python_dateutil==2.8.1
+gpxpy
 psycopg2

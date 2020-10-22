@@ -192,7 +192,7 @@ def user_details():
         # Loop over the dictionary, populating tables for each grid of results
         grids = {}
     
-        for k, v in membership_dict.iteritems():
+        for k, v in membership_dict.items():
         
             query = v['query']
         
@@ -220,8 +220,8 @@ def user_details():
         ul_tags = {'_class':"nav nav-tabs nav-justified", '_data-tabs':"tabs"}
         a_tags = {'_data-toggle':"tab"}
         
-        headers = [v['header'] for k,v in membership_dict.iteritems()]
-        keys = membership_dict.keys()
+        headers = [v['header'] for k,v in membership_dict.items()]
+        keys = list(membership_dict.keys())
         
         # need a UL defining the tabs and a DIV containing tab contents as tab pane DIVs .
         tabs = UL([LI(A(h, _href='#'+k , **a_tags), _role='presentation', _name=k) for k, h in zip(keys, headers)], **ul_tags)
