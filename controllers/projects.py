@@ -342,7 +342,7 @@ def project_details():
             version_num = [str(v.version) for v in versions]
             version_date = [v.proposal_date.strftime('%Y-%m-%d %H:%M') for v in versions]
             version_detail_id = [v.id for v in versions]
-            version_dict = dict(zip(version_num, version_detail_id))
+            version_dict = dict(list(zip(version_num, version_detail_id)))
             
             # If there isn't a version number provided, then redirect to load the record for the
             # one linked in the projects_id table, which is the most recently approved
@@ -872,7 +872,7 @@ def project_details():
             
             links = db((db.project_links.id.belongs(link_ids)) &
                        (db.project_links.id == db.project_link_pairs.link_id) &
-                       (db.project_id.id <> project_id) &
+                       (db.project_id.id != project_id) &
                        (db.project_link_pairs.project_id == db.project_id.id) &
                        (db.project_id.project_details_id == db.project_details.id))
             links = links.select(db.project_links.user_id, db.project_details.title,
@@ -901,7 +901,7 @@ def project_details():
                 coordinating = db((db.project_id.project_details_id == db.project_details.id) & 
                                   (db.project_id.id == db.project_members.project_id) &
                                   (db.project_members.user_id == auth.user_id) &
-                                  (db.project_members.project_id <> project_id) &
+                                  (db.project_members.project_id != project_id) &
                                   (db.project_members.is_coordinator == 'T'))
                 
                 linkable =  coordinating.select(db.project_details.title,
@@ -1095,7 +1095,7 @@ def project_details():
 def validate_project_details(form):
     
     # capture if the request is a submission
-    if 'submit_draft' in request.vars.keys():
+    if 'submit_draft' in list(request.vars.keys()):
         form.submit = True
     else:
         form.submit = False

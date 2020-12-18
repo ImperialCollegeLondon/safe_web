@@ -153,7 +153,7 @@ def volunteer_details():
         
         if form.validate(onvalidation=validate_volunteer):
             
-            req_keys = request.vars.keys()
+            req_keys = list(request.vars.keys())
             
             # get and add a comment to the history
             hist_str = '[{}] {} {}\\n -- {}\\n'
@@ -605,7 +605,7 @@ def help_request_details():
         
             if form.validate(onvalidation=validate_help_request):
             
-                req_keys = request.vars.keys()
+                req_keys = list(request.vars.keys())
                 if 'available' in req_keys:
                     # provide a simple toggle option for the availability
                     hist_str = '[{}] {} {}\\n -- Vacancy marked as {}\\n'

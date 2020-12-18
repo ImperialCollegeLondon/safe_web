@@ -41,7 +41,7 @@ def index():
     ra_list = [item for sublist in ra_list for item in sublist]
     ra_table = Counter(ra_list)
     
-    ra_string = [k + ' (' + str(v) + ')' for k, v in ra_table.iteritems()]
+    ra_string = [k + ' (' + str(v) + ')' for k, v in ra_table.items()]
     
     # BUILD a carousel of recent stuff - 4 each of news, blog, project, outputs
     n_items = 4
@@ -62,11 +62,11 @@ def index():
     ids = proj_ids + easy_ids
     
     cont = ['projects','news','blogs', 'outputs']
-    cont = [i for i in cont for _ in xrange(n_items)]
+    cont = [i for i in cont for _ in range(n_items)]
     func = ['project_view','news_post', 'blog_post', 'view_output']
-    func = [i for i in func for _ in xrange(n_items)]
+    func = [i for i in func for _ in range(n_items)]
     kind = ['Project: ','News: ','Blog: ', 'Output: ']
-    kind = [i for i in kind for _ in xrange(n_items)]
+    kind = [i for i in kind for _ in range(n_items)]
     
     link_url = [URL(c,r, args=i) for c,r,i in zip(cont, func, ids)]
     
@@ -234,7 +234,7 @@ def my_safe():
     # Loop over the dictionary, populating tables for each grid of results
     grids = {}
     
-    for k, v in membership_dict.iteritems():
+    for k, v in membership_dict.items():
         
         query = v['query']
         
@@ -266,8 +266,8 @@ def my_safe():
     ul_tags = {'_class':"nav nav-tabs nav-justified", '_data-tabs':"tabs"}
     a_tags = {'_data-toggle':"tab"}
     
-    headers = [v['header'] for k,v in membership_dict.iteritems()]
-    keys = membership_dict.keys()
+    headers = [v['header'] for k,v in membership_dict.items()]
+    keys = list(membership_dict.keys())
     
     # need a UL defining the tabs and a DIV containing tab contents as tab pane DIVs .
     tabs = UL([LI(A(h, _href='#'+k , **a_tags), _role='presentation', _name=k) for k, h in zip(keys, headers)], **ul_tags)
@@ -453,7 +453,7 @@ def api():
     if not len(request.args):
         
         # return the docstrings as HTML to populate the API html description
-        docs = CAT([H4(ky) + PRE(inspect.getdoc(fn)) for ky, fn in  search_func.iteritems()])
+        docs = CAT([H4(ky) + PRE(inspect.getdoc(fn)) for ky, fn in  search_func.items()])
         return dict(docs=docs)
     
     elif request.args[0] == 'index_hashes':

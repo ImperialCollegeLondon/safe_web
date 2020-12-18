@@ -200,7 +200,7 @@ def output_details():
     else:
         
         # allow admins to view but not edit existing records and lock submitted versions
-        if (record is not None) and ((record.user_id <> auth.user.id) or (record.admin_status == 'Submitted')):
+        if (record is not None) and ((record.user_id != auth.user.id) or (record.admin_status == 'Submitted')):
             readonly=True
         else:
             readonly=False
@@ -518,7 +518,7 @@ def validate_output_details(form):
     """
     
     # capture if the request is a submission
-    if 'submit' in request.vars.keys():
+    if 'submit' in list(request.vars.keys()):
         form.submit = True
     else:
         form.submit = False

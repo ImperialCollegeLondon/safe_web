@@ -104,7 +104,7 @@ def research_areas():
     content = simplejson.load(open(f))
     
     content_formatted = []
-    for k in content.keys():
+    for k in list(content.keys()):
         block = DIV(H3(k),
                     DIV(IMG(_src=URL('static', str(content[k]['image'])), 
                             _width=150, _align='left', 
@@ -246,7 +246,7 @@ class ExporterGeoJSON(object):
         if self.rows:
             
             # get a list of dictionaries of the values
-            ft_as_dicts = self.rows.as_dict().values()
+            ft_as_dicts = list(self.rows.as_dict().values())
             
             # pop out the geometry components and id
             id_number = [ft.pop('id') for ft in ft_as_dicts]
@@ -343,10 +343,13 @@ def mailing_list():
 def newsletter():
     
     # query the mailchimp archive and get a list of links
-    r = requests.get('https://us6.api.mailchimp.com/3.0/campaigns', auth=('apikey','c028335ab2baec6ee9710ed466cd9146-us6'), params={'count': 100})
+    r = requests.get('https://us6.api.mailchimp.com/3.0/campaigns', 
+                     auth=('apikey', myconf.take('mailchimp.api')), 
+                     params={'count': 100})
     data =  r.json()['campaigns']
     
-    table = [ [r['archive_url'], r['settings']['title'], dateutil.parser.parse(r['create_time'])] for r in data if r['status'] == 'sent']
+    table = [[r['archive_url'], r['settings']['title'], dateutil.parser.parse(r['create_time'])] 
+             for r in data if r['status'] == 'sent']
     
     # sort by date going back
     table.sort(key = lambda r: r[2], reverse=True)

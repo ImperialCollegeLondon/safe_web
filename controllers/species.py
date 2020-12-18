@@ -71,14 +71,14 @@ def species_profile():
                     ('Extinct', 'images/species/status_ex_on.gif')]) 
 
 
-    prilist = dict(True = 'images/species/Natural-Colour.jpg',
-                     False = 'images/species/Natural-Grey.jpg')
+    prilist = {True: 'images/species/Natural-Colour.jpg',
+               False: 'images/species/Natural-Grey.jpg'}
 
-    palmlist = dict(True = 'images/species/Plantation-Colour.jpg',
-                    False = 'images/species/Plantation-Grey.jpg')
+    palmlist = {True: 'images/species/Plantation-Colour.jpg',
+                False: 'images/species/Plantation-Grey.jpg'}
 
-    loglist = dict(True = 'images/species/Logged-Colour.jpg',
-                   False = 'images/species/Logged-Grey.jpg')
+    loglist = {True: 'images/species/Logged-Colour.jpg',
+               False: 'images/species/Logged-Grey.jpg'}
 
     
     # put together a set of external links
@@ -89,7 +89,9 @@ def species_profile():
             (species.arkive_link, 'images/species/arkive.png'),
             (species.gbif_link, 'images/species/gbif.png')]
     
-    external_links = [DIV(CENTER(A(IMG(_src=URL('static', x[1]), _height='50px'), _href=x[0], _target='_blank')), _class='col-sm-2') for x in ext]
+    external_links = [DIV(CENTER(A(IMG(_src=URL('static', x[1]), _height='50px'), 
+                                   _href=x[0], _target='_blank')),
+                          _class='col-sm-2') for x in ext]
     external_links = DIV(*external_links, _class='row')
     
     # modals to show definitions
@@ -110,7 +112,7 @@ def species_profile():
              'decreasing': {'img':'images/species/decreasing.png', 'dsc':'Global population is decreasing'},
              'unknown': {'img':'images/species/unknown.png', 'dsc':'Global population trends unknown'}}
     
-    pop_modal = [DIV(IMG(_src=URL('static', v['img']), _height='40px'), v['dsc'], _class='row') for k, v in tlist.iteritems()]
+    pop_modal = [DIV(IMG(_src=URL('static', v['img']), _height='40px'), v['dsc'], _class='row') for k, v in tlist.items()]
     pop_modal = modal_wrapper('Global population trends', pop_modal, 'pop_modal')
     
     # -- local abundance
@@ -119,7 +121,7 @@ def species_profile():
              'sometimes seen': {'img':'images/species/sometimes.png', 'dsc':'Species sometimes seen'},
              'rarely seen': {'img':'images/species/rare.png', 'dsc':'Species rarely seen'}}
     
-    abnd_modal = [DIV(IMG(_src=URL('static', v['img']), _height='40px'), v['dsc'], _class='row') for k, v in alist.iteritems()]
+    abnd_modal = [DIV(IMG(_src=URL('static', v['img']), _height='40px'), v['dsc'], _class='row') for k, v in alist.items()]
     abnd_modal = modal_wrapper('Local population abundance', abnd_modal, 'abnd_modal')
     
     
@@ -140,13 +142,13 @@ def species_profile():
                                       **{'_data-toggle':"modal", '_data-target':"#abnd_modal"})),
                                       _class='col-sm-2'),
                            DIV(CENTER(H5('In plantations'),
-                                      IMG(_src=URL('static', palmlist[str(species.in_plantation)]), _height='85px')),
+                                      IMG(_src=URL('static', palmlist[species.in_plantation]), _height='85px')),
                                       _class='col-sm-2'),
                            DIV(CENTER(H5('In logged areas'),
-                                      IMG(_src=URL('static', loglist[str(species.in_logged)]), _height='85px')),
+                                      IMG(_src=URL('static', loglist[species.in_logged]), _height='85px')),
                                       _class='col-sm-2'),
                            DIV(CENTER(H5('In primary forest'),
-                                      IMG(_src=URL('static', prilist[str(species.in_primary)]), _height='85px')),
+                                      IMG(_src=URL('static', prilist[species.in_primary]), _height='85px')),
                                       _class='col-sm-2'),
                            _class='row'), HR(),
                     pop_modal, abnd_modal,

@@ -114,8 +114,8 @@ def view_topic():
     # now need to nest those messages by parent id - pop them out of the list of messages
     # from tips down to root and insert them back into their parent as a nested DIV
     msg_id = [m.id for m in messages]
-    messages = dict(zip(msg_id, messages))
-    message_div = dict(zip(msg_id, message_div))
+    messages = dict(list(zip(msg_id, messages)))
+    message_div = dict(list(zip(msg_id, message_div)))
     
     for m in msg_id:
         # grab the message row for lookup and div to insert

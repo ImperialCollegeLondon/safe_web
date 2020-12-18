@@ -73,7 +73,7 @@ def check_task_queue():
                  {'name':'outdated_health_and_safety', 'period': 60*60*24,
                   'start_time': datetime.datetime.now()},
                  {'name':'send_weekly_summary', 'period': 60*60*24*7,
-                  'start_time': setStart(1, datetime.time(01,00,00))}]
+                  'start_time': setStart(1, datetime.time(1,0,0))}]
 
     # loop over the tasks
     # - there is a hack in here - start_time should set the first run time
