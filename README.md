@@ -154,7 +154,7 @@ OK. So warning over. First up, install git:
 Now clone the repo into the web2py applications folder. You could set up SSH, which gives the advantage of not needing to provide a password every time. However it is a pain to set up the keypairs and you'd expect that there are  going to be relatively infrequent roll outs of updated versions. So go with an clone via https, requiring your bitbucket password:
 
     cd /home/www-data/web2py/applications
-    sudo -u www-data git clone https://davidorme@bitbucket.org/davidorme/safe_web.git
+    sudo -u www-data git clone https://github.com/ImperialCollegeLondon/safe_web.git
 
 Before the application can work, we need to setup the database backend and edit the `appconfig.ini` file for the application to point to this database and to the correct SMTP server to send mail.
 
