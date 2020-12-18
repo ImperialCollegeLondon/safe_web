@@ -751,7 +751,7 @@ def research_visit_details():
         #     rw_data = {rw.auth_user.malaysian_researcher: rw._extra.values()[0] for rw in rws}
         #
         #     # load costs from the json data
-        #     f = os.path.join(request.folder, 'private','content/en/info/costs.json')
+        #     f = os.path.join(request.folder, 'static', 'info', 'costs.json')
         #     costs_dict = simplejson.load(open(f))
         #     daily_costs = {True: costs_dict['safe_costs']['local_food']['cost'],
         #                    False: costs_dict['safe_costs']['food']['cost'],
@@ -807,7 +807,7 @@ def research_visit_details():
             days = {ky: vl for ky, vl in days.iteritems() if vl > 0}
 
             # get costs
-            f = os.path.join(request.folder, 'private', 'content/en/info/costs.json')
+            f = os.path.join(request.folder, 'static', 'info', 'costs.json')
             costs_dict = simplejson.load(open(f))
             daily_costs = {True: costs_dict['safe_costs']['local_food']['cost'],
                            False: costs_dict['safe_costs']['food']['cost'],

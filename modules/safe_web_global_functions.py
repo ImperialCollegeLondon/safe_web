@@ -299,7 +299,7 @@ def single_rv_summary_excel(rv_id):
     request = current.request
 
     # load costs from the json data
-    f = os.path.join(request.folder, 'private', 'content/en/info/costs.json')
+    f = os.path.join(request.folder, 'static', 'info', 'costs.json')
     costs_dict = simplejson.load(open(f))
 
     # set up the coordinates of the data block
@@ -629,7 +629,7 @@ def all_rv_summary_excel():
     request = current.request
 
     # load costs from the json data
-    f = os.path.join(request.folder, 'private', 'content/en/info/costs.json')
+    f = os.path.join(request.folder, 'static', 'info', 'costs.json')
     costs_dict = simplejson.load(open(f))
 
     # set up the coordinates of the data block

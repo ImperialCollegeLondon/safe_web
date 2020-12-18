@@ -27,7 +27,7 @@ def submitting_proposals():
 def logistics():
     
     # load costs from the json data
-    f = os.path.join(request.folder, 'private','content/en/info/costs.json')
+    f = os.path.join(request.folder, 'static', 'info', 'costs.json')
     costs = simplejson.load(open(f))
     
     return dict(costs=costs, frm=get_frm())
@@ -64,7 +64,7 @@ def funders():
     
     
     # load funders from the json data
-    f = os.path.join(request.folder, 'private','content/en/info/funders.json')
+    f = os.path.join(request.folder, 'static', 'info', 'funders.json')
     content = simplejson.load(open(f))
     
     funders = []
@@ -100,7 +100,7 @@ def research_areas():
     ra_list = [item for sublist in ra_list for item in sublist]
     ra_table = Counter(ra_list)
     
-    f = os.path.join(request.folder, 'private','content/en/info/research_areas.json')
+    f = os.path.join(request.folder, 'static', 'info', 'research_areas.json')
     content = simplejson.load(open(f))
     
     content_formatted = []
