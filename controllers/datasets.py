@@ -362,7 +362,6 @@ def change_dataset_access():
                       'access_conditions': form.vars.set_conditions}
         
         code, content = update_published_metadata(form.vars.zenodo_selector, update)
-        print form.vars.zenodo_selector, update, content
         
         # If the zenodo update failed, flash a message and rollback the record update.
         if code != 0:

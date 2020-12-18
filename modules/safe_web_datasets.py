@@ -4,7 +4,7 @@ from lxml import etree
 import simplejson
 import copy
 import safedata_validator
-from cStringIO import StringIO
+from io import StringIO
 import requests
 from safe_web_global_functions import safe_mailer
 from itertools import groupby
@@ -345,9 +345,9 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None):
         # populate index tables
         # A) Taxa
         taxa = record.dataset_metadata['taxa']
-        taxa = [dict(zip(['dataset_id', 'worksheet_name', 'gbif_id', 'gbif_parent_id',
+        taxa = [dict(list(zip(['dataset_id', 'worksheet_name', 'gbif_id', 'gbif_parent_id',
                           'taxon_name', 'taxon_rank', 'gbif_status'], 
-                         [published_record] + tx)) for tx in taxa]
+                         [published_record] + tx))) for tx in taxa]
         
         db.dataset_taxa.bulk_insert(taxa)
         
@@ -362,8 +362,8 @@ def submit_dataset_to_zenodo(record_id, deposit_id=None):
         
         # C) Locations
         locations = record.dataset_metadata['locations']
-        locations = [dict(zip(['dataset_id', 'name','new_location','type','wkt_wgs84'], 
-                              [published_record] + loc)) for loc in locations]
+        locations = [dict(list(zip(['dataset_id', 'name','new_location','type','wkt_wgs84'], 
+                              [published_record] + loc))) for loc in locations]
         
         new_locs = db.dataset_locations.bulk_insert(locations)
         
@@ -739,7 +739,7 @@ def update_published_metadata(zenodo_record_id, new_values):
         return 1, edt.json()
     
     # Amend the metadata
-    for key, val in new_values.iteritems():
+    for key, val in new_values.items():
         if val is not None:
             metadata[key] = val
         elif key in metadata:
@@ -999,9 +999,9 @@ def dataset_description(record, gemini_id=None):
     if 'taxa' in record.dataset_metadata:
         metadata = record.dataset_metadata['metadata']
         taxon_index = record.dataset_metadata['taxa']
-        taxon_index = [dict(zip(['worksheet_name', 'gbif_id', 'gbif_parent_id',
+        taxon_index = [dict(list(zip(['worksheet_name', 'gbif_id', 'gbif_parent_id',
                                  'taxon_name', 'taxon_rank', 'gbif_status'], 
-                                  tx)) for tx in taxon_index]        
+                                  tx))) for tx in taxon_index]        
     else:
         metadata = record.dataset_metadata
         taxon_index = record.dataset_taxa.select().as_list()

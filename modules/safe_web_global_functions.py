@@ -1,6 +1,6 @@
 import os
 import datetime
-import cStringIO
+import io
 from collections import Counter
 import simplejson
 from openpyxl import styles, utils, Workbook, writer
@@ -100,7 +100,7 @@ def datepicker_script(html_id, **settings):
 
     # now create the script text
     if settings:
-        settings_str = ',\n'.join(item[0] + ':' + str(item[1]) for item in settings.iteritems())
+        settings_str = ',\n'.join(item[0] + ':' + str(item[1]) for item in settings.items())
     else:
         settings_str = ''
 
@@ -196,7 +196,7 @@ def safe_mailer(subject, to, template, template_dict, cc=None,
     # string inputs come in as utf-8, so are stored that way in the db
     parser = html2text.HTML2Text()
     parser.UNICODE_SNOB = True
-    txt_msg = parser.handle(html_msg.decode('utf-8'))
+    txt_msg = parser.handle(html_msg)
     msg = (txt_msg, html_msg)
 
     # add the info address into all emails (unless told explicitly not to)
@@ -210,7 +210,7 @@ def safe_mailer(subject, to, template, template_dict, cc=None,
     # has a read() method)
     if attachment_string_objects is not None:
         attach = [mail.Attachment(payload=cStringIO.StringIO(v), filename=k)
-                  for k, v in attachment_string_objects.iteritems()]
+                  for k, v in attachment_string_objects.items()]
     else:
         attach = None
 
@@ -228,7 +228,7 @@ def safe_mailer(subject, to, template, template_dict, cc=None,
     # using the easier to ask forgiveness principle run everything
     # through the xml() method and catch objects that don't have one.
 
-    for k, v in template_dict.iteritems():
+    for k, v in template_dict.items():
         try:
             template_dict[k] = v.xml()
         except AttributeError:
@@ -607,7 +607,7 @@ class SummaryTracker:
         new_dates = date_range(start, end)
         
         for d in new_dates:
-            if d in self.summary.keys():
+            if d in list(self.summary.keys()):
                 self.summary[d]['include'] = True
                 self.summary[d]['include_' + block] = True
                 if item == 'diets':
@@ -1003,7 +1003,7 @@ def all_rv_summary_excel():
             
             if dat['diets']:
                 diets = ['{} x {}'.format(v, k) 
-                         for k, v in Counter(dat['diets']).iteritems()]
+                         for k, v in Counter(dat['diets']).items()]
                 
                 c = food.cell(row=food_start_row + i, column=col + 1)
                 c.value = ', '.join(diets)
@@ -1165,7 +1165,7 @@ def all_rv_summary_text():
             if summary.summary[d]['safe']['beds'] > 0:
                 output.write('      - Beds requested: ' +  str(summary.summary[d]['safe']['beds'])  + '\n')
                 diets = ['{} x {}'.format(v, k) 
-                         for k, v in Counter(summary.summary[d]['safe']['diets']).iteritems()]
+                         for k, v in Counter(summary.summary[d]['safe']['diets']).items()]
                 output.write('      - Dietary requirements: ' + ', '.join(diets) + '\n')
                 
             if summary.summary[d]['safe']['ras'] > 0:
@@ -1177,7 +1177,7 @@ def all_rv_summary_text():
             if summary.summary[d]['maliau']['beds'] > 0:
                 output.write('      - Beds requested: ' +  str(summary.summary[d]['maliau']['beds'])  + '\n')
                 diets = ['{} x {}'.format(v, k) 
-                         for k, v in Counter(summary.summary[d]['maliau']['diets']).iteritems()]
+                         for k, v in Counter(summary.summary[d]['maliau']['diets']).items()]
                 output.write('      - Dietary restrictions: ' + ', '.join(diets) + '\n')
                 
             if summary.summary[d]['maliau']['ras'] > 0:
@@ -1185,7 +1185,7 @@ def all_rv_summary_text():
         
         if summary.summary[d]['include_transfers']:
             output.write('    Transfers\n')
-            for k, v in summary.summary[d]['transfers'].iteritems():
+            for k, v in summary.summary[d]['transfers'].items():
                 if v > 0:
                     output.write('      - ' + k + ': ' + str(v) + '\n')
             

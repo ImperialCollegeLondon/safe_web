@@ -138,7 +138,7 @@ def news_details():
         
         if form.process(onvalidation=validate_news_post).accepted:
             
-            req_keys = request.vars.keys()
+            req_keys = list(request.vars.keys())
             
             # get and add a comment to the history
             hist_str = '[{}] {} {}\\n -- {}\\n'

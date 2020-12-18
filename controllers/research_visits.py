@@ -504,8 +504,7 @@ def research_visit_details():
             visitor_select = SELECT(OPTION('Unknown', _value=0),
                                     *options,
                                     _name='user',
-                                    _class="generic-widget form-control col-sm-3",
-                                    _style='height: 30px;width:200px;')
+                                    _class="generic-widget form-control input-sm col-sm-3")
 
             add_visitor = TAG.BUTTON(add_visitor_icon,
                                      _style='padding: 5px 15px',
@@ -804,7 +803,7 @@ def research_visit_details():
                 days[rw.auth_user.malaysian_researcher] += (n_days.days - 1)
 
             # drop empty groups
-            days = {ky: vl for ky, vl in days.iteritems() if vl > 0}
+            days = {ky: vl for ky, vl in days.items() if vl > 0}
 
             # get costs
             f = os.path.join(request.folder, 'static', 'info', 'costs.json')
@@ -1560,7 +1559,7 @@ def validate_research_visit_details_console(form):
 
     # the request captures the datechange hidden field and 
     # the name of any submit button pressed
-    request_keys = request.vars.keys()
+    request_keys = list(request.vars.keys())
 
     # retrieve the record for the related visit
     rv = db.research_visit(form.vars.id)
@@ -1607,7 +1606,7 @@ def validate_research_visit_details_console(form):
         action = list(submit_ids.intersection(request_keys))
 
         # check for oddities and pass the action back across to the processing actions
-        if (len(action) <> 1):
+        if (len(action) != 1):
             form.errors = 'Error with action identification.'
         else:
             action = action[0]
@@ -2055,15 +2054,15 @@ def safe_bed_availability():
     # Calculate availability across dates with pending or approved bookings:
     # - handling admin approved overbooking by truncating to zero
     # - package into a list of dictionaries {'type', 'date', 'n'}
-    dates = set(pending.keys() + approved.keys())
+    dates = set(list(pending.keys()) + list(approved.keys()))
     pend = [0 if pending[d] is None else pending[d] for d in dates]
     conf = [0 if approved[d] is None else approved[d] for d in dates]
     avail = [{'type': 'available', 'date': d, 'n': max(0, n_beds_available - (x + y))}
              for x, y, d in zip(pend, conf, dates)]
 
     # get pending and approved in the same format
-    pending = [{'type': 'pending', 'date': k, 'n': v} for k, v in pending.iteritems()]
-    approved = [{'type': 'confirmed', 'date': k, 'n': v} for k, v in approved.iteritems()]
+    pending = [{'type': 'pending', 'date': k, 'n': v} for k, v in pending.items()]
+    approved = [{'type': 'confirmed', 'date': k, 'n': v} for k, v in approved.items()]
 
     # now create a list of events to pass to the view as a JS array
     colors = {'pending': '#CC9900', 'confirmed': '#CC0000', 'available': '#228B22'}
@@ -2200,7 +2199,7 @@ def check_safe_bed_availability():
                  for r in rows]
         # ii) unpack and get availability, truncating at zero.
         dates = Counter([dt for bk in dates for dt in bk])
-        if dates.values():
+        if list(dates.values()):
             n_taken = max(dates.values())
         else:
             n_taken = 0
