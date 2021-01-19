@@ -1681,17 +1681,17 @@ def get_index_hashes():
 
     # get the dictionary from cache.ram and get the hash of the json serialised contents
     index_dict = current.cache.ram('index', get_index, time_expire=None)
-    index_hash = hashlib.md5(json(index_dict)).hexdigest()
+    index_hash = hashlib.md5(json(index_dict).encode('utf-8')).hexdigest()
     
     # Use the file hash of the static gazetteer geojson
     gazetteer_file = os.path.join(current.request.folder, 'static', 'files', 'gis', 'gazetteer.geojson')
     with open(gazetteer_file) as f:
-        gazetteer_hash = hashlib.md5(f.read()).hexdigest()
+        gazetteer_hash = hashlib.md5(f.read().encode('utf-8')).hexdigest()
 
     # Use the file hash of the static locations alias csv
     location_aliases_file = os.path.join(current.request.folder, 'static', 'files', 'gis', 'location_aliases.csv')
     with open(location_aliases_file) as f:
-        location_aliases_hash = hashlib.md5(f.read()).hexdigest()
+        location_aliases_hash = hashlib.md5(f.read().encode('utf-8')).hexdigest()
         
     return dict(index=index_hash, gazetteer=gazetteer_hash, location_aliases=location_aliases_hash)
     
