@@ -921,8 +921,8 @@ def taxon_index_to_text(taxa):
     # Container to hold the output 
     html = StringIO()
     
-    # group by parent taxon
-    taxa.sort(key=lambda x: x['gbif_parent_id'])
+    # group by parent taxon, subsitituting 0 for None
+    taxa.sort(key=lambda x: x['gbif_parent_id'] or 0)
     grouped = {k: list(v) for k, v in groupby(taxa, lambda x: x['gbif_parent_id'])}
 
     # start the stack with the kingdoms - these taxa will have None as a parent
