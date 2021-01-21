@@ -1039,7 +1039,7 @@ def dataset_description(record, gemini_id=None):
                     'that you acknowledge the contribution of these funders in any outputs.'))
     
     # Permits
-    if metadata['permits']:        
+    if metadata['permits']:
         desc += P(B('Permits: '), 'These data were collected under permit from the following authorities:',
                   UL([LI('{authority} ({type} licence {number})'.format(**pmt)) for pmt in metadata['permits']]))
     
@@ -1072,8 +1072,9 @@ def dataset_description(record, gemini_id=None):
         if 'external' not in tab:
             tab['external'] = None
 
-    # now group into a dictionary keyed by source file
-    tables_by_source.sort(key=lambda sh: sh['external'])
+    # now group into a dictionary keyed by source file, substituting empty string
+    # for None if required.
+    tables_by_source.sort(key=lambda sh: sh['external'] or '')
     tables_by_source = groupby(tables_by_source, key=lambda sh: sh['external'])
     tables_by_source = {g: list(v) for g, v in tables_by_source}
 
