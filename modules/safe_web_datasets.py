@@ -153,7 +153,12 @@ def verify_dataset(record_id, email=False):
         if outcome == 'ERROR':
             report_text = ""
         else:
-            report_text = dataset.report().getvalue()
+            # TODO - something about the safedata_validator logger setup is causing
+            #        large numbers of null characters to be included in the report
+            #        text, which then prevents things from being written to the DB
+            #        The replace here is a hack to clear them out, but this needs
+            #        to be fixed upstream.
+            report_text = dataset.report().getvalue().replace('\x00','')
             report_text = PRE(report_text.replace(fname, record.file_name))
             # Update the ret_dict to insert the report text
             ret_dict['report'] = report_text
@@ -775,6 +780,22 @@ def update_published_metadata(zenodo_record_id, new_values):
         
         return 1, ret
 
+
+# # Untested snippet from: https://gist.github.com/tyhoff/b757e6af83c1fd2b7b83057adf02c139
+# # possibly of use when and if this module gets built into safedata_validator,
+# # to provide user feedback on uploading bulk data to drafts.
+# 
+# from tqdm import tqdm
+# from tqdm.utils import CallbackIOWrapper
+#
+# file_path = os.path.abspath(__file__)
+# upload_url = https://some-bucket.s3.amazonaws.com
+#
+# file_size = os.stat(file_path).st_size
+# with open(file_path, "rb") as f:
+#     with tqdm(total=file_size, unit="B", unit_scale=True, unit_divisor=1024) as t:
+#         wrapped_file = CallbackIOWrapper(t.update, f, "read")
+#         requests.put(upload_url, data=wrapped_file)
 
 def upload_file(links, token, record):
     """
