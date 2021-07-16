@@ -11,7 +11,7 @@ from safe_web_global_functions import thumbnail
 from safe_web_datasets import (dataset_taxon_search, dataset_author_search, dataset_date_search, 
                                dataset_text_search, dataset_field_search, dataset_locations_search, 
                                dataset_spatial_search, dataset_spatial_bbox_search, dataset_query_to_json,
-                               get_index_hashes, get_index)
+                               get_index)
 
 ## -----------------------------------------------------------------------------
 ## Default page controllers
