@@ -465,7 +465,7 @@ def api():
         # to clear this variable so that it will be reset by the next call to this
         # API.
         
-        val = cache.ram('index_hashes', get_index_hashes, time_expire=None)
+        val = cache.ram('index', get_index, time_expire=None)['hashes']
     
     elif request.args[0] == 'record' and len(request.args) == 2:
         # /api/record/zenodo_record_id endpoint provides a machine readable
@@ -545,7 +545,7 @@ def api():
         # a new dataset therefore needs to clear the ram cache to reset these version
         # stamps
 
-        val = cache.ram('index', get_index, time_expire=None)
+        val = cache.ram('index', get_index, time_expire=None)['index']
 
     elif request.args[0] == 'validator_locations':
         

@@ -1693,36 +1693,13 @@ def dataset_spatial_bbox_search(wkt=None, location=None, match_type='intersect',
     return qry
 
 
-def get_index_hashes():
-    
-    """
-    Function to calculate MD5 hashes for the records, gazetteer and location aliases, used to
-    populate a ram cache of these values and provide a quick way for R package users to establish
-    if their local copies are up to date.
-    """
-
-    # get the dictionary from cache.ram and get the hash of the json serialised contents
-    index_dict = current.cache.ram('index', get_index, time_expire=None)
-    index_hash = hashlib.md5(json(index_dict).encode('utf-8')).hexdigest()
-    
-    # Use the file hash of the static gazetteer geojson
-    gazetteer_file = os.path.join(current.request.folder, 'static', 'files', 'gis', 'gazetteer.geojson')
-    with open(gazetteer_file) as f:
-        gazetteer_hash = hashlib.md5(f.read().encode('utf-8')).hexdigest()
-
-    # Use the file hash of the static locations alias csv
-    location_aliases_file = os.path.join(current.request.folder, 'static', 'files', 'gis', 'location_aliases.csv')
-    with open(location_aliases_file) as f:
-        location_aliases_hash = hashlib.md5(f.read().encode('utf-8')).hexdigest()
-        
-    return dict(index=index_hash, gazetteer=gazetteer_hash, location_aliases=location_aliases_hash)
-    
 def get_index():
     
     """
     Function to generate a JSON string containing the formatted contents of the dataset files
     table. This is used as the core index of the safedata package, so is cached in a file 
-    like format to allow MD5 hash checking for updates and to speed access.
+    like format along with MD5 hashes of the index and other files to speed up checking for
+    updates and refreshing the index.
     """
 
     # version of the data contained in the dataset description
@@ -1740,10 +1717,30 @@ def get_index():
                                           ('dataset_files', 'filename'),
                                           ('dataset_files', 'filesize')])
     
-    # repackage the db output into a single dictionary per file                            
+    # repackage the db output into a single dictionary per file
     entries = val['entries'].as_list()
     [r['published_datasets'].update(r.pop('dataset_files')) for r in entries]
     val['entries'] = [r['published_datasets'] for r in entries]
+    
+    # Find the hashes
+    index_hash = hashlib.md5(json(val).encode('utf-8')).hexdigest()
+    
+    # Use the file hash of the static gazetteer geojson
+    gazetteer_file = os.path.join(current.request.folder, 'static', 'files', 'gis', 'gazetteer.geojson')
+    with open(gazetteer_file) as f:
+        gazetteer_hash = hashlib.md5(f.read().encode('utf-8')).hexdigest()
+
+    # Use the file hash of the static locations alias csv
+    location_aliases_file = os.path.join(current.request.folder, 'static', 'files', 'gis', 'location_aliases.csv')
+    with open(location_aliases_file) as f:
+        location_aliases_hash = hashlib.md5(f.read().encode('utf-8')).hexdigest()
+        
+    return dict(hashes=dict(index=index_hash, 
+                            gazetteer=gazetteer_hash,
+                            location_aliases=location_aliases_hash),
+                index=val)
+
+    
     
     # return the dictionary - this will be json serialised by the API when it is returned
     return val

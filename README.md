@@ -204,11 +204,18 @@ application.
 
 Rather than including `safe\_web` in every URL, we can set a default application for the web2py server. Create a file called `routes.py` in the base of the web2py installation (_outside_ of the git repo) with the contents:
 
-    routers = dict(
-        BASE = dict(
-            default_application='safe_web',
-        )
+```python
+routers = dict(
+    BASE = dict(
+        default_application='safe_web',
     )
+)
+
+routes_in=(
+  ('.*:/favicon.ico','/safe_project/static/favicon.ico'),
+  ('.*:/robots.txt','/safe_project/static/robots.txt'),
+)
+```
 
 Then restart apache:
 
